@@ -1,0 +1,2460 @@
+Title         : Programming Z3
+Author        : Nikolaj Bj&oslash;rner
+Author        : Leonardo de Moura
+Author        : Lev Nachmanson
+Author        : Christoph Wintersteiger
+Affiliation   : Microsoft Research
+Bibliography  : refs.bib
+
+
+Colorizer     : python
+Bib style     : plainnat
+Bibliography  : example
+Logo          : True
+
+Doc class     : llncs
+
+Package       : url
+Package       : amssymb
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+
+~ MathDefs
+\newcommand{\Mbp}{Mbp}
+\newcommand{\pre}{pre}
+\newcommand{\true}{\mathit{true}}
+\newcommand{\false}{\mathit{false}}
+\newcommand{\safe}{\mathit{Safe}}
+\newcommand{\Lit}{\mathcal{L}}
+\newcommand{\Model}{\mathsf{M}}
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\nikolaj}[1]{[\emph{Nikolaj:} #1]}
+\newcommand{\papercomment}[1]{}
+\newcommand{\onenorm}[1]{|\!|#1|\!|_1}
+\newcommand{\py}[1]{`#1`{language:python}}
+~
+
+[TITLE]
+
+
+~ Abstract
+This tutorial provides a programmer's introduction to the Satisfiability Modulo Theories Solver Z3.
+It describes how to use Z3 through scripts, provided in the Python scripting language, and it describes
+several of the algorithms underlying the decision procedures within Z3. It aims to broadly cover
+almost all available features of Z3 and the essence of the underlying algorithms. 
+~
+
+[TOC]
+
+# Introduction { #sec-intro }
+
+Satisfiability Modulo Theory, SMT, solving enjoys a synergetic 
+relationship with software analysis, verification and symbolic execution tools. 
+This is in many respects thanks to the emphasis on supporting domains commonly 
+found in programs and specifications.
+There are several scenarios where part of a query posed by these tools can 
+be cast in terms of formulas in a supported logic. It is then useful for the
+tool writer to have an idea of what are available supported logics, and 
+have an idea of how formulas are solved. But interacting with SMT
+solvers is not always limited to posing a query as a single formula. 
+It may require a sequence of interactions to obtain a usable answer. 
+It is then useful to have an idea of what methods and knobs are available
+for the tool writer. 
+In summary, this tutorial aims to answer the following types of questions
+through examples and a touch of theory:
+
+* What are the available features in Z3, and what are they designed to be used for?
+
+* What are the underlying algorithms used in Z3?
+
+* How can I program applications on top of Z3?
+
+
+Figure [#fig-system] shows an overall systems diagram of Z3, as of version 4.8.
+The top left summarizes the interfaces to Z3. 
+One can interact with Z3 over SMTLIB2 scripts supplied as a text file or pipe to Z3, 
+or using API calls from a high-level programming language that are proxies for 
+calls over a C-based API. We focus on using the Python front-end as a means of
+interfacing with Z3, and start out describing the abstract syntax of terms and
+formulas accepted by Z3 in Section [#sec-logical-interface].
+Formulas draw from symbols whose meaning are defined by a set of _Theories_, 
+Section [#sec-theories]. _Solvers_, Sections [#sec-solver-interfacing] and [#sec-solver-implementations], 
+provide services for deciding satisfiability of formula. _Tactics_, Section [#sec-tactics], provide means for
+pre-processing simplification and creating sub-goals. Z3 also provides some services
+that are not purely satisfiability queries. _Optimization_, Section [#sec-optimization],
+services allow users to solve satisfiability modulo objective functions to maximize or
+minimize values. There are also specialized procedures for enumerating _consequences_ (backbone literals)
+described in Section [#sec-consequences].
+
+~ Figure { #fig-system; caption: "Overall system architecture of Z3" }
+![Z3Overall]
+~
+
+[Z3Overall]: images/Z3Overall.jpg "Z3Overall" { width:35em }
+
+
+## Resources
+The main point of reference for Z3 is the GitHub repository
+
+~ Center
+<https://github.com/z3prover/z3>
+~
+
+There is an interactive tutorial using the SMTLIB2 front-end on
+
+~ Center
+<https://rise4fun.com/Z3/tutorial/guide>
+~
+
+
+There are several systems that program with Z3. 
+They use a variety of 
+front-ends, some use OCaml, others C++, and others use 
+the SMTLIB2 text interfaces. A few instances that 
+use the Python front-end include
+
+* Dennis Yurichev assembled a significant number of case studies
+drawn from puzzles and code analysis and presents many of the
+examples using the Python front-end
+<https://yurichev.com/writings/SAT_SMT_by_example.pdf>.
+
+* The Ivy system is written in Python and uses Z3
+<https://github.com/Microsoft/ivy>.
+
+* The binary analysis kit Angr system is written in Python and uses Z3
+<https://docs.angr.io/>.
+
+* There was an online interactive Python tutorial. 
+  It is discontinued as it ended up being a target for
+  hacks. A snapshot of the web pages, including the non-interactive
+  examples can be found at
+  <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py>.
+
+## Sources
+The material to this tutorial is assembled from several sources.
+Some of the running examples originate from slides that have 
+circulated in the SAT and SMT community. The first SAT example is
+shamelessly lifted from Armin Biere's SAT tutorials and other examples 
+appear in slides by Natarajan Shankar and others. 
+
+
+# Logical Interfaces to Z3 { #sec-logical-interface }
+Z3 takes as input simple-sorted formulas that may contain symbols with pre-defined meanings defined by a _theory_.
+This Section provides an introduction to logical formulas that can be used as input to Z3. 
+
+As a basis, propositional formulas are based on logical combination of atomic variables. 
+An example propositional logical formula
+accepted by Z3 is:
+```python
+  from z3 import *
+  Tie, Shirt = Bools('Tie Shirt')
+  s = Solver()
+  s.add(Or(Tie, Shirt), 
+        Or(Not(Tie), Shirt), 
+        Or(Not(Tie), Not(Shirt)))
+  print(s.check())
+  print(s.model())
+```
+The example introduces two Boolean variables `Tie`{language:python} and `Shirt`{language:python}. 
+It then creates a `Solver`{language:python} object to which it adds three assertions.
+~ MathPre
+  (Tie \vee Shirt) \wedge (\neg Tie \vee Shirt) \wedge (\neg Tie \vee \neg Shirt)
+~
+The call to `s.check()`{language:python} produces a verdict `sat`{language:python}; 
+there is a satisfying assignment to the formulas. 
+A satisfying model, where `Tie`{language:python} is false and `Shirt`{language:python} is true, 
+can be extracted using `s.model()`{language:python}.
+For convenience the Python front-end to Z3 contains some shorthand functions. The function `solve`{language:python} 
+sets up a solver, adds assertions, checks satisfiability, and prints a model if one is available.
+
+Propositional logic is an important, but smaller subset of formulas handled by Z3. 
+It can reason about formulas that combine symbols from several theories, such as the theories for 
+arrays and arithmetic:
+```python
+  Z = IntSort()
+  f = Function('f', Z, Z)
+  x, y, z = Ints('x y z')
+  A = Array('A',Z,Z)
+  fml = Implies(x + 2 == y, f(Store(A, x, 3)[y - 2]) == f(y - x + 1))
+  solve(Not(fml))
+```  
+
+The formula `fml` is valid. It is true for all values of integers _x_, _y_, _z_, array _A_, 
+and no matter what the graph of the function _f_. 
+Note that we are using `array[index]` as shorthand for `Select(array,index)`.
+We can manually verify the validity of the formula usig the following argument:
+Under the assumption that `x + 2 = y`, the right side of the implication simplifies to
+```python
+f(Store(A, x, 3)[x]) == f(3)
+```
+as we have replaced occurrences of `y` by `x - 2`. There are no restrictions on what `f` is, so
+the equality with `f` on both sides will only follow if the arguments to `f` are the same. Thus, 
+we are left to establish
+```python
+Store(A, x, 3)[x] == 3
+```
+The left side is a term in the theory of arrays, which captures applicative maps. `Store` updates the array `A`
+at position `x` with the value 3. Then `...[x]` retrieves the contents of the array at index `x`, which in this
+case is 3.
+Dually, the _negation_ of `fml` is unsatisfiable and the call to Z3 produces `unsat`.
+
+Formulas accepted by Z3 generally follow the formats described in the SMT-LIB2 standard [@SMTLIB2].
+This standard (currently at version 2.6) defines a textual language for first-order multi-sorted
+logic and a set of _logics_ that are defined by a selection of background theories. 
+For example, the logic of _quantifier-free integer linear arithmetic_, known in SMT-LIB2 
+as `QF_LIA`{language:smt}, is a fragment of first-order logic, where formulas are _quantifier free_, 
+variables range over integers, constants are integers, the allowed functions are _+_, _-_, 
+integer multiplication, division, remainder, modulus with a constant, and the allowed relations
+are, besides equality that is part of every theory, also  _<, <=, >=, >_.
+As an example, we provide an SMT-LIB and and Python variant of the same arbitrary formula below. 
+```smt
+ (set-logic QF_LIA)
+ (declare-const x Int)
+ (declare-const y Int)
+ (assert (> (+ (mod x 4) (* 3 (div y 2))) (- x y)))
+ (check-sat)
+```
+Python version:
+```python
+ solve((x % 4) + 3 * (y / 2) > x - y)
+```
+It is also possible to extract an SMT-LIB2 representation of a solver state.
+```python
+from z3 import *
+x, y = Ints('x y')
+s = Solver()
+s.add((x % 4) + 3 * (y / 2) > x - y)
+print(s.sexpr())
+```
+produces the output
+```smt
+(declare-fun y () Int)
+(declare-fun x () Int)
+(assert (> (+ (mod x 4) (* 3 (div y 2))) (- x y)))
+```
+
+## Sorts
+Generally, SMT-LIB2 formulas use a finite set of simple sorts. 
+It includes the built-in sort `Bool`{language:smt}, and supported theories
+define their own sorts, noteworthy `Int`{language:smt}, `Real`{language:smt}, 
+bit-vectors `(_ BitVec n)`{language:smt}
+for every positive bit-width _n_, arrays `(Array Index Elem)`{language:smt} for every sort _Index_ and _Elem_, 
+`String`{language:smt} and sequences `(Seq S)`{language:smt} for every sort _S_.
+It is also possible to declare new sorts. Their domains may never be empty.
+Thus, the formula
+``` python
+ S = DeclareSort('S')
+ s = Const('s', S)
+ solve(ForAll(s, s != s))
+```
+is unsatisfiable.
+
+## Signatures
+Formulas may include a mixture of interpreted and free functions and constants.
+For example, the integer constants 0 and 28 are interpreted, while constants _x_, 
+_y_ used in the previous example are free. Constants are treated as nullary functions.
+Functions that take arguments can be declared, such as 
+`f = Function('f', Z, Z)` creates the function declaration that takes one integer
+argument and its range is an integer. Functions with Boolean range can be used to build up
+formulas.
+
+## Terms and Formulas
+Formulas, that are used in assertions or added to solvers, 
+are terms of Boolean sort. Otherwise, terms of Boolean and non-Boolean sort
+may be mixed in any combination where sorts match up.
+For example
+```python
+B = BoolSort()
+f = Function('f', B, Z)
+g = Function('g', Z, B)
+a = Bool('a')
+solve(g(1+f(a)))
+```
+could produce a solution of the form
+```python
+[a = False, f = [else -> 0], g = [else -> True]]
+```
+Standard built-in logical connectives are `And, Or, Not, Implies, Xor`. 
+Bi-implication is a special case of equality, so from Python, when saying 
+`x == y` for Boolean _x_ and _y_ it is treated as a logical formula for the 
+bi-implication of _x_ and _y_.
+
+## Quantifiers
+Universal and existential quantifiers bind variables to the scope of the quantified
+formula. For example
+```python
+solve([y == x + 1, ForAll([y], Implies(y <= 0, x < y))])
+```
+has no solution. The bound occurrence of _y_ is unrelated to the free occurrence where _y_ is restricted to be _x + 1_.
+The equality constraint `y == x + 1` should also not be mistaken for an assignment to `y`. It is _not_ the case that
+bound occurrences of `y` are a synonym for `x + 1`.
+Notice that the slightly different formula 
+```python
+solve([y == x + 1, ForAll([y], Implies(y <= 0, x > y))])
+```
+has a solution where _x_ is 1 and the free occurrence of _y_ is 2.
+
+Z3 supports also $\lambda$-binding with rudimentary reasoning support based on a model-constructing instantiation engine.
+$\lambda$s may be convenient when expressing properties of arrays and Z3 uses array sorts for representing the
+sorts of lambda expressions. Thus, the result of `memset` is an array from integers to integers, and reasoning about
+quantifier free formulas using `memset` in a way where it is always applied to arguments requires instantiating the
+definition 
+```python
+m, m1 = Array('m', Z, Z), Array('m1', Z, Z)
+def memset(lo,hi,y,m):
+    return Lambda([x], If(And(lo <= x, x <= hi), y, Select(m, x)))
+solve([m1 == memset(1, 700, z, m), Select(m1, 6) != z])
+```
+Z3 treats arrays as general function spaces. All first-order definable functions may be arrays.
+Some second-order theorems can be established by synthesizing $\lambda$ terms by instantiation.
+Thus,
+
+```python
+Q = Array('Q', Z, B)
+prove(Implies(ForAll(Q, Implies(Select(Q, x), Select(Q, y))), x == y))
+```
+is provable. Z3 synthesizes an instantiation corresponding to `Lambda(z, z == x)` for _Q_.
+
+
+<!---
+## Recursive functions
+
+## Sort, Expr, 
+
+## Parameters
+--->
+
+
+# Theories { #sec-theories }
+We will here summarize the main theories supported in Z3. In a few cases we will 
+give a brief taste of decision procedures used for these theories. 
+Readers who wish to gain a more in-depth understanding of how these 
+decision procedures are implemented may follow some of the
+citations.
+
+## EUF: Equality and Uninterpreted Functions
+
+The logic of _equality and uninterpreted function_, EUF, is a basic ingredient for first-order predicate logic.
+Before there are theories, there are constants, functions and predicate symbols, and the built-in relation of equality.
+In the following example, _f_ is a unary function, _x_ a constant. The first invocation of _solve_ is feasible with
+a model where _x_ is interpreted as an element in _S_ and _f_ is an identify function. The second invocation of _solve_
+is infeasible; there are no models where _f_ maps _x_ to anything but itself given the two previous equalities.
+```python
+  S = DeclareSort('S')
+  f = Function('f', S, S)
+  x = Const('x', S)
+  solve([f(f(x)) == x, f(f(f(x))) == x])
+  solve([f(f(x)) == x, f(f(f(x))) == x, f(x) != x])
+```
+
+Decision procedures for quantifier-free EUF formulas are usually based 
+on _union-find_ to maintain equivalence classes of terms that are equated.
+Pictorially, a sequence of equality assertions $a = b, b = c, b = s$ produce
+one equivalence class that captures the transitivity of equality. 
+~ Snippet
+\begin{tikzpicture}
+\matrix[nodes={draw}, row sep=0.3cm,column sep=0.5cm] {
+  \node [rectangle, draw=none] (eq) {$a = b, b = c, d = e, b = s, d = t: $}; & 
+  \node [circle, draw] (abcs) {$a, b, c, s$}; &
+  \node [circle, draw] (det) {$d, e, t$}; \\
+ };
+\end{tikzpicture}
+~
+It is possible to check for satisfiability of disequalities by checking whether
+the equivalence class associated with two disequal terms are the same or not.
+Thus, adding $a \neq d$ does not produce a contradiction, and it can be checked
+by comparing $a$'s class representative with $d$'s representative.
+~ Snippet
+\begin{tikzpicture}
+\matrix[nodes={draw}, row sep=0.3cm,column sep=0.5cm] {
+  \node [rectangle, draw=none] (eq) {$a = b, b = c, d = e, b = s, d = t, a \neq d: $}; & 
+  \node [circle, draw] (abcs) {$a, b, c, s$}; &
+  \node [circle, draw] (det) {$d, e, t$}; \\
+ };
+\end{tikzpicture}
+~
+On the other hand, when asserting $c \neq s$, we can deduce a conflict as
+the two terms asserted to be disequal belong to the same class. Class membership
+with union-find data-structures is amortized nearly constant time.
+~ Snippet
+\begin{tikzpicture}
+\matrix[nodes={draw}, row sep=0.3cm,column sep=0.5cm] {
+  \node [rectangle, draw=none] (eq) {$a = b, b = c, d = e, b = s, d = t, c \neq s: $}; & 
+  \node [circle, draw] (abcs) {$a, b, c, s$}; &
+  \node [circle, draw] (det) {$d, e, t$}; \\
+ };
+\end{tikzpicture}
+~
+
+Union-find alone is insufficient when function symbols are used, as with the following example,
+
+~ MathPre
+  a = b, b = c, d = e, b = s, d = t, f(a, g(d)) \neq  f(b, g(e))
+~ 
+
+In this case decision procedures require reasoning with the congruence rule
+
+~ Math
+    x_1 = y_1 \cdots x_n = y_n \ \Rightarrow \ f(x_1, \ldots, x_n) = f(y_1, \ldots, y_n)
+~
+
+As a preparation for solving our example, let us introduce constants
+that can be used as shorthands for sub-terms. Thus, introduce
+constants $v_1, v_2, v_3, v_4$ as representatives for the
+four compound sub-terms.
+
+
+$a = b, b = c, d = e, b = s, d = t, v_3 \neq {v_4}$
+$v_1 := g(e), v_2 := g(d), v_3 := f(a, v_2), {v_4 := f(b, v_1)}$
+
+
+Having only the equality information available we obtain the equivalence classes:
+~ Snippet
+\begin{tikzpicture}
+\matrix[nodes={draw}, row sep=0.3cm,column sep=0.5cm] {
+  \node [circle, draw] (abcs) {$a, b, c, s$}; &
+  \node [circle, draw] (det) {$d, e, t$}; & 
+  \node [circle, draw] (v1) {$v_1$}; & 
+  \node [circle, draw] (v2) {$v_2$}; & 
+  \node [circle, draw] (v3) {$v_3$}; & 
+  \node [circle, draw] (v4) {$v_4$}; \\
+ };
+\end{tikzpicture}
+~
+
+Working bottom-up, the congruence rule dictates that the classes for $v_1$ and $_v2$
+should be merged. Thus, 
+
+~ Math 
+    e = d \ \Rightarrow \ g(e) = g(d)
+~
+
+implies the following coarser set of equivalences.
+
+~ Snippet
+\begin{tikzpicture}
+\matrix[nodes={draw}, row sep=0.3cm,column sep=0.5cm] {
+  \node [circle, draw] (abcs) {$a, b, c, s$}; &
+  \node [circle, draw] (det) {$d, e, t$}; & 
+  \node [circle, draw] (v12) {$v_1, v_2$}; & 
+  \node [circle, draw] (v3) {$v_3$}; & 
+  \node [circle, draw] (v4) {$v_4$}; \\
+ };
+\end{tikzpicture}
+~
+
+At this point, the congruence rule can be applied a second time,
+
+~ Math 
+   a = b, v_2 = v_1 \Rightarrow \ f(a, v_2) = f(b, v_1)
+~
+
+producing the equivalence classes
+
+~ Snippet
+\begin{tikzpicture}
+\matrix[nodes={draw}, row sep=0.3cm,column sep=0.5cm] {
+  \node [circle, draw] (abcs) {$a, b, c, s$}; &
+  \node [circle, draw] (det) {$d, e, t$}; & 
+  \node [circle, draw] (v12) {$v_1, v_2$}; & 
+  \node [circle, draw] (v34) {$v_3, v_4$}; \\ 
+ };
+\end{tikzpicture}
+~
+At this point $v_3$ and $v_4$ are merged. As our original formula required these to
+be distinct, congruence closure reasoning determines that the formula is unsatisfiable.
+
+### Congruence Closure {#sec-cc}
+
+We have implicitly used the notion of _congruence closure_ to check satisfiability of equalities.
+Let us more formally define this notion.
+Let $\mathcal{T}$ be a set of terms and $\mathcal{E}$ set of equalities over $\mathcal{T}$.
+A _congruence closure_ over $\mathcal{T}$ modulo $\mathcal{E}$ is the finest a partition of $\mathcal{T}$, cc, such that:
+
+* if $s = t \in \mathcal{E}$, then $s, t$ are in the same partition in cc.
+
+* for $s := f(s_1, \ldots, s_k), t := f(t_1, \ldots, t_k) \in \mathcal{T}$, 
+  * if $s_i,t_i$ are in same partition of cc for each $i = 1, \ldots k$, then
+  * $s, t$ are in the same partition under cc.
+
+~ Definition
+ $cc: \mathcal{T} \rightarrow 2^{\mathcal{T}}$, maps term to its equivalence class.
+~
+
+### EUF Models
+
+A satisfiable version of the running example is:
+
+$a = b, b = c, d = e, b = s, d = t, f(a, g(d)) \neq  {f(g(e), b)}$
+
+It induces the following definitions and equalities:
+$a = b, b = c, d = e, b = s, d = t, v_3 \neq v_4$ \
+$v_1 := g(e), v_2 := g(d), v_3 := f(a, v_2), v_4 := f(v_1, b)$
+and we can associate a distinct value with each equivalence class.
+
+~ Snippet {text-align:left}
+\begin{tikzpicture}
+\matrix[nodes={draw}, row sep=0.3cm,column sep=0.5cm] {
+  \node [circle, draw] (abcs) {$\diamond_0: a, b, c, s$}; &
+  \node [circle, draw] (det) {$\diamond_1: d, e, t$}; & 
+  \node [circle, draw] (v12) {$\diamond_2: v_1, v_2$}; & 
+  \node [circle, draw] (v3) {$\diamond_3: v_3$}; & 
+  \node [circle, draw] (v4) {$\diamond_4: v_4$}; \\
+ };
+\end{tikzpicture}
+~
+
+When presenting the formula to Z3 as
+```python
+S = DeclareSort('S')
+a, b, c, d, e, s, t = Consts('a b c d e s t', S)
+f = Function('f', S, S, S)
+g = Function('g', S, S)
+solve([a == b, b == c, d == e, b == s, 
+       d == t, f(a,g(d)) != f(g(e), b)])
+```
+it produces a model, that may look as follows:
+```python
+[s = S!val!0, b = S!val!0, a = S!val!0,
+ c = S!val!0, d = S!val!1, e = S!val!1, t = S!val!1,
+ f = [(S!val!2, S!val!0) -> S!val!4, else -> S!val!3],
+ g = [else -> S!val!2]]
+```
+In the model the value _S!val!0_ is a fresh constant that is distinct from _S!val!1_.
+The interpretation of _S_ is a finite set 
+```python
+{S!val!0, S!val!1, S!val!2, S!val!3, S!val!4}.
+```
+
+
+## Arithmetic
+
+Arithmetical constraints are nearly ubiquitous in software models. 
+Even though mainstream software operates with finite precision arithmetic,
+that is modeled precisely using bit-vectors, 
+arithmetic over unbounded integers can often be used in a sound way to model software. 
+Furthermore, arithmetic over the reals has been used for diverse areas such as models 
+of cyber-physical systems or for axiomatic economics.
+
+### Solving LRA: Linear Real Arithmetic
+
+We provide an outline of Z3's main procedure for solving formulas over linear real arithmetic [@DutertreM06].
+It maintains a (dual) Simplex tableau that encodes equalities of the form $Ax = 0$. 
+Feasibility of the equalities depends on bounds, $lo_j \leq x_j \leq hi_j$, 
+currently associated with the variables.
+For the following formula
+
+```python
+  x, y = Reals('x y')
+  solve([x >= 0, Or(x + y <= 2, x + 2*y >= 6), 
+                 Or(x + y >= 2, x + 2*y > 4)])
+```
+
+Z3 introduces auxiliary variables $s_1, s_2$ and represents the formula as
+
+~ MathPre
+  s_1 \equiv x + y, s_2 \equiv x + 2y,
+  x \geq 0, (s_1 \leq 2 \vee s_2 \geq 6), (s_1 \geq 2 \vee s_2 > 4)
+~ 
+
+Only bounds (e.g., $s_1 \leq 2$) are asserted during search.
+
+The first two equalities form the tableau. Thus, the definitions
+${s_1} \equiv x + y, {s_2} \equiv x + 2y$
+produce the equalities
+
+~ Math 
+{s_1} = x + y, \ {s_2} = x + 2y
+~
+
+They are equivalent to the normal form:
+
+~ Math
+{s_1} - x - y = 0, \   
+{s_2} - x - 2y = 0
+~  
+
+where ${s_1, s_2}$ are basic (dependent) and $x, y$ are non-basic.
+In dual Simplex tableaux, values of a non-basic variable
+$x_j$ can be chosen between $lo_j$ and $hi_j$.
+The value of a basic variable is a function of non-basic variable values.
+It is the unique value that satisfies the unique row where the 
+basic variable occurs. Pivoting swaps basic and non-basic variables 
+and is used to get values of basic variables within bounds.
+For example, assume we start with a set of initial values
+$x = y = s_1 = s_2 = 0$
+and bounds $x \geq 0, s_1 \leq 2, s_1 \geq 2$. 
+Then $s_1$ has to be 2 and it is made non-basic. 
+Instead $y$ becomes basic:
+
+~ Math
+{y} + x - s_1 = 0, \ {s_2} + x - 2s_1 = 0
+~
+
+The new tableau updates the assignment of variables to
+$x = 0, s_1 = 2, s_2 = 4, y = -2$. The resulting assignment
+is a model for the original formula.
+
+### Solving Arithmetical Fragments
+
+The solvers available to reason about arithmetical constraints are wildly different
+depending on what fragments of arithmetic is used.
+We summarize the main fragments, available decision procedures, and examples in 
+the table below where $x, y$ range over reals and $a, b$ range over integers.
+
+
++------+-----------------------------------+---------------------------+---------------------------+
+| Logic| Description                       | Solver                    | Example                   |
++------+-----------------------------------+---------------------------+---------------------------+
+| LRA  | Linear Real Arithmetic            | Dual Simplex [@DutertreM06] |  $x + \frac{1}{2}y \leq 3$|
++------+-----------------------------------+---------------------------+---------------------------+
+| LIA  | Linear Integer Arithmetic         | Cuts + Branch             | $a + 3b \leq 3$           |
+| LIRA | Mixed Real/Integer                | [@DutertreM06;@DilligDA09;@ChristH15;@BrombergerW17;@BjornerNachmanson18]       | $x + a \geq 4$            |
++------+-----------------------------------+---------------------------+---------------------------+
+| IDL  | Integer Difference Logic          | Floyd-Warshall            | $a - b \leq 4$            |
+| RDL  | Real Difference Logic             | Bellman-Ford              | $x - y \leq 4$            |
+|UTVPI | Unit two-variable / inequality    | Bellman-Ford              | $x + y \leq 4$            |
++------+-----------------------------------+---------------------------+---------------------------+
+| NRA  | Polynomial Real Arithmetic        | Model based CAD [@JovanovicM12] | $x^2 + y^2 < 1$           | 
++------+-----------------------------------+---------------------------+---------------------------+
+| NIA  | Non-linear Integer Arithmetic     | CAD + Branch [@Jovanovic17]    | $a^2 = 2$                 |
+|      |                                   | Linearization [@CimattiGIRS18] |                      |
++------+-----------------------------------+---------------------------+---------------------------+
+
+There are many more fragments of arithmetic that benefit from special solvers. 
+We later discuss some of the fragments where integer variables are restricted to the values $\{0, 1\}$
+when handling Pseudo-Boolean constraints. 
+Other fragments that are _not_ currently handled in Z3 in any special way
+include:
+
++----------------------------------------------+-----------------------------------------+
+| Description                                  | Example                                 |
++----------------------------------------------+-----------------------------------------+
+| Horn Linear Real Arithmetic                  | $3y + z - \frac{1}{2}x \leq 1$          |
+| At most one variable is positive             |                                         |
++----------------------------------------------+-----------------------------------------+
+| Two-variable per inequality [@CohenM94]      | $3x + 2y \geq 1$                        |
++----------------------------------------------+-----------------------------------------+
+| Min-Horn [@CostanGGMP05]                     | $x \geq \min(2y+1, z)$                  |
++----------------------------------------------+-----------------------------------------+
+| Bi-linear arithmetic                         | $3xx' + 2yy' \geq 2$                    |
++----------------------------------------------+-----------------------------------------+
+| Transcendental functions                     | $e^{-x} \geq y$                         |
++----------------------------------------------+-----------------------------------------+
+| Modular linear arithmetic                    | $a + 3b + 2 \equiv 0 \mod 5$            |                                         
++----------------------------------------------+-----------------------------------------+
+
+
+A user of Z3 may appreciate that a domain can be modeled using a fragment of the theory of arithmetic that
+is already supported, or belongs to a class where no special support is available. 
+On a practical side, it is worth noting that Z3 uses infinite precision arithmetic by default. 
+Thus, integers and rationals are represented without rounding. The benefit is that the representation 
+ensures soundness of the results, but operations by decision procedures may
+end up producing large numerals taking most of the execution time. Thus, users who produce linear arithmetic
+constraints with large coefficients or long decimal expansions may face performance barriers.
+
+
+## Arrays { #sec-arrays }
+
+
+The declaration
+```python
+  A = Array('A', IntSort(), IntSort())
+```
+introduces a constant `A`{language:python} of the array sort mapping
+integers to integers. We can solve constraints over arrays, 
+such as 
+
+```python
+solve(A[x] == x, Store(A, x, y) == A)
+```
+which produces a solution where `x` necessarily equals `y`.
+
+Z3 treats arrays as function spaces, thus a function
+`f(x,y)`{language:python}
+can be converted to an array using a $\lambda$
+```python
+  Lambda([x,y], f(x,y))
+```
+If `f` has sort $A \times B \rightarrow C$, then 
+`Lambda([x,y], f(x,y))`{language:python} has sort
+`Array(A, B, C)`{language:python}.
+A set of built-in functions are available for
+arrays. We summarize them together with their
+representation using `Lambda`{language:python}
+bindings.
+
+```python
+  
+  a[i]             # index array 'a' at index 'i'
+                   # Select(a, i)
+  
+  Store(a, i, v)   # update array 'a' with value 'v' at index 'i'
+                   # = Lambda(j, If(i == j, v, a[j]))
+    
+  K(D, v)          # constant Array(D, R), where R is sort of 'v'.
+                   # = Lambda(j, v)
+  
+  Map(f, a)        # map function 'f' on values of 'a'
+                   # = Lambda(j, f(a[j]))
+
+  Ext(a, b)        # Extensionality
+                   # Implies(a[Ext(a, b)] == b[Ext(a, b)], a == b)
+```
+
+### Deciding Arrays by Reduction to EUF
+
+Formulas using the combinators `Store, Const, Map, Ext` are checked 
+for satisfiability by _expanding_ the respective $\lambda$ definitions
+on sub-terms. We illustrate how occurrences of `Store`{language:python} 
+produce constraints over EUF. In the following, assume we are given a 
+solver `s` with ground assertions using arrays.
+
+For each occurrence in `s` of `Store(a, i, v)`{language:python} and `b[j]`{language:python}, 
+add the following assertions:
+
+* `s.add(Store(a, i, v)[j] == If(i == j, v, a[j]))`{language:python}
+* `s.add(Store(a, i, v)[i] == v)`{language:python}
+
+
+Extensionality is enforced on array terms $a$, $b$ in `s`, 
+by instantiating the axiom of extensionality.
+
+* `s.add(Implies(a[Ext(a,b)] == b[Ext(a,b)], a == b))`{language:python}
+
+Note that formally, we would write extensionality as the property:
+
+* `s.add(Implies(ForAll(i, a[i] == b[i]), a == b))`{language:python}
+
+The term `Ext` is simply a Skolem function for the  universally quantified variable, 
+which depends on `a` and `b`.
+
+We can convince ourselves that asserting these additional constraints force models of `s`
+to satisfy the array axioms.
+Suppose we are given a model $M$ satisfying all the additional asserted equalities.
+These equalities enforce the axioms for `Store` on all indices that occur in `s`. They 
+also enforce extensionality between arrays: two arrays are equal if and only if they
+evaluate to the same value on all indices in `s`.
+
+
+<!---
+Other:
+
+* what about other lambdas.
+--->
+
+## Bit-Vectors
+
+Let us start with some bit-fiddling.
+The resource <https://graphics.stanford.edu/~seander/bithacks.html>, 
+lists a substantial
+repertoire of bit-vector operations that can be used as alternatives to potentially more expensive
+operations.
+Note that modern compilers already contain a vast set of optimizations that automatically perform
+these conversions and Z3 can be used to check and synthesize such optimizations [@LopesMNR18].
+
+```python
+def is_power_of_two(x):
+    return And(x != 0, 0 == (x & (x - 1)))
+x = BitVec('x', 4)
+prove(is_power_of_two(x) == Or([x == 2**i for i in range(4)]))
+```
+
+The absolute value of a variable can be obtained using addition and xor with a sign bit.
+```python
+v = BitVec('v',32)
+mask = v >> 31
+prove(If(v > 0, v, -v) == (v + mask) ^ mask)
+```
+Notice that the Python variable `mask`{language:python} corresponds to the 
+expression `v >> 1`{language:python}, the right arithmetic (signed) shift of `v`.
+Notice also, that in classical first-order logic, all operations are _total_.
+In particular, for bit-vector arithmetic `-v` is fully specified, in contrast
+to, say C, which specifies that `-v` is _undefined_ when `v`
+is a signed integer with the value $-2^{31}$.
+
+### Solving BV: bit-vectors
+Z3 mostly uses a bit-blasting approach to deciding bit-vectors.
+By bit-blasting we refer to a reduction of bit-vector constraints to
+propositional logic by treating each bit in a bit-vector as a 
+propositional variable.
+Let us illustrate how bit-vector addition is compiled to a set of
+clauses. The expression `v + w`{language:python}, where `v` and `w`
+are bit-vectors is represented by a vector `out` of output bits.
+The relation between `v`, `w` and `out` is provided by clauses
+the encode a ripple-carry adder seen below. The encoding uses
+an auxiliary vector of _carry bits_ that are internal to the adder.
+
+~ Figure { #fig-bvadd; caption: "Bit-vector addition circuit" }
+![BitVectorAdder]
+~
+
+[BitVectorAdder]: images/BitVectorAdder.png "BitVectorAdder" { width:35em }
+
+<!---
+## Bit-Vector Multiplier Encoding
+
+![BitVectorMul]
+[BitVectorMul]: images/BitVectorMul.png "BitVectorMul" { width:auto }
+--->
+
+### Floating Point Arithmetic
+
+Floating points are bit-vectors with an interpretation 
+specified by the IEEE floating point standard.
+
+```python
+x = FP('x', FPSort(3, 4))
+print(10 + x)
+```
+It declares a floating point number `x` with 3 bits in the exponent and 4 for the significand.
+The result of adding 10 to `x` is `1.25*(2**3) + x`{language:python}. We see that 10 is represented
+as a floating point number with exponent 3, that is the bit-vector 011. The significand
+is 1010.
+
+## Algebraic Datatypes
+
+The theory of first-order algebraic data-types captures the theory of finite trees.
+It is characterized by the properties that:
+
+* All trees are finite (occurs check).
+
+* All trees are generated from the constructors (no junk).
+
+* Two trees are equal if and only if they are constructed exactly the same way (no confusion).
+
+A basic example of a binary tree data-type is given below.
+
+```python
+Tree = Datatype('Tree')
+Tree.declare('Empty')
+Tree.declare('Node', ('left', Tree), ('data', Z), ('right', Tree))
+Tree = Tree.create()
+t = Const('t', Tree)
+solve(t != Tree.Empty)
+```
+may produce the solution
+```python
+[t = Node(Empty, 0, Empty)]
+```
+Similarly, one can prove that a tree cannot be a part of itself.
+```python
+prove(t != Node(t, 0, t))
+```
+
+## Sequences and Strings
+
+The theory of strings and sequences extend on the theory of the free monoid
+with a few additional functions that are useful for strings and sequences.
+A length operation is built-in for strings and sequences, and
+there are operations for converting strings to natural numbers and back.
+
+If the lengths of a prefix and suffix of a string add up to the length
+of the string, the string itself must be the concatenation of the prefix and suffix:
+```python
+s, t, u = Strings('s t u')
+prove(Implies(And(PrefixOf(s, t), SuffixOf(u, t), 
+                  Length(t) == Length(s) + Length(u)), t == Concat(s, u)))
+```
+
+One can concatenate single elements to a sequence as units:
+```python
+s, t = Consts('s t', SeqSort(IntSort()))
+solve(Concat(s, Unit(IntVal(2))) == Concat(Unit(IntVal(1)), t))
+prove(Concat(s, Unit(IntVal(2))) != Concat(Unit(IntVal(1)), s))
+```
+
+There are two solvers available in Z3 for strings. They can be exchanged
+by setting the parameter 
+
+* `s.set("smt.string.solver","seq")` or
+* `s.set("smt.string.solver","z3str3")`.
+
+
+# Interfacing with Solvers { #sec-solver-interfacing }
+
+Solvers maintain a set of formulas and supports satisfiability checking, 
+and scope management: formulas that are added under one scope can be
+retracted when the scope is popped. In this section we describe the interface
+to solvers. The next section describes the main solver instances the support
+the Solver interface.
+
+
+## Scopes
+The operations `push`{language:python} and `pop`{language:python} create, respectively revert, 
+local scopes. Assertions that are added within a `push`{language:python}
+are retracted on a matching `pop`{language:python}. Thus, the following session
+results in the verdicts `sat`, `unsat`, and `sat`.
+```python
+p, q, r = Bools('p q r')
+s = Solver()
+s.add(Implies(p, q))
+s.add(Not(q))
+print(s.check())
+s.push()
+s.add(p)
+print(s.check())
+s.pop()
+print(s.check())
+```
+
+## Assumptions
+Alternative to scopes, it is possible to check satisfiability under the assumption of a set of literals.
+Thus, the session
+```python
+s.add(Implies(p, q))
+s.add(Not(q))
+print(s.check(p))
+```
+also produces the verdict `unsat` as the conjunction of $p \rightarrow q$, $\neg q$, $p$ is `unsat`.
+The method `assert_and_track(q, p)`{language:python} has the same effect of adding `Implies(p, q)`{language:python},
+and it adds `p` as an implicit assumption. Our running example becomes
+
+```python
+p, q = Bools('p q')
+s = Solver()
+s.add(Not(q))
+s.assert_and_track(q, p)
+print(s.check())
+```
+
+## Cores
+We can extract a subset of assumptions used to derive unsatisfiability.
+In the following example, the unsatisfiable core has the single element `p`. 
+The unrelated assumption `v` does not appear in the core.
+
+```python
+p, q, r, v = Bools('p q r v')
+s = Solver()
+s.add(Not(q))
+s.assert_and_track(q, p)
+s.assert_and_track(r, v)
+print(s.check())
+print(s.unsat_core())
+```
+
+Note that we invoke `s.check()`{language:python} prior to extracting a core.
+Cores are only available after the last call to `s.check()`{language:python} produced `unsat`.
+
+By default solvers do not return minimal cores. 
+The default behavior can be changed when the solver
+corresponds to either the SMT Core or SAT Core
+(if the underlying solver is created from a sequence of
+pre-processing tactics, core minimization is not guaranteed to take effect).
+To force core minimization users can rely on setting the following parameters:
+
+```python
+def set_core_minimize(s):
+    s.set("sat.core.minimize","true")  # For Bit-vector theories
+    s.set("smt.core.minimize","true")  # For general SMT 
+```
+
+## Models
+When `s.check()`{language:python} returns `sat` Z3 can provide a model that assigns values
+to the free constants and functions in the assertions. The current model is accessed
+using `s.model()`{language.python} and it offers access to an interpretation of the 
+active assertions in `s`. Consider the example:
+
+```python
+f = Function('f', Z, Z)
+x, y = Ints('x y')
+s.add(f(x) > y, f(f(y)) == y)
+print(s.check())
+print(s.model())
+```
+A possible model for `s` is:
+```python
+[y = 0, x = 2, f = [0 -> 3, 3 -> 0, else -> 1]]
+```
+You can access models. They have a set of entries. 
+Each entry maps a constant or function declaration
+(constants are treated as nullary functions) to an
+interpretation. It maps constants to a constant
+expression and it maps functions to a _function interpretation_.
+The stub
+```python
+m = s.model()
+for d in m:
+    print(d, m[d])
+```
+iterates over the assignments in a model and produces the output
+```python
+y 0
+x 2
+f [0 -> 3, 3 -> 0, else -> 1]
+```
+Function interpretations comprise a set of entries that specify
+how the function behaves on selected argument combinations, and a
+_else\_value_ that covers arguments not listed in the entries.
+```python
+num_entries = m[f].num_entries()
+for i in range(num_entries):
+    print(m[f].entry(i))
+print("else", m[f].else_value())
+```
+It produces the output
+```python
+[0, 3]
+[3, 0]
+else 1
+```
+The easiest way to access a model is to use the `eval` method
+that lets you evaluate arbitrary expressions over a model. 
+It reduces expressions to a constant that is consistent with the
+way the model interprets the constants and functions. For our model from above
+```python
+print(m.eval(x), m.eval(f(3)), m.eval(f(4)))
+```
+produces the output 2, 0, 1. 
+
+
+## Other Methods
+
+### Statistics
+You can gain a sneak peak at what the solver did by extracting statistics.
+The call 
+```python
+print(s.statistics())     
+```
+displays values of internal counters maintained by the decision procedures.
+They are mostly valuable when coupled with a detailed understanding of how
+the decision procedures work, but may be used as an introductory view into
+the characteristics of a search.
+### Proofs
+Proof objects, that follow a natural deduction style, 
+are available from the Solver interface [@MouraB08b]. 
+You have to enable proof production at top level in order to retrieve proofs.
+```python
+s.set("produce-proofs", True)
+s.add(\($\varphi$\))
+assert unsat == s.check()
+print(s.proof())
+```
+The granularity of proof objects is on a best-effort basis. 
+Proofs for the SMT Core, are relatively fined-grained, while
+proofs for QSAT and other modules are exposed as big opaque 
+steps.
+
+### Retrieving Solver State
+You can retrieve the current set of assertions in a solver using `s.assertions()`, 
+the set of unit literals using `s.units()` and literals that are non-units using
+`s.non_units()`. The solver state can be printed to SMT-LIB2 format
+using `s.sexpr()`.
+
+### Cloning Solver State
+The method `s.translate(ctx)` clones the solver state into a new solver based on the context
+that is passed in. It is useful for creating separate non-interferring states of a solver. 
+
+
+### Loading formulas
+The methods `s.from_file` and `s.from_string` adds constraints to a solver state
+from a file or string. Files are by default assumed to be in the SMT2 format. 
+If a file name ends with `dimacs` they are assumed to be in the DIMACS 
+propositional format.
+
+### Consequences { #sec-consequences }
+Product configuration systems use constraints to describe
+the space of all legal configurations. As parameters
+get fixed, fewer and fewer configuration options are available.
+For instance, once the model of a car has been fixed, some options
+for wheel sizes become unavailable. It is furthermore possible
+that only one option is available for some configurations, once
+others are fixed. Z3 can be used to answer queries of the form:
+Given a configuration space of values $V$, 
+when fixing values $V_0 \subseteq V$, what is the largest
+subset $V_0\subseteq V_1 \subseteq V$ of values that
+become fixed? Furthermore, for some value $v_1$ that is fixed,
+provide an explanation, 
+in terms of the values that were fixed in $V_0$, 
+for why $v_1$ got fixed. The functionality is available
+through the `consequences`{language:python} method.
+
+```python
+a, b, c, d = Bools('a b c d')
+
+s = Solver()
+s.add(Implies(a, b), Implies(c, d))   # background formula
+print s.consequences([a, c],          # assumptions
+                     [b, c, d])       # what is implied?
+
+```
+produces the result:
+
+```python
+(sat, [Implies(c, c), Implies(a, b), Implies(c, d)])
+```
+
+In terms for SAT terminology, consequence finding 
+produces the set of all _backbone_ literals. 
+It is useful for finding fixed parameters [@JanotaLM15] 
+in product configuration settings.
+
+Z3 relies on a procedure that integrates tightly with the CDCL algorithm, and
+it contains two implementations of the procedure, one in the SAT core, another
+in the SMT core. 
+
+### Cubes { #sec-cubes }
+You can ask Z3 to suggest a case split or a sequence of case splits through the cubing method.
+It can be used for partitioning the search space into sub-problems that can be solved in parallel, 
+or alternatively simplify the problem for CDCL engines.
+```python
+s = Solver()
+s.add(\($F$\))
+for cube in s.cube():
+    if sat == s.check(cube):
+       print(s.model())
+       return
+```
+
+When the underlying solver is based on the SAT Core, see Section [#sec-sat-core], it uses
+a lookahead solver to select cubes [@HeuleKWB11]. By default, the cuber produces two branches,
+corresponding to a case split on a single literal. The SAT Core based cuber can be configured
+to produce cubes that represent several branches. Each branch is represented as a conjunction
+of literals. The cut-off for branches is configured using
+
+* `lookahead.cube.cutoff`{language:python} and is by default set to `depth`, which means that the cut-off for branches is based on a fixed maximal depth of cubes. The default fixed maximal depth is 1. By setting the cut-off to `freevars` the depth of cubes is governed by the ratio of non-unit literals in a branch compared to non-unit variables in the root. The free variable ratio can also be made adaptive using the option `adaptive_freevars`, the ratio is then relative to the free variables in branches that were closed. Other options are `adaptive_psat`, which uses a measure for the probability of satisfiability.
+
+Heuristics used to control which literal is selected in cubes can be configured using the parameter:
+
+* `lookahead.reward`{language:python}
+
+## Using Solvers
+
+#### Blocking evaluations
+Models can be used to refine the state of a solver. For example, 
+we may wish to invoke the solver in a loop where new calls to 
+the solver blocks solutions that evaluate the constants to the exact same assignment.
+```python
+def block_model(s):
+    m = s.model()
+    s.add(Or([ f() != m[f] for f in m.decls() if f.arity() == 0]))           
+```
+
+#### Maximizing Satisfying Assignments [@MenciaPM15]
+Another use of models is to use them as a guide to a notion of optimal model.
+A _maximal satisfying solution_, in short _mss_, for a set of formulas `ps`
+is a subset of `ps` that is consistent with respect to the solver state `s`
+and cannot be extended to a bigger subset of `ps` without becoming inconsistent
+relative to `s`. We provide a procedure for finding a maximal satisfying subset below.
+It extends a set `mss` greedily by adding as many satisfied predicates from `ps` 
+in each round. If it finds some predicate `p` that it cannot add, it notes that it
+is a backbone with respect to the current `mss`. As a friendly hint, 
+it includes the negation of `p` 
+when querying the solver in future rounds.
+
+~ Figure { #fig-marco; caption: "An algorithm for computing maximal satisfying subsets" }
+```python
+def tt(s, f): 
+    return is_true(s.model().eval(f))
+
+def get_mss(s, ps):
+    if sat != s.check():
+       return []
+    mss = { q for q in ps if tt(s, q) }
+    return get_mss(s, mss, ps)
+
+def get_mss(s, mss, ps):
+    ps = ps - mss
+    backbones = set([])
+    while len(ps) > 0:
+       p = ps.pop()
+       if sat == s.check(mss | backbones | { p }):
+          mss = mss | { p } | { q for q in ps if tt(s, q) }
+          ps  = ps - mss
+       else:
+          backbones = backbones | { Not(p) }
+    return mss
+          
+```
+~
+
+
+~ Exercise
+__Exercise__:
+Suppose `ps` is a list corresponding to digits in a binary number
+and `ps` is ordered by most significant digit down. The goal is to
+find an mss with the largest value as a binary number. Modify `get_mss` 
+to produce such a number.
+~
+
+#### All Cores and Correction Sets [@liffiton2016fast]
+The Marco procedure combines models and cores in a process
+that enumerates all unsatisfiable cores and all maximal
+satisfying subsets of a set of formulas `ps` with
+respect to solver `s`. It maintains a `map` solver
+that tells us which subsets of `ps` are not yet
+known to be a superset of a core or a subset of
+an `mss`.
+
+~ Figure { #fig-marco; caption: "The MARCO algorithm for computing cores and maximal satisfying assignments" }
+```python 
+def ff(s, p): 
+    return is_false(s.model().eval(p))
+
+def marco(s, ps):
+    map = Solver()
+    set_core_minimize(s)
+    while map.check() == sat:
+        seed = {p for p in ps if not ff(map, p)}
+        if s.check(seed) == sat:
+           mss = get_mss(s, seed, ps)
+           map.add(Or(ps - mss))
+           yield "MSS", mss
+        else:
+           mus = s.unsat_core()
+           map.add(Not(And(mus)))
+           yield "MUS", mus
+
+```
+~
+
+Efficiently enumerating cores and correction sets is an active area of research.
+Many significant improvements have been developed over the above basic 
+implementation [@BacchusK15;@MenciaPM15;@BacchusK16;@PrevitiMJM17;@Alviano17;@NarodytskaBMS18].
+
+#### Bounded Model Checking [@Biere09]
+Figure [#fig-bmc] illustrates a bounded model checker
+ that takes a transition system as input and checks if a goal is reachable.
+Transition systems are described as
+
+~ Math
+ \langle \mathit{Init}, \mathit{Trans}, \mathit{Goal}, \mathcal{V}, \mathcal{Y} \rangle
+~
+where $\mathit{Init}$ is a predicate over $\mathcal{V}$, that describes the initial states, 
+$\mathit{Trans}$ is a transition relation over $\mathcal{V} \times \mathcal{Y} \times \mathcal{V}'$.
+The set of reachable states is the set inductively defined as valuations $s$ of $\mathit{V}$, such that 
+either $s \models \mathit{Init}$ or there is a reachable $s_0$ and values $v$ for $\mathcal{Y}$, 
+such that $s_0, v, s \models \mathit{Trans}$. A goal is reachable if there is some reachable
+state where $s \models \mathit{Goal}$.
+
+In Python we provide the initial condition as `init`, using variables `xs`, 
+the transition `trans` that uses variables `xs, xns, fvs`, and `goal` using variables `xs`.
+Bounded model checking unfolds the transition relation `trans` until it can establish that
+the goal is reachable. Bounded model checking diverges if `goal` is unreachable.
+
+~ Figure { #fig-bmc; caption: "Bounded Model Checking of a transition system" }
+```python
+index = 0
+def fresh(s):
+    global index
+    index += 1
+    return Const("!f%d" % index, s)
+
+def zipp(xs, ys):
+    return [p for p in zip(xs, ys)]
+
+def bmc(init, trans, goal, fvs, xs, xns):
+    s = Solver()
+    s.add(init)
+    count = 0
+    while True:
+        print("iteration ", count)
+        count += 1
+        p = fresh(BoolSort())
+        s.add(Implies(p, goal))
+        if sat == s.check(p):
+            print (s.model())
+            return
+        s.add(trans)
+        ys = [fresh(x.sort()) for x in xs]
+        nfvs = [fresh(x.sort()) for x in fvs]
+        trans = substitute(trans, 
+                           zipp(xns + xs + fvs, ys + xns + nfvs))
+        goal = substitute(goal, zipp(xs, xns))
+        xs, xns, fvs = xns, ys, nfvs
+
+x0, x1 = Consts('x0 x1', BitVecSort(4))
+bmc(x0 == 0, x1 == x0 + 1, x0 == 10, [], [x0], [x1])
+```
+~
+
+# Solver Implementations { #sec-solver-implementations }
+
+There are five main solvers embedded in Z3.
+The SMT Solver is a general purpose solver that covers a wide range of supported theories.
+It is supplemented with specialized solvers for SAT formulas, polynomial arithmetic, 
+Horn clauses and quantified formulas over theories that admit quantifier-elimination.
+
+## SMT Core
+
+The SMT Solver is a general purpose solver that covers a wide range of 
+supported theories. It is built around a CDCL(T) architecture where theory
+solvers interact with a SAT + EUF blackboard. 
+Theory solvers, on the right in figure [#fig-z3core], communicate
+with a core that exchange equalities between variables and assignments
+to atomic predicates. The core is responsible for case splitting, which
+is handled by a CDCL SAT solver, and for letting each theory learn constraints
+and equalities that are relevant in a branch given by current case splits.
+
+~ Figure { #fig-z3core; caption: "Architecture of Z3's SMT Core solver." }
+![SMTCore]
+~ 
+
+[SMTCore]: images/SMTCore.jpg "SMTCore" { width:25em }
+
+To force using the SMT solver a user can create 
+a _simple solver_ using the function `SimpleSolver`{language:python}.
+
+The SMT solver integrates two strategies for quantifier instantiation.
+By default, both strategies are enabled. To disable them one has to
+disable automatic configuration mode and then disable the instantiation
+strategy:
+```python
+s.set("smt.auto_config",False)    # disable automatic SMT core
+                                  # configuration 
+s.set("smt.mbqi",False)           # disable model based 
+                                  # quantifier instantiation
+s.set("smt.ematching",False)      # disable ematching based 
+                                  # quantifier instantiation
+```
+
+### CDCL(T): SAT + Theories
+
+The architecture of mainstream SMT solvers, including Z3's SMT core, uses
+a SAT solver to enumerate combinations of truth assignments to atoms.
+The truth assignments satisfy a propositional abstraction of the formula.
+Theory solvers are used to check if assignment admit a model modulo
+the theories. The resulting architecture is known as DPLL(T) [@dpllt], 
+but we refer to this as CDCL(T) because it really relies on SAT solvers
+that incorporate _Conflict Directed Clause Learning_, which goes beyond
+the algorithm associated with DPLL [@dpll].
+Take the following example
+```python
+s.add(x >= 0, y == x + 1, Or(y > 2, y < 1))
+```
+by introducing the names:
+```python
+p1, p2, p3, p4 = Bools('p1 p2 p3 p4')
+#              = x >= 0, y == x + 1, y > 2, y < 1
+```
+we obtain a propositional formula
+```python
+And(p1, p2, Or(p3, p4))
+```
+It is satisfiable and a possible truth assignment is
+```python
+p1, p2, p3, p4 = True, True, False, True
+```
+It requires satisfiability of the following 
+conjunction:
+```python
+x >= 0, y == x + 1, Not(y > 2), y < 1
+```
+It is already the case that
+```python
+x >= 0, y == x + 1, y < 1
+```
+is `unsat`. To avoid this assignment we 
+require also satisfying the blocking clause
+```python
+And(Or(Not(p1), Not(p2), Not(p4)))
+```
+The new truth assignment 
+```python
+p1, p2, p3, p4 = True, True, True, False
+```
+produces
+```python
+x >= 0, y == x + 1, y > 2, Not(y < 1)
+```
+which is satisfiable.
+The example illustrates the steps used in a CDCL(T)
+integration where the Theory solver 
+processes the final result of a SAT solver. 
+We can simulate this procedure using Z3's API.
+Figure [#simple-cdclT] shows a CDCL(T) solver
+that leverages a propositional solver `prop` to 
+check a propositional abstraction and a theory solver
+`theory` whose role is to check conjunctions of literals
+produced by `prop`. Figure [#cdclT-aux] lists auxiliary
+routines required to create the abstraction.
+
+
+~ Figure { #simple-cdclT; caption: "Simple CDCL(T)" }
+```python
+def simple_cdclT(clauses):
+    prop   = Solver()
+    theory = Solver()
+    abs = {}
+    prop.add(abstract_clauses(abs, clauses))
+    theory.add([p == abs[p] for p in abs])
+    while True:
+        is_sat = prop.check()
+        if sat == is_sat:
+            m = prop.model()
+            lits = [mk_lit(m, abs[p]) for p in abs]
+            if unsat == theory.check(lits):
+                prop.add(Not(And(theory.unsat_core())))
+            else:
+                print(theory.model())
+                return
+        else:
+            print(is_sat)
+            return
+```
+~
+
+~ Figure { #cdclT-aux; caption: "Auxiliary routines for lazy CDCL(T)" }
+```python
+index = 0
+def abstract_atom(abs, atom):
+    global index
+    if atom in abs:
+        return abs[atom]
+    p = Bool("p%d" % index)
+    index += 1
+    abs[atom] = p
+    return p
+
+def abstract_lit(abs, lit):
+    if is_not(lit):
+        return Not(abstract_atom(abs, lit.arg(0)))
+    return abstract_atom(abs, lit)
+
+def abstract_clause(abs, clause):
+    return Or([abstract_lit(abs, lit) for lit in clause])
+
+def abstract_clauses(abs, clauses):
+    return [abstract_clause(abs, clause) for clause in clauses]
+
+def mk_lit(m, p):
+    if is_true(m.eval(p)):
+        return p
+    else:
+        return Not(p)
+```
+~
+
+We call it a _simple_ CDCL(T) solver as it does not
+expose important features to drive performance.
+Importantly, efficient CDCL(T) solvers integrate 
+_theory propagation_ that let theories interact with
+the SAT solver to propagate assignments to atoms. 
+Instead of adding blocking clauses by the time the SAT
+solver is done the theory solver interacts tightly with
+the SAT solver during back-jumping. 
+
+~ Exercise
+__Dual propagation and implicants__:
+The propositional assignment produced by `prop` is not necessarily
+minimal. It may assign truth assignments to literals that are irrelevant
+to truth of the set of clauses. To extract a smaller assignment, 
+one trick is to encode the _negation_ of the clauses in a 
+separate _dual_ solver. A truth assignment for the _primal_ solver
+is an unsatisfiable core for the _dual_ solver. 
+The exercise is to augment `simple_cdclT`{language:python} with a
+dual solver to reduce assignments sent to the theory solver.
+~
+
+### Theories + Theories
+
+In practice we need to solve a combination of theories.
+The formulas we used in the initial example
+
+```python
+  x + 2 == y, f(Store(A, x, 3)[y - 2]) != f(y - x + 1)
+```
+integrate several theory solvers. For modularity, 
+it is desirable to maintain
+separate solvers per theory. To achieve this
+objective the main questions that an integration needs to address are:
+
+* Determine when the union of two theories $T_1 \cup T_2$ consistent.
+* Given solvers for $T_1$ and $T_2$, 
+  how can we build a solver for $T_1 \cup T_2$.
+
+We can address this objective when there
+is an _effective_ theory $T_0$ over the shared signature of $T_1, T_2$, 
+that when embedable into $T_1, T_2$ implies
+$T_1 \cup T_2$ is consistent. Sufficient conditions for this 
+setting were identified by Nelson and Oppen [@NelsonO79]:
+
+~ Theorem 
+The union of two consistent, disjoint, stably infinite theories is consistent.
+~
+
+Let us define the ingredients of this theorem.
+
+#### Disjoint Theories
+
+Two theories are disjoint if they do not share function/constant and predicate symbols.
+$=$ is the only exception. For example,
+
+* The theories of arithmetic and arrays are disjoint. 
+* Arithmetic symbols: `0, -1, 1, -2, 2, , +, -, *, >, <,  =, >=`{language:python}.
+* Array symbols: `Select, Store`{language:python}
+
+The process of _purification_ can be used as a formal tool to bring 
+formulas into signature-disjoint form. It introduces fresh symbols for 
+shared sub-terms. A purified version of our running example is:
+
+```python
+Functions:  f(v1) != f(v2)
+Arrays:     v1 == v3[v4], v3 == Store(x, y, v5)
+Arithmetic: x + 2 == y, v2 == y - x + 1, v4 == y - 2, v5 == 2
+```
+
+In reality, purification is a no-op: the fresh variables correspond directly to 
+nodes in the abstract syntax trees for expressions.
+ 
+#### Stably Infinite Theories
+
+A theory is stably infinite if every satisfiable 
+quantifier-free formula is satisfiable in an infinite model.
+
+* EUF and arithmetic are stably infinite.
+
+* Bit-vectors are not
+
+
+#### Nelson-Oppen combination.
+Let $\mathcal{T}_1$ and $\mathcal{T}_2$ be consistent, stably infinite theories
+over disjoint (countable) signatures. Assume satisfiability of conjunction of
+literals can be decided in $O(\mathcal{T}_1(n))$ and
+$O(\mathcal{T}_2(n))$ time respectively.
+Then
+
+1. The combined theory $\mathcal{T}$ is consistent and stably infinite.
+
+2. Satisfiability of quantifier free conjunction of literals can be decided
+in $O(2^{n^2} \times (\mathcal{T}_1(n) + \mathcal{T}_2(n)))$.
+
+3. If $\mathcal{T}_1$ and $\mathcal{T}_2$ are _convex_, then so is
+$\mathcal{T}$ and satisfiability in $\mathcal{T}$ is
+in $O(n^3 \times (\mathcal{T}_1(n) + \mathcal{T}_2(n)))$.
+
+#### Convexity.
+A theory $T$ is _convex_ iff:
+
+* For all finite sets $S$ of literals
+* For every disjunction $a_1 = b_1 \vee \ldots \vee a_n = b_n$
+  ~ MathPre
+   S \models a_1 = b_1 \vee \ldots \vee a_n = b_n  iff S \models a_i = b_i for some 1 \leq i \leq n.
+  ~ 
+
+Many theories are convex, and when they are there are some useful 
+properties. 
+
+* Linear Real Arithmetic is convex.
+
+* Horn equational theories are convex.
+   * Horn equations are formulas of the form $a_1 \neq b_1 \vee \ldots a_n \neq b_n \vee a = b$.
+
+Finally note that every convex theory with non trivial models is stably infinite.
+
+But, far from all theories are convex. Notably, 
+
+* Integer arithmetic
+  * $1 \leq a \leq 2, b = 1, c = 2$ implies $a = b \vee a = c$.
+
+* Real non-linear arithmetic
+  * $a^2 = 1, b = 1, c = -1$ implies $a = b \vee a = c$.
+
+* The theory of arrays
+  * `Store(a, i, v)[j] == v` implies `i == j` or `a[j] == v`
+
+#### A Reduction Approach to Theory Combination [@KapurZarbaReduction;@MouraB09].
+Theory Combination in Z3 is essentially by reduction to a set of 
+core theories comprising of Arithmetic, EUF and SAT.
+Bit-vectors and finite domains translate to propositional SAT.
+Other theories are _reduced_ to core theories. We provided an 
+example of this reduction in Section [#sec-arrays].
+
+
+### E-matching and Pattern based quantifier instantiation 
+
+E-matching [@MouraB07] based quantifier instantiation uses ground terms 
+to find candidate instantiations of quantifiers.
+Take the example
+```python
+a, b, c, x = Ints('a b c x')
+f = Function('f', Z, Z, Z)
+g = Function('g', Z, Z)
+prove(Implies(And(ForAll(x, f(g(x,c)) == a), b == c, g(c, b) == c),
+              f(b) == a))
+```
+The smallest sub-term that properly contains `x` is `g(x,c)`.
+This _pattern_ contains all the bound variables of the 
+universal quantifier. 
+Under the ground equality `b == c` and instantiation of
+`x` by `c`, it equals `g(c,b)`. This triggers an instantiation
+by the following tautology
+```python
+Implies(ForAll(x, f(g(x,c)) == a), f(g(c,c)) == a))
+```
+Chasing the equalities `f(g(c, c)) == a, g(c, b) == c, b == c`
+we derive `f(b) == a`, which proves the implication.
+
+The example illustrated that E-matching takes as 
+starting point a _pattern_ term $p$, that captures the 
+variables bound by a quantifier.  It derives 
+an substitution $\theta$, such that $p\theta$ 
+equals some _useful_ term $t$, modulo some _useful_ equalities.
+A useful source of _useful_ terms are the current ground terms $\mathcal{T}$ maintained during search,
+and the current asserted equalities during search may be used as the _useful_ equalities.
+The _congruence closure_ structure _cc_ introduced in Section [#sec-cc] contains relevant
+information to track ground equalities. For each ground term it 
+represents an equivalence class of terms that are congruent 
+in the current context. Now, given a pattern 
+$p$ we can compute a set of substitutions modulo the current 
+congruence closure by invoking 
+
+~ Math
+  \bigcup_{t \in \mathcal{T}} match(p, t, \emptyset)
+~ 
+
+where E-matching is defined by recursion on the pattern $p$:
+
+~MathPre
+
+ match(x, t, S)     &  =    & \{ \theta[x \mapsto t] \;\mid\; \theta \in S, x \not\in \theta \} 
+                    &       & \cup  \{ \theta \;\mid\; \theta \in S, x \in \theta, \theta(x) \in cc(t) \}
+ match(c, t, S)     &  =    & \emptyset\                 \mathsf{if} c \not\in cc(t)
+ match(c, t, S)     &  =    & S                 \mathsf{if} c \in cc(t)
+ match(f(\vec{p}), t, S) &  =    & \bigcup_{f(\vec{t}) \in cc(t)} match(\vec{p}_n, \vec{t}_n, \ldots, match(\vec{p}_1, \vec{t}_1, S))
+~
+
+It is not always possible to capture all quantified variables in a single pattern.
+For this purpose E-matching is applied to a sequence of patterns, known as a _multi-pattern_ 
+that collectively contain all bound variables. 
+
+The secret sauce to efficiency is to find instantiations
+
+ * with as little overhead as possible, 
+ * across large sets of terms, and 
+ * incrementally.
+
+Z3 uses code-trees [@RamakrishnanSV01] to address scale bottlenecks for search involving 
+thousands of patterns and terms. 
+
+### Model-based Quantifier Instantiation [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13]
+
+E-matching provides a highly syntactic restriction on instantiations. 
+An alternative to E-matching is based on using a current model of the quantifier-free part of 
+the search state. It is used to evaluate the universal quantifiers that have to be satisfied
+in order for the current model to extend to a full model of the conjunction of all
+asserted constraints. Take the following example:
+
+```python
+from z3 import *
+Z = IntSort()
+f = Function('f', Z, Z)
+g = Function('g', Z, Z)
+a, n, x = Ints('a n x')
+solve(ForAll(x, Implies(And(0 <= x, x <= n), f(x + a) == g(x))),
+      a > 10, f(a) >= 2, g(3) <= -10)
+```
+It may produce a model of the form
+```python
+[a = 11,
+ n = 0,
+ f = [else -> 2],
+ g = [3 -> -10, else -> f(Var(0) + 11)]]
+```
+
+The interpretation of `g` maps 3 to -10, and all other values $x$ are mapped
+to however $f(11 + x)$ is interpreted (which happens to be the constant 2).
+
+The method that allowed finding this satisfying assignment
+is based on a model evaluation loop. At a high level it can
+be described as the following procedure, which checks
+satisfiability of 
+
+~ Math
+\psi \land \forall x \ . \ \varphi[{x}]
+~
+where $\psi$ is quantifier free and for sake of illustration we have
+a single quantified formula with quantifier free body $\varphi$.
+The model-based quantifier instantiation, MBQI, procedure is 
+described in Figure [#fig-mbqi]:
+
+~ Figure { #fig-mbqi; caption:"MBQI algorithm" }
+```python
+s.add(\($\psi$\))
+while True:
+   if unsat == s.check():
+      return unsat
+   M = s.model()
+   checker = Solver()
+   checker.add(\($\neg \varphi^M[{x}]$\))
+   if unsat == checker.check():
+      return sat
+   M = checker.model()
+   find \($t$\), such that \($x \not\in t, t^M = x^M$\).
+   s.add(\($\varphi[t]$\))
+```
+~
+
+We use the notation $t^M$ to say that $t$ is 
+partially evaluated using interpretation $M$, for example:
+
+* Let $M := [y \mapsto 3, f(x) \mapsto \mathit{if}\ x = 1\ \mathit{then}\ 3\ \mathit{else} \ 5]$, and
+
+* $t :=  y + f(y) + f(z)$, then 
+
+* $t^M = 3 + 5 + \mathit{if}\ z = 1\ \mathit{then}\ 3\ \mathit{else} \ 5$
+
+For our example formula assume we have a model of the quantifier-free constraints
+as follows
+```python
+[a = 11, n = 0, f = [else -> 2], g = [else -> -10]]
+```
+The negated body of the quantifier, instantiated to the model is
+```python
+And(0 <= x, x <= 0, [else -> 2](x + 11) != [else -> -10](x))
+```
+It is satisfied with the instantiation `x = 0`, which is congruent to `n` under the current model.
+We therefore instantiate the quantifier with `x = n` and add the constraint
+```python
+Implies(And(0 <= n, n <= n), f(n + a) == g(n))
+```
+But notice a syntactic property of the quantifier body. It can be 
+read as a definition for the graph of `g` over the range `0 <= x, x <= n`.
+This format is an instance of _guarded definitions_ [@IhlemannJS08]. 
+Hence, we record this reading when creating the next model for `g`. 
+In the next round, `a`, `n`, and `f` are instantiated as before, 
+and `g(3)` evaluates to -10 as before, but elsewhere follows the graph of
+`f(x + a)`, and thus the model for `g` is given by `[3 -> -10, else -> f(11 + Var(0))]`{language:python}.
+
+Model-based Quantifier Instantiation 
+is quite powerful when search space for instantiation terms is finite. 
+It covers many decidable logical fragments, including EPR, UFBV 
+(uninterpreted functions and bit-vectors), 
+the Array property fragment [@BradleyMS06] and extensions [@GeM09]. 
+We will here only give a taste with an example from UFBV [@WintersteigerHM13]:
+
+
+```python
+Char = BitVecSort(8)
+f  = Function('f', Char, Char)
+f1 = Function('f1', Char, Char)
+a, x = Consts('a x', Char)
+solve(UGE(a, 0), f1 (a + 1) == 0, 
+      ForAll(x, Or(x == a + 1, f1(x) == f(x))))
+```
+
+The following model is a possible solution:
+```python
+[a = 0, f = [else -> 1], f1 = [1 -> 0, else -> f(Var(0))]]
+```
+
+`UFBV`{language:smt} is the quantified logic of uninterpreted functions of bit-vectors.
+All sorts and variables have to be over bit-vectors, and standard bit-vector operations are allowed.
+It follows that the problem is finite domain and therefore decidable. 
+It isn't easy, however. The quantifier-free fragment is not only NP hard, 
+it is NEXPTIME hard; it can be encoded into EPR [@SeidlLB12].
+The quantified fragment is another complexity jump.
+Related to `UFBV`{language:smt}, decision procedures for quantified bit-vector formulas were 
+developed by John and Chakraborty in [@JohnC16;@JohnC13;@JohnC11], and by Niemetz et al
+in [@NiemetzPRBT18].
+
+
+
+## SAT Core { #sec-sat-core }
+
+The SAT Core is an optimized self-contained SAT solver that solves propositional 
+formulas. It takes advantage of the fact that it operates over propositional theories
+and performs advanced in-processing steps.
+The SAT solver also acts as a blackboard for select Boolean predicates
+that express cardinality and arithmetical (pseudo-Boolean) constraints over 
+literals. 
+
+Generally, theories that are finite domain, are solved using the SAT solver.
+Z3 identifies quantifier-free finite domain theories using a designated logic `QF_FD`{language:smt}.
+It supports propositional logic, bit-vector theories, pseud-Boolean constraints, and enumeration 
+data-types. For example, the following scenario introduces an enumeration
+type for color, and bit-vectors `u`, `v`. It requires that at least 2 out of
+three predicates `u + v <= 3, v <= 20, u <= 10` are satisfied.
+```python
+from z3 import *
+s = SolverFor("QF_FD")
+Color, (red, green, blue) = EnumSort('Color', ['red','green','blue'])
+clr = Const('clr', Color)
+u, v = BitVecs('u v', 32)
+s.add(u >= v,
+      If(v > u + 1, clr != red, clr != green),
+      clr == green,
+      AtLeast(u + v <= 3, v <= 20, u <= 10, 2))
+print(s.check())
+print(s.model())
+```
+is satisfiable, and a possible model is:
+```python
+[v = 4, u = 2147483647, clr = green]
+```
+
+Figure [#fig-satcore] shows the overall architecture of Z3's SAT solver.
+
+~ Figure { #fig-satcore; caption: "Architecture of Z3's SAT Solver" }
+![SATCore]
+~
+[SATCore]: images/SATCore.jpg "SATCore" { width:40em }
+
+There are four main components. Central to the SAT solver is an engine that performs
+case splits, lemma learning and backtracking search. It is the main CDCL engine
+and is structured similar to mainstream CDCL solvers. It can draw on auxiliary 
+functionality. 
+
+### In-processing
+In-processing provides a means for the SAT solver to 
+simplify the current set of clauses using _global_ inferences.
+In-processing is performed on a periodic basis. It integrates several 
+of the techniques that have been developed in the SAT solving literature
+in the past decade: known as Blocked Clause Elimination, 
+Asymmetric Literal Addition, Asymmetric Covered Clause Elimination, 
+Subsumption, Asymmetric Branching [@].
+
+### Co-processing
+A set of co-processors are available to support alternative means
+of search. The Sat Core solver can also be a co-processor of itself.
+
+* `s.set("sat.local_search_threads", 3)`{language:python} spawns 3 concurrent threads that use
+   walk-sat to find a satisfying assignment while the main CDCL solver attempts to find
+   either a satisfying assignment or produce an empty clause. 
+* `s.set("sat.threads", 3)`{language:python} spawns 2 concurrent threads, in additional 
+   to the main thread, to find a proof of the empty clause or a satisfying assignment. 
+   The threads share learned unit literals and learned clauses.
+* `s.set("sat.unit_walk_threads", 1)`{language:python} spawns 1 concurrent thread that uses
+  a local search heuristic that integrates unit propagation. 
+* `s.set("sat.lookahead_simplify", True)`{language:python} enables the lookahead solver as a 
+  simplifier during in-processing. It enables slightly more powerful techniques for learning new units and binary clauses.
+
+The lookahead solver is used to find case splits through the Cube features, described in Section [#sec-cubes].
+  
+### Boolean Theories
+Three classes of Boolean functions are supported using specialized Boolean theory handlers. They are optional, as 
+many problems can already be solved using the SAT core where the functions have been clausified.
+The cardinality and Pseudo-Boolean theory handlers are suitable for constraints where the 
+encoding into clauses causes a significant overhead. The Xor solver is unlikely to be worth using, 
+but is available for evaluation.
+
+#### Cardinality Constraints
+Cardinality constraints are linear inequalities of the form
+~ Math
+	\sum_{i=1}^n F_i \geq k, \ \sum_{i=1}^n F_i \leq k 
+~
+where $F_i$ are formulas and $k$ is a constant between 1 and $n$.
+They say that at least $k$ of the $F_i$;s have to hold,
+and at most $k$ of the $F_i$'s hold, respectively.
+Cardinality constraints do not have to appear at top-level in formulas.
+They can be nested in arbitrary sub-formulas and they can contain arbitrary formulas. 
+For instance, 
+```python
+p, q, r, u = Bools('p q r u')
+solve(AtMost(p, q, r, 1), u, 
+      Implies(u, AtLeast(And(p, r), Or(p, q), r, 2)))
+```
+has no solution.
+
+The cardinality solver is enabled by setting the parameter
+
+* `s.set("sat.cardinality.solver", True)`{language:python} 
+
+If the parameter is false, cardinality constraints are compiled to clauses.
+A few alternative encoding methods are made available, and they 
+can be controlled using the parameter `sat.cardinality.encoding`.
+
+
+#### Pseudo-Boolean Constraints
+Pseudo-Boolean constraints generalize cardinality constraints by allowing coefficients
+in the linear inequalities. They are of the form
+~ Math
+	\sum_{i=1}^n a_iF_i \geq k, \ \sum_{i=1}^n a_iF_i \leq k 
+~
+where $a_i$ are positive natural numbers. A value of $a_i$ above $k$ is legal, but
+can be safely truncated to $k$ without changing the meaning of the formulas.
+
+The constraints
+~ Math
+	p + 2q + 2r \leq 2 \land p + 2u + 3r \geq 4 \land u
+~
+can be written as
+```python
+solve(PbLe([(p,1),(q,2),(r,2)], 3), 
+      PbGe([(p,1),(u,2),(r,3)], 4),
+      u)
+```
+and have a solution
+```python
+[q = False, u = True, r = True]
+```
+
+The pseudo-Boolean solver is enabled by setting the parameter
+
+* `s.set("sat.pb.solver", "solver")`{language:python}
+
+Other available options for compiling Pseudo-Boolean constraints are `circuit`, `sorting`, and `totalizer`.
+They compile Pseudo-Booleans into clauses.
+
+## Horn Clause Solver
+
+The Horn Solver contains specialized solvers for _Constrained Horn Clauses_ 
+[@HoderMB11;@Rybal12;@HoderB12;@McMillan14;@BjornerGMR15]. 
+As a default it uses the
+SPACER Horn clause solver by Arie Gurfinkel to solve Horn clauses over arithmetic [@KomuravelliGC14].
+A Constrained Horn Clause is a disjunction of literals over a set of uninterpreted 
+predicates and interpreted functions and interpreted predicates (such as arithmetical 
+operations `+` and relations `<=`). The uninterpreted predicates, 
+may occur negatively without restrictions, but only occur positively in at most one literal.
+
+The solver also contains a Datalog engine that can be used to solve Datalog queries
+(with stratified negation) over finite domains and "header spaces" that are large finite
+domains, but can be encoded succinctly using ternary bit-vectors. Additional
+information on the Fixedpoint engine can be found on <https://rise4fun.com/z3/tutorial/fixedpoints>.
+
+We provide a very simple illustration of Horn clause usage here. McCarthy's 91 function illustrates
+nested recursion in a couple of lines, but otherwise makes no sense: it computes a function
+that can be described directly as `If(x > 101, 91, x - 10)`{language:python}. We will pretend
+this is a partial and interesting specification and prove this automatically using Horn clauses.
+```python
+def mc(x):
+    if x > 100:
+       return x - 10
+    else:
+       return mc(mc(x + 11))
+
+def contract(x):
+    assert(x > 101 or mc(x) == 91)
+    assert(x < 101 or mc(x) == x - 10)
+```
+
+Rewriting the functional program into logical form can be achieved
+by introducing a binary relation between the input and output of `mc`, 
+and then representing the functional program as a logic program, that is,
+a set of Horn clauses. The assertions are also Constrained Horn Clauses:
+they contain the uninterpreted predicate `mc` negatively, but have no
+positive occurrences of `mc`.
+
+```python
+s = SolverFor("HORN")
+mc = Function('mc', Z, Z, B)
+x, y, z = Ints('x y z')
+s.add(ForAll(x, Implies(x > 100, mc(x, x - 10))))
+s.add(ForAll([x,y,z], 
+             Implies(And(x <= 100, mc(x + 11, y), mc(y, z)), 
+                     mc(x, z))))
+s.add(ForAll([x,y], Implies(And(x <= 101, mc(x, y)), y == 91)))
+s.add(ForAll([x,y], Implies(And(x >= 101, mc(x, y)), x == y + 10)))
+print(s.check())
+```
+Z3 finds a solution for `mc` that is a sufficient invariant to establish the
+assertions.
+
+We get a better view of the invariant for `mc` by 
+evaluating it on symbolic inputs `x` and `y`.
+```python
+print(s.model().eval(mc(x,y)))
+```
+produces the invariant
+```python
+And(Or(Not(y >= 92), Not(x + -1*y <= 9)),
+    Not(x + -1*y >= 11),
+    Not(y <= 90))
+```
+
+## QSAT
+
+The QSAT Solver is a decision procedure for satisfiability of select theories that 
+admit quantifier elimination. It can be used to check satisfiability of quantified formulas
+over Linear Integer, Linear Real, Non-linear (polynomial) real arithmetic, Booleans, and
+algebraic data-types. It is described in [@BjornerJ15].
+It is invoked whenever a solver is created for one of the supported quantified logics, or
+ a solver is created from the `qsat` tactic.
+
+~ Figure { #fig-qsat-lia; caption:"Given a supply of 5 and 7 cent stamps. Is there a lower bound, after which all denominations of stamps can be produced?" }
+```python
+s = SolverFor("LIA") # Quantified Linear Integer Arithmetic
+x, y, u, v = Ints('x y u v')
+a = 5
+b = 7
+s.add(ForAll(u, Implies(u >= v, 
+                        Exists([x,y], And(x >= 0, y >= 0, u == a*x + b*y)))))
+print(s.check())
+print(s.model())
+```
+~
+
+~ Figure { #fig-qsat-lra; caption: "The set of reals is dense" }
+```python
+s = SolverFor("LRA") # Quantified Linear Real Arithmetic
+x, y, z = Reals('x y z')
+s.add(x < y, Forall(z, Or(z <= x, y <= z)))
+print(s.check())
+```
+~
+
+~ Figure { #fig-qsat-nra; caption:"Quantified non-linear real polynomial arithmetic" }
+```python
+s = SolverFor("NRA") # Quantified non-linear Real Arithmetic
+x, y, z = Reals('x y z')
+s.add(x < y)
+s.add(y * y < x)
+s.add(ForAll(z, z * x != y))
+print(s.check())
+```
+~
+
+~ Figure { #fig-qsat-dt; caption:"Checking for winning positions in a game of successors" }
+```python
+from z3 import *
+s = Tactic('qsat').solver()
+Nat = Datatype('Nat')
+Nat.declare('Z')
+Nat.declare('S', ('pred', Nat))
+Nat = Nat.create()
+Z = Nat.Z
+S = Nat.S
+def move(x, y):
+    return Or(x == S(y), x == S(S(y)))
+def win(x, n):
+    if n == 0:
+        return False
+    y = FreshConst(Nat)
+    return Exists(y, And(move(x,y), Not(win(y, n - 1))))
+
+s.add(win(S(S(S(S(Z)))), 4))
+print(s.check())
+```
+~
+Figure [#fig-qsat-dt] encodes a simple game introduced in [@ColmerauerD00]. There is no SMT-LIB2 logic for quantified
+algebraic data-types so we directly instantiate the solver that performs QSAT through a tactic. Section [#sec-tactics]
+provides a brief introduction to tactics in Z3.
+
+The solver builds on an abstraction refinement loop, originally developed
+for quantifier elimination in [@Monniaux08]. The goal of 
+the procedure is, given a quantifier-free $f$, 
+find a quantifier free $G$, such that $G \equiv \exists \vec{v} \ . \ F$.
+It assumes a tool, _project_, that eliminates $\vec{v}$ from a conjunction $M$
+into a satisfiable strengthening.
+That is, project($\vec{v}, M$) $\Rightarrow \ \exists\vec{v} \ . \ M$.
+The procedure, uses the steps:
+
+* __Initialize__: $G \leftarrow \bot$
+
+* __Repeatedly__: find conjunctions $M$ that imply $F \wedge \neg G$
+
+* __Update__: $G \leftarrow G \vee \mbox{project}(\vec{v}, M)$.
+
+An algorithm that realizes this approach can be formulated as follows:
+
+```python
+def qe(\($\exists \vec{v} \ . \ F$\)):                   
+    e, a = Solver(), Solver()
+    e.add(\($F$\))                        
+    a.add(\($\neg F$\))
+    \($G$\) = False
+    while sat == e.check():
+       \($M_0$\) = e.model()
+       \($M_1$\) = [ lit for lit in literals(F) if is_true(\($M_0$\).eval(lit) ]
+       # assume \($F$\) is in negation normal form
+       assert unsat == a.check(\($M_1$\)) 
+       \($M_2$\) = a.unsat_core()
+       \($\pi$\) = project(\($M_2$\), \($\vec{v}$\))
+       \($G$\) = \($G \vee \pi$\)
+       e.add(\($\neg\pi$\))
+    return \($G$\)
+```
+
+
+QESTO [@JanotaM15] generalizes this procedure to nested QBF 
+(Quantified Boolean Formulas), and
+the implementation in Z3 generalizes QESTO to SMT. 
+The approach is based on playing a quantifier game.
+Let us illustrate the game for Boolean formulas.
+Assume we are given:
+~MathPre
+G  =  \forall u_1,u_2 \exists e_1, e_2 \ . \ F \\
+F  =  (u_1 \land u_2 \rightarrow  e_1) \land (u_1 \land \neg u_2 \rightarrow e_2) \land(e_1 \land e_2 \rightarrow \neg u_1)
+~
+
+Then the game proceeds as follows:
+
+*  $\forall$: starts. $u_1, u_2, \overline{e}_1, \overline{e}_2 \models \neg F$.
+*  $\exists$: strikes back. ${\color{blue}{u_1, u_2}}, e_1, \overline{e}_2 \models F$.
+*  $\forall$: has to backtrack. It doesn't matter what $u_1$ is assigned to. It is already the case that $u_2, e_1, \overline{e}_2 \models F$.
+*  $\forall$: learns $\neg u_2$. 
+*  $\forall$: ${\color{red}{\overline{u}_2}}, u_1, \overline{e}_1, \overline{e}_2 \models \neg F$.
+*  $\exists$: counters - ${\color{red}{\overline{u}_2}}, {\color{blue}{u_1}}, \overline{e}_1, e_2 \models F$.
+*  $\forall$: has lost!. It is already the case that ${\color{red}{\overline{u}_2}}, \overline{e}_1, e_2 \models F$.
+
+To summarize the approach:
+
+* There are two players
+  * $\forall$ - tries to satisfy $\neg F$
+  * $\exists$ - tries to satisfy $F$
+
+* Players control their variables. For example, take
+  $\exists x_1 \forall x_2 \exists x_3 \forall x_4 \ldots F$ at round $2$: 
+  * value of $x_1$ is already fixed,
+  * $\forall$ fixes value of $x_2$, 
+  * $\forall$ fixes value of $x_4$, but can change again it at round $4$,
+  * $\forall$ can guess values of $x_3$ to satisfy $\neg F$.
+
+* Some player loses at round $i + 2$. At this stage;
+  * Create succinct _no-good_ to strengthen $F$ resp. $\neg F$ depending on who lost.
+  * Backjump to round $i$ (or below).
+
+The main ingredients to the approach is thus _projection_ and _strategies_.
+
+* Projections are added to _learn_ from mistakes.
+  Thus, a player avoids repeating same losing moves.
+
+* Strategies _prune_ moves from the opponent. 
+
+
+We will here just illustrate an example of projection. Z3 uses _model based projection_
+[@MouraJ13;@KomuravelliGC14]
+to find a satisfiable quantifier-free formula that implies the existentially quantified
+formula that encodes the losing state.
+
+~ Example
+
+Suppose we would want to compute a quantifier-free formula
+that implies $\exists x \ . \ (2y \leq x \wedge y - z \leq x \wedge x \leq z)$.
+Note that the formula is equivalent to a quantifier free formula:
+
+
+$\exists x \ . \ (2y \leq x \wedge y - z \leq x \wedge x \leq z) \equiv
+                  (y - z \leq 2y \leq z) \vee (2y \leq y - z \leq z)
+$
+
+but the size of the equivalent formula is quadratic in the size of the original formula.
+Suppose we have a satisfying assignment for the formula inside of the existential 
+quantifier. Say $M = [x \mapsto 3, y \mapsto 1, z \mapsto 6]$.
+Then $2y^M = 2$ and  $(y-z)^M = -5$, and therefore
+$2y > y - z$ under $M$. The greatest lower bound for $x$ is therefore $2y$
+and we can select this branch as our choice for elimination of $x$.
+The result of projection is then
+$
+   y - z \leq 2y \leq z.
+$
+
+~
+
+
+## NLSat
+The solver created when invoking `SolverFor('QF_NRA')`{language:python} relies on 
+a self-contained engine that is specialized for solving non-linear arithmetic formulas
+[@JovanovicM12]. It is a decision procedure for quantifier-free formulas over the reals
+using polynomial arithmetic.
+
+```python
+s = SolverFor("QF_NRA")
+x, y = Reals('x y')
+s.add(x**3 + x*y + 1 == 0, x*y > 1, x**2 < 1.1)
+print(s.check())
+```
+
+The NLSat solver is automatically configured if the formula is syntactically in the `QF_NRA`{language:smt}` fragment.
+So one can directly use it without specifying the specialized solver:
+```python
+set_option(precision=30)
+print "Solving, and displaying result with 30 decimal places"
+solve(x**2 + y**2 == 3, x**3 == 2)
+```
+
+# Tactics { #sec-tactics }
+In contrast to solvers that ultimately check the satisfiability of a set of assertions, tactics
+transform assertions to sets of assertions, in a way that a proof-tree is comprised of
+nodes represnting goals, and children representing subgoals. Many useful pre-processing
+steps can be formulated as tactics. They take one goal and create a subgoal. 
+
+## Tactic Basics
+
+You can access the set of tactics 
+```python
+print(tactics())
+```
+and for additional information obtain a description of optional parameters:
+```python
+for name in tactics():
+    t = Tactic(name)
+    print(name, t.help(), t.param_descrs())
+```
+
+We will here give a single example of a tactic application. It transforms a goal to a simplified 
+subgoal obtained by eliminating a quantifier that is trivially reducible and by combining repeated
+formulas into one.
+```python
+x, y = Reals('x y')
+g  = Goal()
+g.add(2 < x, Exists(y, And(y > 0, x == y + 2)))
+print g
+
+t1 = Tactic('qe-light')
+t2 = Tactic('simplify')
+t  = Then(t1, t2)
+print t(g)
+```
+
+
+Additional information on tactics is available from [@MouraP13], <https://rise4fun.com/Z3/tutorial/strategies> 
+and <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py/strategies-examples.htm>.
+
+## Solvers from Tactics
+Given a tactic `t`, the method `t.solver()` extracts a solver object that applies the tactic to the current assertions
+and reports `sat` or `unsat` if it is able to reduce subgoals to a definite answer. 
+
+## Tactics from Solvers
+There is no method that corresponds to producing a tactic from a solver. Instead Z3 exposes a set of
+built-in tactics for the main solvers. These are access through the names `sat`, `smt`, `qsat` (and `nlqsat` for quantified non-linear real arithmetic, 
+e.g., the logic `NRA`{language:smt}), `qffd` for `QF_FD`{language:smt} and `nlsat` for `QF_NRA`{language:smt}. 
+
+## Parallel Z3 { #sec-parallel-z3 }
+
+By setting the parameter `set_param("parallel.enable", True)`{language:python} enables Z3's parallel mode. 
+   For select tactics, including `qfbv`, that uses the SAT solver for sub-goals the option, when enabled, 
+   will cause Z3 to use a cube-and-conquer approach to solve subgoals. The tactics `psat`, `psmt` and `pqffd`
+   provide direct access to the parallel mode, but you have to make sure that `"parallel.enable"` is true
+   to force them to use parallel mode.
+   You can control how the cube-and-conquer procedure
+   spends time in simplification and cubing through other parameters under the `parallel` name-space.
+
+The main option to toggle is `parallel.threads.max`. It caps the maximal number of threads. By default, the maximal number of threads used by the parallel solver
+is bound by the number of processes.
+
+
+<!---
+* `convert_model` - to convert a model from assertions in a sub-goal to a model of the assertions in the root.
+* `Then, OrElse, ParOr, ParThen, ParAndThen, With, WithParams, Repeat, TryFor, 
+* `ackermannize_bv`, `subpaving` `horn`, `horn-simplify`, `nlsat`, `qe-light`, `qe`, `qe2`, `qe-sat`, `qsat`,
+* `smt`, `sat`, `sat-preprocess`
+* `psmt`, `psat`
+* `aig`, `add-bounds`, `card2pv`, `degree-shift`, 
+* `simplify`, also at top-level
+* SMT tactics: `lia`, `bv`, `qfufbv`
+--->
+
+# Optimization { #sec-optimization } 
+
+Depending on applications, learning that a formula is satisfiable or not, may not be sufficient.
+Sometimes, it is useful to retrieve models that are _optimal_ with respect to some objective function.
+Z3 supports a small repertoire of objective functions and invokes a specialized optimization module
+when objective functions are supplied. From the Python API, one uses the `Optimize`{language:python}
+context to specify optimization problems. The `Optimize` context relies on the built-in solvers
+for solving optimization queries. The architecture of the optimization context is provided below.
+
+
+~ Snippet
+
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+
+\tikzstyle{block} = [rectangle, draw, text centered, rounded corners, minimum height=2em]
+\tikzstyle{line} = [draw, -latex']
+    
+\begin{tikzpicture}[node distance = 5em, auto]
+    % Place nodes
+    \node [block, text width=7em] (transformation) {0-1 constraints $\Rightarrow$ PBO};
+	\node [block, left=of transformation, text width=7em] (optimization) {SMT formula with objectives};    
+    \node [block, right=of transformation, text width=10em] (combination) {Combination of objective functions};
+    
+    \node [block, below of=optimization, right of=optimization, text width=12em] (optsmt) {OptSMT: Arithmetic};
+    \node [block, below of=combination, left of=combination, text width=12em] (maxsmt) {MaxSMT: Soft Constraints};
+    
+    \node [block, below of=optsmt, left of=optsmt, text width=8em] (smtsolvers) {PB and Cost solvers};
+    \node [block, right =of smtsolvers, text width=9em] (smtcore) {SMT solver};
+    \node [block, right =of smtcore, text width=9em] (satcore) {SAT solver};
+    % Draw edges
+    \path [line] (optimization.east) -- (transformation.west);
+    \path [line] (transformation.east) -- (combination.west);
+    \path [line] (transformation) -- (combination);
+    \path [line] (combination.south) |-+(0,-1.5em)-| node [left]{}(optsmt);    
+    \path [line] (combination.south) |-+(0,-1.5em)-| node [right]{} (maxsmt);         
+    \path [line] (maxsmt.south)  |-+(0,-1.5em)-| node [above, yshift=0.25em]{}(smtcore);
+    \path [line] (maxsmt.south)  |-+(0,-1.5em)-| node [above, yshift=0.25em]{}(satcore);
+    \path [line] (optsmt.south)  |-+(0,-1.5em)-| node [above, yshift=0.25em]{}(smtcore);
+    \path [line] (smtsolvers.east) --  node [left, yshift=-0.25em]{}(smtcore);
+\end{tikzpicture}
+
+
+~
+
+The `Optimize`{language:python} context provides three main extensions to satisfiability checking:
+
+```python
+      o = Optimize()
+
+      x, y = Ints('x y')
+      o.maximize(x + 2*y)           # maximizes LIA objective
+
+      u, v = BitVecs('u v', 32)
+      o.minimize(u + v)             # minimizes BV objective
+
+      o.add_soft(x > 4, 4)          # soft constraint with optional weight
+```
+
+Using soft assertions is equivalent to posing
+an 0-1 optimization problem. Thus, the following
+formulations are equivalent and Z3 detects the
+second variant and turns it into a set of weighted
+soft assertions.
+
+```python
+   o.add_soft(\($\varphi$\), 3)                                          
+   o.add_soft(\($\psi$\), 4)
+```
+is equivalent to
+
+```python
+   o.minimize(If(\($\varphi$\), 0, 3) + If(\($\psi$\), 0, 4))
+```
+
+
+
+## Multiple Objectives
+
+It is possible to add multiple objectives. There are three ways to combine objective functions.
+
+|                              |                                             |
+|:-----------------------------|---------------------------------------------|
+| Box$(x,y)$                   |   $v_x := \max \{ x \mid \varphi(x,y) \}$   |
+|                              |   $v_y := \max \{ y \mid \varphi(x,y) \}$   |
++------------------------------|---------------------------------------------+
+| Lex$(x,y)$                   |   $v_x := \max \{ x \mid \varphi(x,y) \}$   |
+|                              |   $v_y := \max \{ y \mid \varphi(v_x,y) \}$ |
++------------------------------|---------------------------------------------+
+| Pareto$(x,y)$                |   $\left\{ (v_x, v_y) \mid \begin{array}{l}\varphi(v_x,v_y),\ \forall x, y . \\ \varphi(x,y) \rightarrow x \leq v_x \vee y \leq v_y \end{array}\right\}$ |
++------------------------------|---------------------------------------------+
+
+For instance, Pareto objectives can be specified as follows:
+
+```python
+x, y = Ints('x y')
+opt = Optimize()
+opt.set(priority='pareto')
+opt.add(x + y == 10, x >= 0, y >= 0)
+mx = opt.maximize(x)
+my = opt.maximize(y)
+while opt.check() == sat:
+    print mx.value(), my.value()
+
+```
+
+
+## MaxSAT
+
+The conventional definition of MaxSAT is to minimize the number of violated _soft_ assertions.
+There are several algorithms for MaxSAT, and developing new algorithms is a very active area
+of research. We will here describe MaxRes from [@NarodytskaB14]. It is also the default
+solver for MaxSAT/MaxSMT problems. 
+As an illustration assume we are given an _unweighted_ (all soft constraints have weight 1) 
+MaxSAT problem $F, F_1, \ldots, F_5$,
+where the first four soft constraints cannot be satisfied in conjunction
+with the hard constraint $F$. 
+Thus, we have the case: 
+
+~ Math
+ A: F, \underbrace{F_1, F_2, F_3, F_4 }_{core}, F_5
+~ 
+
+The system is transformed to a weakened MaxSAT problem as follows:
+
+~ Math
+A': F, \ F_2 \vee F_1, F_3 \vee (F_2 \wedge F_1), 
+   F_4 \vee (F_3 \wedge (F_2 \wedge F_1)), F_5
+~
+
+The procedure is formalized in Figure [#fig-maxres].
+We claim that by solving $A'$, we can find an optimal solution to $A$.
+For this purpose, consider the _cost_ of a model with respect to a MaxSAT
+problem. The cost, written $cost(M, A)$ is the number of soft constraints
+in $A$ that are _false_ under $M$. More precisely,
+
+~ Lemma 
+For every model $M$ of $F$, $cost(M, A) = 1 + cost(M, A')$
+~
+
+~ Proof
+To be able to refer to the soft constraints in the transformed systems $A'$
+we will give names to the new soft constraints, such that
+$F_1'$ is a name for $F_2 \vee F_1$, $F_2'$ names 
+$F_3 \vee (F_2 \wedge F_1)$, $F_3'$ is the name for 
+$F_4 \vee (F_3 \wedge (F_2 \wedge F_1))$ and $F_4'$ is the new name of $F_5$.
+
+Consider the soft constraints in the core. 
+Since it is a core, at least one has to be false under $M$.
+Let $j$ be the first index among where $M(F_j)$ is false.
+Then, we $M$ evaluates all other soft constraints the same, 
+e.g., $\forall i < j: \ M(F'_i) = M(F_{i})$, 
+and $\forall i > j: M(F'_{i-1}) = M(F_i)$.
+~
+
+Thus, eventually, the it is possible to satisfy all soft constraints 
+(weakening could potentially create 0 soft constraints), and a solution
+to the weakened system is an optimal solution.
+
+~ Figure { #fig-maxres; caption:"Core based MaxSAT using MaxRes" }
+```python
+def add_def(s, fml):
+    name = Bool("%s" % fml)
+    s.add(name == fml)
+    return name
+
+def relax_core(s, core, Fs):
+    prefix = BoolVal(True)
+    Fs -= { f for f in core }
+    for i in range(len(core)-1):
+        prefix = add_def(s, And(core[i], prefix))
+        Fs |= { add_def(s, Or(prefix, core[i+1])) }
+
+def maxsat(s, Fs):
+    cost = 0
+    Fs0 = Fs.copy()
+    while unsat == s.check(Fs):
+        cost += 1
+        relax_core(s, s.unsat_core(), Fs)    
+    return cost, { f for f in Fs0 if tt(s, f) }
+```
+~
+
+Weighted assertions can be handled by a reduction to unweighted MaxSAT. For example, 
+
+```python
+a, b, c = Bools('a b c')
+o = Optimize()
+o.add(a == c)
+o.add(Not(And(a, b)))
+o.add_soft(a, 2)
+o.add_soft(b, 3)
+o.add_soft(c, 1)
+print(o.check())
+print(o.model())
+```
+
+Efficient implementations of MaxSAT flatten weights on demand. 
+Given a core of soft constraints it is split into two parts: 
+in one part all soft constraints have the same coefficient as the
+weight of the soft constraint with the minimal weight. 
+The other part comprises of the remaining soft constraints.
+For our example, `a, b` is a core and the weight of `a` is 2, while
+the weight of `b` is 3. The weight of `b` can therefore be split
+into two parts, one where it has weight 2, and the other where it has weight 1.
+Applying the transformation for the the core we obtain the simpler MaxSAT problem:
+
+```python
+a, b, c = Bools('a b c')
+o = Optimize()
+o.add(a == c)
+o.add(Not(And(a, b)))
+o.add_soft(Or(a, b), 2)
+o.add_soft(b, 1)
+o.add_soft(c, 1)
+print(o.check())
+print(o.model())
+```
+
+# Summary
+
+This tutorial presented an overview of main functionality exposed by Z3. By presenting some of the underlying algorithms in
+an example driven way we have attempted to give a taste of the underlying decision procedures and proof engines. By
+presenting examples of programming queries on top of Z3 we have attempted to provide an introduction to turning SMT solving
+into a service for logic queries that go beyond checking for satisfiability of a single formula. Tuning extended queries
+on top of the basic services provided by SAT and SMT solvers is a very active area of research with new application scenarios and 
+new discoveries. 
+
+
+[BIB]
