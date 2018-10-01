@@ -186,6 +186,8 @@ The formula `fml` is valid. It is true for all values of integers _x_, _y_, _z_,
 and no matter what the graph of the function _f_. 
 Note that we are using `array[index]` as shorthand for `Select(array,index)`.
 We can manually verify the validity of the formula usig the following argument:
+The integer constants `x` and `y` are created using the function `Ints` that
+creates a list of integer constants.
 Under the assumption that `x + 2 = y`, the right side of the implication simplifies to
 ```python
 f(Store(A, x, 3)[x]) == f(3)
@@ -277,6 +279,8 @@ could produce a solution of the form
 ```python
 [a = False, f = [else -> 0], g = [else -> True]]
 ```
+The model assigns `a` to False, the graph of `f` maps
+all arguments to `0`, and the graph of `g` maps all values to `True`.
 Standard built-in logical connectives are `And, Or, Not, Implies, Xor`. 
 Bi-implication is a special case of equality, so from Python, when saying 
 `x == y` for Boolean _x_ and _y_ it is treated as a logical formula for the 
@@ -288,7 +292,7 @@ formula. For example
 ```python
 solve([y == x + 1, ForAll([y], Implies(y <= 0, x < y))])
 ```
-has no solution. The bound occurrence of _y_ is unrelated to the free occurrence where _y_ is restricted to be _x + 1_.
+has no solution because no matter what value we assigned to `x`, there is a value for `y` that is non-positive and smaller than that value.  The bound occurrence of `y` is unrelated to the free occurrence where `y` is restricted to be `x + 1`.
 The equality constraint `y == x + 1` should also not be mistaken for an assignment to `y`. It is _not_ the case that
 bound occurrences of `y` are a synonym for `x + 1`.
 Notice that the slightly different formula 
@@ -299,7 +303,8 @@ has a solution where _x_ is 1 and the free occurrence of _y_ is 2.
 
 Z3 supports also $\lambda$-binding with rudimentary reasoning support based on a model-constructing instantiation engine.
 $\lambda$s may be convenient when expressing properties of arrays and Z3 uses array sorts for representing the
-sorts of lambda expressions. Thus, the result of `memset` is an array from integers to integers, and reasoning about
+sorts of lambda expressions. 
+Thus, the result of `memset` is an array from integers to integers, and reasoning about
 quantifier free formulas using `memset` in a way where it is always applied to arguments requires instantiating the
 definition 
 ```python
@@ -308,6 +313,9 @@ def memset(lo,hi,y,m):
     return Lambda([x], If(And(lo <= x, x <= hi), y, Select(m, x)))
 solve([m1 == memset(1, 700, z, m), Select(m1, 6) != z])
 ```
+Lambda binding is convenient for creating closures. 
+Lambda lifting, in conjunction with Reynold's defunctionalization, is used to
+reduce reasoning about closures to universally quantified definitions.
 Z3 treats arrays as general function spaces. All first-order definable functions may be arrays.
 Some second-order theorems can be established by synthesizing $\lambda$ terms by instantiation.
 Thus,
