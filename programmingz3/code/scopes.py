@@ -1,0 +1,11 @@
+from z3 import *
+p, q, r = Bools('p q r')
+s = Solver()
+s.add(Implies(p, q))
+s.add(Not(q))
+print(s.check())
+s.push()
+s.add(p)
+print(s.check())
+s.pop()
+print(s.check())

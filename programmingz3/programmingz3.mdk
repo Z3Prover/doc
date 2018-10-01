@@ -109,6 +109,11 @@ There is an interactive tutorial using the SMTLIB2 front-end on
 <https://rise4fun.com/Z3/tutorial/guide>
 ~
 
+Examples from this tutorial that are executable can be found on
+
+~ Center
+<https://github.com/Z3Prover/doc/programmingz3/code>
+~
 
 There are several systems that program with Z3. 
 They use a variety of 
@@ -354,8 +359,8 @@ is infeasible; there are no models where _f_ maps _x_ to anything but itself giv
   S = DeclareSort('S')
   f = Function('f', S, S)
   x = Const('x', S)
-  solve([f(f(x)) == x, f(f(f(x))) == x])
-  solve([f(f(x)) == x, f(f(f(x))) == x, f(x) != x])
+  solve(f(f(x)) == x, f(f(f(x))) == x)
+  solve(f(f(x)) == x, f(f(f(x))) == x, f(x) != x)
 ```
 
 Decision procedures for quantifier-free EUF formulas are usually based 
@@ -850,7 +855,7 @@ may produce the solution
 ```
 Similarly, one can prove that a tree cannot be a part of itself.
 ```python
-prove(t != Node(t, 0, t))
+prove(t != Tree.Node(t, 0, t))
 ```
 
 ## Sequences and Strings
@@ -1085,8 +1090,8 @@ a, b, c, d = Bools('a b c d')
 
 s = Solver()
 s.add(Implies(a, b), Implies(c, d))   # background formula
-print s.consequences([a, c],          # assumptions
-                     [b, c, d])       # what is implied?
+print(s.consequences([a, c],          # assumptions
+                     [b, c, d]))       # what is implied?
 
 ```
 produces the result:
@@ -1174,8 +1179,7 @@ def get_mss(s, mss, ps):
           ps  = ps - mss
        else:
           backbones = backbones | { Not(p) }
-    return mss
-          
+    return mss          
 ```
 ~
 
@@ -1215,7 +1219,6 @@ def marco(s, ps):
            mus = s.unsat_core()
            map.add(Not(And(mus)))
            yield "MUS", mus
-
 ```
 ~
 
@@ -1579,8 +1582,8 @@ to find candidate instantiations of quantifiers.
 Take the example
 ```python
 a, b, c, x = Ints('a b c x')
-f = Function('f', Z, Z, Z)
-g = Function('g', Z, Z)
+f = Function('f', Z, Z)
+g = Function('g', Z, Z, Z)
 prove(Implies(And(ForAll(x, f(g(x,c)) == a), b == c, g(c, b) == c),
               f(b) == a))
 ```
@@ -1679,7 +1682,7 @@ a single quantified formula with quantifier free body $\varphi$.
 The model-based quantifier instantiation, MBQI, procedure is 
 described in Figure [#fig-mbqi]:
 
-~ Figure { #fig-mbqi; caption:"Model-Based Quantifier Instantiation algorithm. Notice that this is pseudo-code and not directly executable." }
+~ Figure { #fig-mbqi; caption:"Model-Based Quantifier Instantiation algorithm. Notice that this is proto-algorithm code is not directly executable." }
 ```python
 s.add(\($\psi$\))
 while True:
@@ -1989,7 +1992,7 @@ print(s.model())
 ```python
 s = SolverFor("LRA") # Quantified Linear Real Arithmetic
 x, y, z = Reals('x y z')
-s.add(x < y, Forall(z, Or(z <= x, y <= z)))
+s.add(x < y, ForAll(z, Or(z <= x, y <= z)))
 print(s.check())
 ```
 ~
@@ -2048,7 +2051,7 @@ The procedure, uses the steps:
 
 An algorithm that realizes this approach is formulated in Figure [#fig-monniaux].
 
-~ Figure { #fig-monniaux; caption : "Quantifier elimination by core extraction and projection. Notice that this is pseudo-code and not directly executable" }
+~ Figure { #fig-monniaux; caption : "Quantifier elimination by core extraction and projection. Notice that this proto-algorithm code is not directly executable" }
 ```python
 def qe(\($\exists \vec{v} \ . \ F$\)):                   
     e, a = Solver(), Solver()
@@ -2191,12 +2194,12 @@ formulas into one.
 x, y = Reals('x y')
 g  = Goal()
 g.add(2 < x, Exists(y, And(y > 0, x == y + 2)))
-print g
+print(g)
 
 t1 = Tactic('qe-light')
 t2 = Tactic('simplify')
 t  = Then(t1, t2)
-print t(g)
+print(t(g))
 ```
 
 
@@ -2340,7 +2343,7 @@ opt.add(x + y == 10, x >= 0, y >= 0)
 mx = opt.maximize(x)
 my = opt.maximize(y)
 while opt.check() == sat:
-    print mx.value(), my.value()
+    print (mx.value(), my.value())
 
 ```
 
