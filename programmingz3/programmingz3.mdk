@@ -112,7 +112,7 @@ There is an interactive tutorial using the SMTLIB2 front-end on
 Examples from this tutorial that are executable can be found on
 
 ~ Center
-<https://github.com/Z3Prover/doc/programmingz3/code>
+<https://github.com/Z3Prover/doc/tree/master/programmingz3/code>
 ~
 
 There are several systems that program with Z3. 
