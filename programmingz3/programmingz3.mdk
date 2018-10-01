@@ -139,18 +139,19 @@ examples using the Python front-end
   <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py>.
 
 ## Sources
-The material to this tutorial is assembled from several sources.
+The material in this tutorial is assembled from several sources.
 Some of the running examples originate from slides that have 
 circulated in the SAT and SMT community. The first SAT example is
 shamelessly lifted from Armin Biere's SAT tutorials and other examples 
-appear in slides by Natarajan Shankar and others. 
+appear in slides by Natarajan Shankar. 
 
 
 # Logical Interfaces to Z3 { #sec-logical-interface }
-Z3 takes as input simple-sorted formulas that may contain symbols with pre-defined meanings defined by a _theory_.
+Z3 takes as input simple-sorted formulas that may contain 
+symbols with pre-defined meanings defined by a _theory_.
 This Section provides an introduction to logical formulas that can be used as input to Z3. 
 
-As a basis, propositional formulas are based on logical combination of atomic variables. 
+As a basis, propositional formulas are built from logical connectives and atomic variables.
 An example propositional logical formula
 accepted by Z3 is:
 ```python
@@ -164,15 +165,16 @@ accepted by Z3 is:
   print(s.model())
 ```
 The example introduces two Boolean variables `Tie`{language:python} and `Shirt`{language:python}. 
-It then creates a `Solver`{language:python} object to which it adds three assertions.
+It then creates a `Solver`{language:python} object and adds three assertions.
 ~ MathPre
   (Tie \vee Shirt) \wedge (\neg Tie \vee Shirt) \wedge (\neg Tie \vee \neg Shirt)
 ~
 The call to `s.check()`{language:python} produces a verdict `sat`{language:python}; 
-there is a satisfying assignment to the formulas. 
+there is a satisfying assignment for the formulas. 
 A satisfying model, where `Tie`{language:python} is false and `Shirt`{language:python} is true, 
 can be extracted using `s.model()`{language:python}.
-For convenience the Python front-end to Z3 contains some shorthand functions. The function `solve`{language:python} 
+For convenience the Python front-end to Z3 contains some shorthand functions. 
+The function `solve`{language:python} 
 sets up a solver, adds assertions, checks satisfiability, and prints a model if one is available.
 
 Propositional logic is an important, but smaller subset of formulas handled by Z3. 
@@ -188,7 +190,7 @@ arrays and arithmetic:
 ```  
 
 The formula `fml` is valid. It is true for all values of integers _x_, _y_, _z_, array _A_, 
-and no matter what the graph of the function _f_. 
+and no matter what the graph of the function _f_ is. 
 Note that we are using `array[index]` as shorthand for `Select(array,index)`.
 We can manually verify the validity of the formula usig the following argument:
 The integer constants `x` and `y` are created using the function `Ints` that
@@ -213,7 +215,7 @@ This standard (currently at version 2.6) defines a textual language for first-or
 logic and a set of _logics_ that are defined by a selection of background theories. 
 For example, the logic of _quantifier-free integer linear arithmetic_, known in SMT-LIB2 
 as `QF_LIA`{language:smt}, is a fragment of first-order logic, where formulas are _quantifier free_, 
-variables range over integers, constants are integers, the allowed functions are _+_, _-_, 
+variables range over integers, interpreted constants are integers, the allowed functions are _+_, _-_, 
 integer multiplication, division, remainder, modulus with a constant, and the allowed relations
 are, besides equality that is part of every theory, also  _<, <=, >=, >_.
 As an example, we provide an SMT-LIB and and Python variant of the same arbitrary formula below. 
@@ -265,11 +267,11 @@ For example, the integer constants 0 and 28 are interpreted, while constants _x_
 _y_ used in the previous example are free. Constants are treated as nullary functions.
 Functions that take arguments can be declared, such as 
 `f = Function('f', Z, Z)` creates the function declaration that takes one integer
-argument and its range is an integer. Functions with Boolean range can be used to build up
+argument and its range is an integer. Functions with Boolean range can be used to create
 formulas.
 
 ## Terms and Formulas
-Formulas, that are used in assertions or added to solvers, 
+Formulas that are used in assertions or added to solvers 
 are terms of Boolean sort. Otherwise, terms of Boolean and non-Boolean sort
 may be mixed in any combination where sorts match up.
 For example
@@ -288,8 +290,8 @@ The model assigns `a` to False, the graph of `f` maps
 all arguments to `0`, and the graph of `g` maps all values to `True`.
 Standard built-in logical connectives are `And, Or, Not, Implies, Xor`. 
 Bi-implication is a special case of equality, so from Python, when saying 
-`x == y` for Boolean _x_ and _y_ it is treated as a logical formula for the 
-bi-implication of _x_ and _y_.
+`a == b` for Boolean _a_ and _b_ it is treated as a logical formula for the 
+bi-implication of _a_ and _b_.
 
 ## Quantifiers
 Universal and existential quantifiers bind variables to the scope of the quantified
@@ -309,9 +311,9 @@ has a solution where _x_ is 1 and the free occurrence of _y_ is 2.
 Z3 supports also $\lambda$-binding with rudimentary reasoning support based on a model-constructing instantiation engine.
 $\lambda$s may be convenient when expressing properties of arrays and Z3 uses array sorts for representing the
 sorts of lambda expressions. 
-Thus, the result of `memset` is an array from integers to integers, and reasoning about
-quantifier free formulas using `memset` in a way where it is always applied to arguments requires instantiating the
-definition 
+Thus, the result of `memset` is an array from integers to integers.
+Z3 reasons about quantifier free formulas that contains `memset` by instantiating the body of
+the $\lambda.
 ```python
 m, m1 = Array('m', Z, Z), Array('m1', Z, Z)
 def memset(lo,hi,y,m):
@@ -364,7 +366,7 @@ is infeasible; there are no models where _f_ maps _x_ to anything but itself giv
 ```
 
 Decision procedures for quantifier-free EUF formulas are usually based 
-on _union-find_ to maintain equivalence classes of terms that are equated.
+on _union-find_ [@Tarjan75] to maintain equivalence classes of terms that are equated.
 Pictorially, a sequence of equality assertions $a = b, b = c, b = s$ produce
 one equivalence class that captures the transitivity of equality. 
 ~ Snippet
@@ -438,7 +440,7 @@ Having only the equality information available we obtain the equivalence classes
 \end{tikzpicture}
 ~
 
-Working bottom-up, the congruence rule dictates that the classes for $v_1$ and $_v2$
+Working bottom-up, the congruence rule dictates that the classes for $v_1$ and $v_2$
 should be merged. Thus, 
 
 ~ Math 
@@ -477,21 +479,23 @@ producing the equivalence classes
  };
 \end{tikzpicture}
 ~
-At this point $v_3$ and $v_4$ are merged. As our original formula required these to
+The classes for $v_3$ and $v_4$ are now merged. As our original formula required these to
 be distinct, congruence closure reasoning determines that the formula is unsatisfiable.
 
 ### Congruence Closure {#sec-cc}
 
-We have implicitly used the notion of _congruence closure_ to check satisfiability of equalities.
+We have implicitly used the notion of _congruence closure_ [@DowneyST80] 
+to check satisfiability of equalities.
 Let us more formally define this notion.
 Let $\mathcal{T}$ be a set of terms and $\mathcal{E}$ set of equalities over $\mathcal{T}$.
-A _congruence closure_ over $\mathcal{T}$ modulo $\mathcal{E}$ is the finest a partition of $\mathcal{T}$, cc, such that:
+A _congruence closure_ over $\mathcal{T}$ modulo $\mathcal{E}$ is the finest a partition $cc$ of 
+$\mathcal{T}$, such that:
 
-* if $s = t \in \mathcal{E}$, then $s, t$ are in the same partition in cc.
+* if $(s = t) \in \mathcal{E}$, then $s, t$ are in the same partition in $cc$.
 
 * for $s := f(s_1, \ldots, s_k), t := f(t_1, \ldots, t_k) \in \mathcal{T}$, 
-  * if $s_i,t_i$ are in same partition of cc for each $i = 1, \ldots k$, then
-  * $s, t$ are in the same partition under cc.
+  * if $s_i,t_i$ are in same partition of $cc$ for each $i = 1, \ldots k$, then
+  * $s, t$ are in the same partition under $cc$.
 
 ~ Definition
  $cc: \mathcal{T} \rightarrow 2^{\mathcal{T}}$, maps term to its equivalence class.
@@ -536,10 +540,11 @@ it produces a model, that may look as follows:
  f = [(S!val!2, S!val!0) -> S!val!4, else -> S!val!3],
  g = [else -> S!val!2]]
 ```
-In the model the value _S!val!0_ is a fresh constant that is distinct from _S!val!1_.
+In the model the value `S!val!0` is a fresh constant that is distinct from `S!val!1`.
+The graph for `f` maps the arguments `(S!val!2, S!val!0)` to `S!val!4`.
 The interpretation of _S_ is a finite set 
 ```python
-{S!val!0, S!val!1, S!val!2, S!val!3, S!val!4}.
+    {S!val!0, S!val!1, S!val!2, S!val!3, S!val!4}.
 ```
 
 
@@ -637,9 +642,9 @@ the table below where $x, y$ range over reals and $a, b$ range over integers.
 |      |                                   | Linearization [@CimattiGIRS18] |                      |
 +------+-----------------------------------+---------------------------+---------------------------+
 
-There are many more fragments of arithmetic that benefit from special solvers. 
+There are many more fragments of arithmetic that benefit from specialized solvers. 
 We later discuss some of the fragments where integer variables are restricted to the values $\{0, 1\}$
-when handling Pseudo-Boolean constraints. 
+when describing Pseudo-Boolean constraints. 
 Other fragments that are _not_ currently handled in Z3 in any special way
 include:
 
@@ -720,7 +725,7 @@ bindings.
 
 ### Deciding Arrays by Reduction to EUF
 
-Formulas using the combinators `Store, Const, Map, Ext` are checked 
+Formulas using the combinators `Store, K, Map, Ext` are checked 
 for satisfiability by _expanding_ the respective $\lambda$ definitions
 on sub-terms. We illustrate how occurrences of `Store`{language:python} 
 produce constraints over EUF. In the following, assume we are given a 
@@ -745,8 +750,8 @@ Note that formally, we would write extensionality as the property:
 The term `Ext` is simply a Skolem function for the  universally quantified variable, 
 which depends on `a` and `b`.
 
-We can convince ourselves that asserting these additional constraints force models of `s`
-to satisfy the array axioms.
+We can convince ourselves that asserting these additional constraints force models of 
+a solver `s` to satisfy the array axioms.
 Suppose we are given a model $M$ satisfying all the additional asserted equalities.
 These equalities enforce the axioms for `Store` on all indices that occur in `s`. They 
 also enforce extensionality between arrays: two arrays are equal if and only if they
@@ -761,7 +766,7 @@ Other:
 
 ## Bit-Vectors
 
-Let us start with some bit-fiddling.
+Let us play with some bit-fiddling.
 The resource <https://graphics.stanford.edu/~seander/bithacks.html>, 
 lists a substantial
 repertoire of bit-vector operations that can be used as alternatives to potentially more expensive
@@ -883,8 +888,8 @@ prove(Concat(s, Unit(IntVal(2))) != Concat(Unit(IntVal(1)), s))
 There are two solvers available in Z3 for strings. They can be exchanged
 by setting the parameter 
 
-* `s.set("smt.string.solver","seq")` or
-* `s.set("smt.string.solver","z3str3")`.
+* `s.set("smt.string.solver","seq")` with contributions by Thai Trinh, or
+* `s.set("smt.string.solver","z3str3")` by Murphy Berzish.
 
 
 # Interfacing with Solvers { #sec-solver-interfacing }
@@ -1075,7 +1080,7 @@ get fixed, fewer and fewer configuration options are available.
 For instance, once the model of a car has been fixed, some options
 for wheel sizes become unavailable. It is furthermore possible
 that only one option is available for some configurations, once
-others are fixed. Z3 can be used to answer queries of the form:
+some parameters are fixed. Z3 can be used to answer queries of the form:
 Given a configuration space of values $V$, 
 when fixing values $V_0 \subseteq V$, what is the largest
 subset $V_0\subseteq V_1 \subseteq V$ of values that
@@ -1091,7 +1096,7 @@ a, b, c, d = Bools('a b c d')
 s = Solver()
 s.add(Implies(a, b), Implies(c, d))   # background formula
 print(s.consequences([a, c],          # assumptions
-                     [b, c, d]))       # what is implied?
+                     [b, c, d]))      # what is implied?
 
 ```
 produces the result:
@@ -1128,11 +1133,15 @@ corresponding to a case split on a single literal. The SAT Core based cuber can 
 to produce cubes that represent several branches. Each branch is represented as a conjunction
 of literals. The cut-off for branches is configured using
 
-* `lookahead.cube.cutoff`{language:python} and is by default set to `depth`, which means that the cut-off for branches is based on a fixed maximal depth of cubes. The default fixed maximal depth is 1. By setting the cut-off to `freevars` the depth of cubes is governed by the ratio of non-unit literals in a branch compared to non-unit variables in the root. The free variable ratio can also be made adaptive using the option `adaptive_freevars`, the ratio is then relative to the free variables in branches that were closed. Other options are `adaptive_psat`, which uses a measure for the probability of satisfiability.
+* `sat.lookahead.cube.cutoff`{language:python} and is by default set to `depth`, which means that the cut-off for branches is based on a fixed maximal depth of cubes. The default fixed maximal depth is 1. 
+It can be changed by setting `sat.lookahead.cube.depth` to a different value than 1.
+By setting the cut-off to `freevars` the depth of cubes is governed by the ratio of non-unit literals in a branch compared to non-unit variables in the root. It can be changed from the default value of 0.8
+by overwriting `sat.lookahead.cube.freevars`.
+The free variable ratio can also be made adaptive using the option `adaptive_freevars`, the ratio is then relative to the free variables in branches that were closed. Other options are `adaptive_psat`, which uses a measure for the probability of satisfiability.
 
 Heuristics used to control which literal is selected in cubes can be configured using the parameter:
 
-* `lookahead.reward`{language:python}
+* `sat.lookahead.reward`{language:python}
 
 ## Using Solvers
 
@@ -1282,6 +1291,15 @@ bmc(x0 == 0, x1 == x0 + 1, x0 == 10, [], [x0], [x1])
 ```
 ~
 
+Bounded model checking is good for establishing reachability, but does not
+produce certificates for non-reachability (or safety). The IC3 [@BradleyM07] 
+algorithm is complete for both reachability and non-reachability. 
+You can find a simplistic implementation of IC3 using the Python API online
+
+~ Center
+<https://github.com/Z3Prover/z3/blob/master/examples/python/mini_ic3.py>
+~
+
 # Solver Implementations { #sec-solver-implementations }
 
 There are five main solvers embedded in Z3.
@@ -1295,10 +1313,10 @@ The SMT Solver is a general purpose solver that covers a wide range of
 supported theories. It is built around a CDCL(T) architecture where theory
 solvers interact with a SAT + EUF blackboard. 
 Theory solvers, on the right in figure [#fig-z3core], communicate
-with a core that exchange equalities between variables and assignments
+with a core that exchanges equalities between variables and assignments
 to atomic predicates. The core is responsible for case splitting, which
 is handled by a CDCL SAT solver, and for letting each theory learn constraints
-and equalities that are relevant in a branch given by current case splits.
+and equalities that are relevant in the current branch.
 
 ~ Figure { #fig-z3core; caption: "Architecture of Z3's SMT Core solver." }
 ![SMTCore]
@@ -1310,7 +1328,7 @@ To force using the SMT solver a user can create
 a _simple solver_ using the function `SimpleSolver`{language:python}.
 
 The SMT solver integrates two strategies for quantifier instantiation.
-By default, both strategies are enabled. To disable them one has to
+By default, both strategies are enabled. To disable them, one has to
 disable automatic configuration mode and then disable the instantiation
 strategy:
 ```python
@@ -1330,8 +1348,8 @@ The truth assignments satisfy a propositional abstraction of the formula.
 Theory solvers are used to check if assignment admit a model modulo
 the theories. The resulting architecture is known as DPLL(T) [@dpllt], 
 but we refer to this as CDCL(T) because it really relies on SAT solvers
-that incorporate _Conflict Directed Clause Learning_, which goes beyond
-the algorithm associated with DPLL [@dpll].
+that incorporate _Conflict Driven Clause Learning_ [@SilvaS99], 
+which goes beyond the algorithm associated with DPLL [@dpll].
 Take the following example
 ```python
 s.add(x >= 0, y == x + 1, Or(y > 2, y < 1))
@@ -1373,8 +1391,8 @@ x >= 0, y == x + 1, y > 2, Not(y < 1)
 ```
 which is satisfiable.
 The example illustrates the steps used in a CDCL(T)
-integration where the Theory solver 
-processes the final result of a SAT solver. 
+integration where the Theory Solver 
+processes the final result of a SAT Solver. 
 We can simulate this procedure using Z3's API.
 Figure [#simple-cdclT] shows a CDCL(T) solver
 that leverages a propositional solver `prop` to 
@@ -1538,7 +1556,7 @@ $\mathcal{T}$ and satisfiability in $\mathcal{T}$ is
 in $O(n^3 \times (\mathcal{T}_1(n) + \mathcal{T}_2(n)))$.
 
 #### Convexity.
-A theory $T$ is _convex_ iff:
+A theory $\mathcal{T}$ is _convex_ iff:
 
 * For all finite sets $S$ of literals
 * For every disjunction $a_1 = b_1 \vee \ldots \vee a_n = b_n$
@@ -1641,7 +1659,7 @@ The secret sauce to efficiency is to find instantiations
 Z3 uses code-trees [@RamakrishnanSV01] to address scale bottlenecks for search involving 
 thousands of patterns and terms. 
 
-### Model-based Quantifier Instantiation [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13]
+### Model-Based Quantifier Instantiation [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13]
 
 E-matching provides a highly syntactic restriction on instantiations. 
 An alternative to E-matching is based on using a current model of the quantifier-free part of 
@@ -1679,7 +1697,7 @@ satisfiability of
 ~
 where $\psi$ is quantifier free and for sake of illustration we have
 a single quantified formula with quantifier free body $\varphi$.
-The model-based quantifier instantiation, MBQI, procedure is 
+The Model-Based Quantifier Instantiation, MBQI, procedure is 
 described in Figure [#fig-mbqi]:
 
 ~ Figure { #fig-mbqi; caption:"Model-Based Quantifier Instantiation algorithm. Notice that this is proto-algorithm code is not directly executable." }
@@ -1730,7 +1748,7 @@ In the next round, `a`, `n`, and `f` are instantiated as before,
 and `g(3)` evaluates to -10 as before, but elsewhere follows the graph of
 `f(x + a)`, and thus the model for `g` is given by `[3 -> -10, else -> f(11 + Var(0))]`{language:python}.
 
-Model-based Quantifier Instantiation 
+Model-Based Quantifier Instantiation 
 is quite powerful when search space for instantiation terms is finite. 
 It covers many decidable logical fragments, including EPR, UFBV 
 (uninterpreted functions and bit-vectors), 
