@@ -1,6 +1,6 @@
 To compile download madoko from madoko.net and run the command:
 
-* madoko paper.mdk
+* madoko programmingz3.mdk
 
 * An accessible version of this document is available from
 
