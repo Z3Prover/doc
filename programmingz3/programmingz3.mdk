@@ -1679,7 +1679,7 @@ a single quantified formula with quantifier free body $\varphi$.
 The model-based quantifier instantiation, MBQI, procedure is 
 described in Figure [#fig-mbqi]:
 
-~ Figure { #fig-mbqi; caption:"MBQI algorithm" }
+~ Figure { #fig-mbqi; caption:"Model-Based Quantifier Instantiation algorithm. Notice that this is pseudo-code and not directly executable." }
 ```python
 s.add(\($\psi$\))
 while True:
@@ -2046,8 +2046,9 @@ The procedure, uses the steps:
 
 * __Update__: $G \leftarrow G \vee \mbox{project}(\vec{v}, M)$.
 
-An algorithm that realizes this approach can be formulated as follows:
+An algorithm that realizes this approach is formulated in Figure [#fig-monniaux].
 
+~ Figure { #fig-monniaux; caption : "Quantifier elimination by core extraction and projection. Notice that this is pseudo-code and not directly executable" }
 ```python
 def qe(\($\exists \vec{v} \ . \ F$\)):                   
     e, a = Solver(), Solver()
@@ -2056,7 +2057,7 @@ def qe(\($\exists \vec{v} \ . \ F$\)):
     \($G$\) = False
     while sat == e.check():
        \($M_0$\) = e.model()
-       \($M_1$\) = [ lit for lit in literals(F) if is_true(\($M_0$\).eval(lit) ]
+       \($M_1$\) = [ lit for lit in literals(F) if is_true(\($M_0$\).eval(lit)) ]
        # assume \($F$\) is in negation normal form
        assert unsat == a.check(\($M_1$\)) 
        \($M_2$\) = a.unsat_core()
@@ -2065,7 +2066,7 @@ def qe(\($\exists \vec{v} \ . \ F$\)):
        e.add(\($\neg\pi$\))
     return \($G$\)
 ```
-
+~
 
 QESTO [@JanotaM15] generalizes this procedure to nested QBF 
 (Quantified Boolean Formulas), and
@@ -2302,13 +2303,14 @@ second variant and turns it into a set of weighted
 soft assertions.
 
 ```python
-   o.add_soft(\($\varphi$\), 3)                                          
-   o.add_soft(\($\psi$\), 4)
+   a, b = Bools('a b')
+   o.add_soft(a, 3)                                          
+   o.add_soft(b, 4)
 ```
 is equivalent to
 
 ```python
-   o.minimize(If(\($\varphi$\), 0, 3) + If(\($\psi$\), 0, 4))
+   o.minimize(If(a, 0, 3) + If(b, 0, 4))
 ```
 
 
@@ -2386,7 +2388,7 @@ $F_4 \vee (F_3 \wedge (F_2 \wedge F_1))$ and $F_4'$ is the new name of $F_5$.
 Consider the soft constraints in the core. 
 Since it is a core, at least one has to be false under $M$.
 Let $j$ be the first index among where $M(F_j)$ is false.
-Then, we $M$ evaluates all other soft constraints the same, 
+Then $M$ evaluates all other soft constraints the same, 
 e.g., $\forall i < j: \ M(F'_i) = M(F_{i})$, 
 and $\forall i > j: M(F'_{i-1}) = M(F_i)$.
 ~
