@@ -34,7 +34,8 @@ Package       : algorithm2e
 \newcommand{\nikolaj}[1]{[\emph{Nikolaj:} #1]}
 \newcommand{\papercomment}[1]{}
 \newcommand{\onenorm}[1]{|\!|#1|\!|_1}
-\newcommand{\py}[1]{`#1`{language:python}}
+
+
 ~
 
 [TITLE]
@@ -192,7 +193,7 @@ arrays and arithmetic:
 The formula `fml` is valid. It is true for all values of integers _x_, _y_, _z_, array _A_, 
 and no matter what the graph of the function _f_ is. 
 Note that we are using `array[index]` as shorthand for `Select(array,index)`.
-We can manually verify the validity of the formula usig the following argument:
+We can manually verify the validity of the formula using the following argument:
 The integer constants `x` and `y` are created using the function `Ints` that
 creates a list of integer constants.
 Under the assumption that `x + 2 = y`, the right side of the implication simplifies to
