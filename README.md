@@ -1,2 +1,3 @@
-# doc
-This repository contains additional documentation relevant for Z3.
+## Documentation
+
+This repository contains additional documentation relevant to Satisfiability Modulo Theory, SMT - Z3.
