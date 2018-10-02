@@ -94,7 +94,7 @@ described in Section [#sec-consequences].
 ![Z3Overall]
 ~
 
-[Z3Overall]: images/Z3Overall.jpg "Z3Overall" { width:35em }
+[Z3Overall]: images/Z3Overall.[pdf,jpg] "Z3Overall" { width:35em }
 
 
 ## Resources
@@ -1128,7 +1128,7 @@ def cube_and_conquer(s):
     for cube in s.cube():
        if len(cube) == 0:
           return unknown
-       if len(cube) == 1 && is_true(cube[0]):
+       if is_true(cube[0]):
           return sat     
        is_sat = s.check(cube):
        if is_sat == unknown:
@@ -1338,9 +1338,11 @@ Suppose we are given a formula $\varphi[x,y]$ using variables $x$ and $y$.
 When is it possible to rewrite it as a Boolean combination of formulas
 $\psi_1(x), \ldots, \psi_k(x)$ and $\theta_1(y), \ldots, \theta_n(y)$?
 We say that the formulas $\psi_j$ and $\theta_j$ are _monadic_; they
-only depend on one variable. A procedure for monadic decomposition
-was developed in [@VeanesBNB17], and we recall the Python prototype 
-of it here.
+only depend on one variable. An application of monadic decomposition
+is to convert _extended_ symbolic finite transducers into _regular_ symbolic
+finite transducers. The regular versions are amenable to analysis and optimization.
+A procedure for monadic decomposition
+was developed in [@VeanesBNB17], and we here recall the Python prototype. 
 
 ~ Figure { #fig-mondec; caption : "Monadic Decomposition" }
 ```python
@@ -1431,7 +1433,7 @@ and equalities that are relevant in the current branch.
 ![SMTCore]
 ~ 
 
-[SMTCore]: images/SMTCore.jpg "SMTCore" { width:25em }
+[SMTCore]: images/SMTCore.[pdf,jpg] "SMTCore" { width:25em }
 
 To force using the SMT solver a user can create 
 a _simple solver_ using the function `SimpleSolver`{language:python}.
@@ -1929,7 +1931,7 @@ Figure [#fig-satcore] shows the overall architecture of Z3's SAT solver.
 ~ Figure { #fig-satcore; caption: "Architecture of Z3's SAT Solver" }
 ![SATCore]
 ~
-[SATCore]: images/SATCore.jpg "SATCore" { width:40em }
+[SATCore]: images/SATCore.[pdf,jpg] "SATCore" { width:40em }
 
 There are four main components. Central to the SAT solver is an engine that performs
 case splits, lemma learning and backtracking search. It is the main CDCL engine
@@ -2045,8 +2047,12 @@ information on the Fixedpoint engine can be found on <https://rise4fun.com/z3/tu
 
 We provide a very simple illustration of Horn clause usage here. McCarthy's 91 function illustrates
 nested recursion in a couple of lines, but otherwise makes no sense: it computes a function
-that can be described directly as `If(x > 101, 91, x - 10)`{language:python}. We will pretend
-this is a partial and interesting specification and prove this automatically using Horn clauses.
+that can be described directly as 
+```python
+    If(x > 101, 91, x - 10).
+```
+We will pretend this is a partial and interesting 
+specification and prove this automatically using Horn clauses.
 ```python
 def mc(x):
     if x > 100:
