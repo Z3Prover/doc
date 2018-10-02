@@ -82,7 +82,7 @@ calls over a C-based API. We focus on using the Python front-end as a means of
 interfacing with Z3, and start out describing the abstract syntax of terms and
 formulas accepted by Z3 in Section [#sec-logical-interface].
 Formulas draw from symbols whose meaning are defined by a set of _Theories_, 
-Section [#sec-theories]. _Solvers_, Sections [#sec-solver-interfacing] and [#sec-solver-implementations], 
+Section [#sec-theories]. _Solvers_, Sections [#sec-solver-interfacing], [#sec-using-solvers] and [#sec-solver-implementations], 
 provide services for deciding satisfiability of formula. _Tactics_, Section [#sec-tactics], provide means for
 pre-processing simplification and creating sub-goals. Z3 also provides some services
 that are not purely satisfiability queries. _Optimization_, Section [#sec-optimization],
@@ -1127,6 +1127,7 @@ for cube in s.cube():
        print(s.model())
        return
 ```
+~
 
 When the underlying solver is based on the SAT Core, see Section [#sec-sat-core], it uses
 a lookahead solver to select cubes [@HeuleKWB11]. By default, the cuber produces two branches,
@@ -1144,9 +1145,12 @@ Heuristics used to control which literal is selected in cubes can be configured 
 
 * `sat.lookahead.reward`{language:python}
 
-## Using Solvers
+# Using Solvers { #sec-using-solvers }
+We now describe a collection of algorithms.
+They are developed on top of the interfaces 
+described in the previous section.
 
-#### Blocking evaluations
+## Blocking evaluations
 Models can be used to refine the state of a solver. For example, 
 we may wish to invoke the solver in a loop where new calls to 
 the solver blocks solutions that evaluate the constants to the exact same assignment.
@@ -1156,7 +1160,7 @@ def block_model(s):
     s.add(Or([ f() != m[f] for f in m.decls() if f.arity() == 0]))           
 ```
 
-#### Maximizing Satisfying Assignments [@MenciaPM15]
+## Maximizing Satisfying Assignments [@MenciaPM15]
 Another use of models is to use them as a guide to a notion of optimal model.
 A _maximal satisfying solution_, in short _mss_, for a set of formulas `ps`
 is a subset of `ps` that is consistent with respect to the solver state `s`
@@ -1202,7 +1206,7 @@ find an mss with the largest value as a binary number. Modify `get_mss`
 to produce such a number.
 ~
 
-#### All Cores and Correction Sets [@liffiton2016fast]
+## All Cores and Correction Sets [@liffiton2016fast]
 The Marco procedure combines models and cores in a process
 that enumerates all unsatisfiable cores and all maximal
 satisfying subsets of a set of formulas `ps` with
@@ -1236,7 +1240,7 @@ Efficiently enumerating cores and correction sets is an active area of research.
 Many significant improvements have been developed over the above basic 
 implementation [@BacchusK15;@MenciaPM15;@BacchusK16;@PrevitiMJM17;@Alviano17;@NarodytskaBMS18].
 
-#### Bounded Model Checking [@Biere09]
+## Bounded Model Checking [@Biere09]
 Figure [#fig-bmc] illustrates a bounded model checker
  that takes a transition system as input and checks if a goal is reachable.
 Transition systems are described as
@@ -1300,6 +1304,83 @@ You can find a simplistic implementation of IC3 using the Python API online
 ~ Center
 <https://github.com/Z3Prover/z3/blob/master/examples/python/mini_ic3.py>
 ~
+
+## Monadic Decomposition [@VeanesBNB17]
+
+Suppose we are given a formula $\varphi[x,y]$ using variables $x$ and $y$.
+When is it possible to rewrite it as a Boolean combination of formulas
+$\psi_1(x), \ldots, \psi_k(x)$ and $\theta_1(y), \ldots, \theta_n(y)$?
+We say that the formulas $\psi_j$ and $\theta_j$ are _monadic_; they
+only depend on one variable. A procedure for monadic decomposition
+was developed in [@VeanesBNB17], and we recall the Python prototype 
+of it here.
+
+~ Figure { #fig-mondec; caption : "Monadic Decomposition" }
+```python
+from z3 import *
+def nu_ab(R, x, y, a, b):
+    x_ = [ Const("x_%d" %i,x[i].sort()) for i in range(len(x))]
+    y_ = [ Const("y_%d" %i,y[i].sort()) for i in range(len(y))]
+    return Or(Exists(y_,R(x+y_)!=R(a+y_)),Exists(x_,R(x_+y)!=R(x_+b)))
+
+def isUnsat(fml):
+    s = Solver(); s.add(fml); return unsat == s.check()
+
+def lastSat(s, m, fmls):
+    if len(fmls) == 0: return m
+    s.push(); s.add(fmls[0])
+    if s.check() == sat: m = lastSat(s, s.model(), fmls[1:])       
+    s.pop(); return m
+
+def mondec(R, variables):
+    print(variables)
+    phi = R(variables);    
+    if len(variables)==1: return phi
+    l = int(len(variables)/2)
+    x, y = variables[0:l], variables[l:]
+    def dec(nu, pi):
+        if isUnsat(And(pi, phi)): 
+           return BoolVal(False)
+        if isUnsat(And(pi, Not(phi))): 
+           return BoolVal(True)
+        fmls = [BoolVal(True), phi, pi] 
+        #try to extend nu
+        m = lastSat(nu, None, fmls)              
+        #nu must be consistent 
+        assert(m != None)                         
+        a = [ m.evaluate(z,True) for z in x ]
+        b = [ m.evaluate(z,True) for z in y ]
+        psi_ab = And(R(a+y), R(x+b))
+        phi_a = mondec(lambda z: R(a+z),y)
+        phi_b = mondec(lambda z: R(z+b),x)
+        nu.push()
+        #exclude: x~a and y~b
+        nu.add(nu_ab(R, x, y, a, b))              
+        t = dec(nu, And(pi, psi_ab)) 
+        f = dec(nu, And(pi, Not(psi_ab)))
+        nu.pop()
+        return If(And(phi_a, phi_b), t, f)
+    #nu is initially true
+    return dec(Solver(),BoolVal(True))             
+```
+~
+An example formula that has a monadic decomposition is 
+the bit-vector assertion for $x$, $y$ being bit-vectors of bit-width $2k$.
+~ Math
+   y > 0 \land (y \& (y - 1)) = 0 \land (x \& (y \% ((1 << k) - 1))) \neq 0
+~
+We can compute the monadic decomposition
+```python
+def test_mondec(k):                             
+    R = lambda v:And(v[1]>0,(v[1]&(v[1]-1))==0,
+                     (v[0]& (v[1]%((1<<k)-1)))!=0)
+    bvs = BitVecSort(2*k)                        #use 2k-bit bitvectors
+    x,y = Consts('x y',bvs)
+    res = mondec(R,[x,y])
+    assert(isUnsat(res != R([x,y])))             #check correctness 
+    print("mondec1(", R([x,y]), ") =", res)
+test_mondec(2)
+```
 
 # Solver Implementations { #sec-solver-implementations }
 
