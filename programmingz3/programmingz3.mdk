@@ -1119,13 +1119,25 @@ in the SMT core.
 You can ask Z3 to suggest a case split or a sequence of case splits through the cubing method.
 It can be used for partitioning the search space into sub-problems that can be solved in parallel, 
 or alternatively simplify the problem for CDCL engines.
+~ Figure { #fig-cubes; caption : "basic cube and conquer" }
 ```python
-s = Solver()
+s = SolverFor("QF_FD")
 s.add(\($F$\))
-for cube in s.cube():
-    if sat == s.check(cube):
-       print(s.model())
-       return
+s.set("sat.restart.max", 100)
+def cube_and_conquer(s):
+    for cube in s.cube():
+       if len(cube) == 0:
+          return unknown
+       if len(cube) == 1 && is_true(cube[0]):
+          return sat     
+       is_sat = s.check(cube):
+       if is_sat == unknown:
+          s1 = s.translate(s.ctx)
+          s1.add(cube)
+          is_sat = cube_and_conquer(s1)
+       if is_sat != unsat:
+          return is_sat
+    return unsat
 ```
 ~
 
@@ -1135,11 +1147,26 @@ corresponding to a case split on a single literal. The SAT Core based cuber can 
 to produce cubes that represent several branches. Each branch is represented as a conjunction
 of literals. The cut-off for branches is configured using
 
-* `sat.lookahead.cube.cutoff`{language:python} and is by default set to `depth`, which means that the cut-off for branches is based on a fixed maximal depth of cubes. The default fixed maximal depth is 1. 
-It can be changed by setting `sat.lookahead.cube.depth` to a different value than 1.
-By setting the cut-off to `freevars` the depth of cubes is governed by the ratio of non-unit literals in a branch compared to non-unit variables in the root. It can be changed from the default value of 0.8
-by overwriting `sat.lookahead.cube.freevars`.
+* `sat.lookahead.cube.cutoff`{language:python} 
+
+We summarize some of the configuration parameters that depend on the value of `cutoff`.
+
++-----------------+---------+----------------------------+-------------------------------------------+
+| `sat.lookahead` | default | used when `cube.cutoff` is | Description                               |
++-----------------+---------+-------------------------+----------------------------------------------+
+| `cube.depth`    | 1       | `depth`                 | A fixed maximal size of cubes returned       |
++-----------------+---------+-------------------------+----------------------------------------------+
+| `cube.freevars` | 0.8     | `freevars`              | the depth of cubes is governed by the ratio of non-unit literals in a branch compared to non-unit variables in the root   |
++-----------------+---------+-------------------------+----------------------------------------------+
+| `cube.fraction` | 0.4     | `adaptive_freevars`     | adaptive fraction to create lookahead cubes  |
+|                 |         | `adaptive_psat`         |                                              |
++-----------------+---------+-------------------------+----------------------------------------------+
+| `cube.psat.clause_base` | 2 | `psat`                | Base of exponent used for clause weight      |
++-----------------+---------+-------------------------+----------------------------------------------+
+
+<!---
 The free variable ratio can also be made adaptive using the option `adaptive_freevars`, the ratio is then relative to the free variables in branches that were closed. Other options are `adaptive_psat`, which uses a measure for the probability of satisfiability.
+--->
 
 Heuristics used to control which literal is selected in cubes can be configured using the parameter:
 
@@ -1167,12 +1194,12 @@ is a subset of `ps` that is consistent with respect to the solver state `s`
 and cannot be extended to a bigger subset of `ps` without becoming inconsistent
 relative to `s`. We provide a procedure for finding a maximal satisfying subset below.
 It extends a set `mss` greedily by adding as many satisfied predicates from `ps` 
-in each round. If it finds some predicate `p` that it cannot add, it notes that it
+in each round as possible. If it finds some predicate `p` that it cannot add, it notes that it
 is a backbone with respect to the current `mss`. As a friendly hint, 
 it includes the negation of `p` 
 when querying the solver in future rounds.
 
-~ Figure { #fig-marco; caption: "An algorithm for computing maximal satisfying subsets" }
+~ Figure { #fig-mss; caption: "An algorithm for computing maximal satisfying subsets" }
 ```python
 def tt(s, f): 
     return is_true(s.model().eval(f))
