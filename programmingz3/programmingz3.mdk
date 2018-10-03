@@ -1297,6 +1297,9 @@ In Python we provide the initial condition as `init`, using variables `xs`,
 the transition `trans` that uses variables `xs, xns, fvs`, and `goal` using variables `xs`.
 Bounded model checking unfolds the transition relation `trans` until it can establish that
 the goal is reachable. Bounded model checking diverges if `goal` is unreachable.
+The function `substitute(e, subst)` takes an expression `e` and a list of pairs `subst` 
+of the form `[(x1,y1),(x2,y2),..]`{language:python} 
+and replaces variables `x1,x2,..` by `y1,y2,..` in `e`.
 
 ~ Figure { #fig-bmc; caption: "Bounded Model Checking of a transition system" }
 ```python
@@ -1329,8 +1332,14 @@ def bmc(init, trans, goal, fvs, xs, xns):
         goal = substitute(goal, zipp(xs, xns))
         xs, xns, fvs = xns, ys, nfvs
 
+```
+~
+
+~ Example
+Can you count up to 10 if you only visit every 3rd number?
+```python
 x0, x1 = Consts('x0 x1', BitVecSort(4))
-bmc(x0 == 0, x1 == x0 + 1, x0 == 10, [], [x0], [x1])
+bmc(x0 == 0, x1 == x0 + 3, x0 == 10, [], [x0], [x1])
 ```
 ~
 
@@ -1348,7 +1357,7 @@ You can find a simplistic implementation of IC3 using the Python API online
 It is possible to compute interpolants using models and cores [@ChocklerIM12].
 A procedure that computes an interpolant $I$ for formulas $A$, $B$, where
 $A \land B$ is unsatisfiable proceeds by initializing $I = \true$ and 
-saturating $\lceil A, B, \true \rceil$ with respect to the rules:
+saturating $\lceil A, B, I \rceil$ with respect to the rules:
 
 
 ~ MathPre
@@ -1456,11 +1465,13 @@ def mondec(R, variables):
     return dec(Solver(),BoolVal(True))             
 ```
 ~
-An example formula that has a monadic decomposition is 
+
+~ Example
+A formula that has a monadic decomposition is 
 the bit-vector assertion for $x$, $y$ being bit-vectors of bit-width $2k$.
-~ Math
+~~ Math
    y > 0 \land (y \& (y - 1)) = 0 \land (x \& (y \% ((1 << k) - 1))) \neq 0
-~
+~~
 We can compute the monadic decomposition
 ```python
 def test_mondec(k):                             
@@ -1473,6 +1484,7 @@ def test_mondec(k):
     print("mondec1(", R([x,y]), ") =", res)
 test_mondec(2)
 ```
+~
 
 # Solver Implementations { #sec-solver-implementations }
 
