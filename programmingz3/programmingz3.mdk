@@ -81,7 +81,7 @@ calls over a C-based API. We focus on using the Python front-end as a means of
 interfacing with Z3, and start out describing the abstract syntax of terms and
 formulas accepted by Z3 in Section [#sec-logical-interface].
 Formulas draw from symbols whose meaning are defined by a set of _Theories_, 
-Section [#sec-theories]. _Solvers_, Sections [#sec-solver-interfacing] and [#sec-solver-implementations], 
+Section [#sec-theories]. _Solvers_, Sections [#sec-solver-interfacing], [#sec-using-solvers] and [#sec-solver-implementations], 
 provide services for deciding satisfiability of formula. _Tactics_, Section [#sec-tactics], provide means for
 pre-processing simplification and creating sub-goals. Z3 also provides some services
 that are not purely satisfiability queries. _Optimization_, Section [#sec-optimization],
@@ -93,7 +93,7 @@ described in Section [#sec-consequences].
 ![Z3Overall]
 ~
 
-[Z3Overall]: images/Z3Overall.jpg "Z3Overall" { width:35em }
+[Z3Overall]: images/Z3Overall.[pdf,jpg] "Z3Overall" { width:35em }
 
 
 ## Resources
@@ -1118,14 +1118,27 @@ in the SMT core.
 You can ask Z3 to suggest a case split or a sequence of case splits through the cubing method.
 It can be used for partitioning the search space into sub-problems that can be solved in parallel, 
 or alternatively simplify the problem for CDCL engines.
+~ Figure { #fig-cubes; caption : "basic cube and conquer" }
 ```python
-s = Solver()
+s = SolverFor("QF_FD")
 s.add(\($F$\))
-for cube in s.cube():
-    if sat == s.check(cube):
-       print(s.model())
-       return
+s.set("sat.restart.max", 100)
+def cube_and_conquer(s):
+    for cube in s.cube():
+       if len(cube) == 0:
+          return unknown
+       if is_true(cube[0]):
+          return sat     
+       is_sat = s.check(cube):
+       if is_sat == unknown:
+          s1 = s.translate(s.ctx)
+          s1.add(cube)
+          is_sat = cube_and_conquer(s1)
+       if is_sat != unsat:
+          return is_sat
+    return unsat
 ```
+~
 
 When the underlying solver is based on the SAT Core, see Section [#sec-sat-core], it uses
 a lookahead solver to select cubes [@HeuleKWB11]. By default, the cuber produces two branches,
@@ -1133,19 +1146,37 @@ corresponding to a case split on a single literal. The SAT Core based cuber can 
 to produce cubes that represent several branches. Each branch is represented as a conjunction
 of literals. The cut-off for branches is configured using
 
-* `sat.lookahead.cube.cutoff`{language:python} and is by default set to `depth`, which means that the cut-off for branches is based on a fixed maximal depth of cubes. The default fixed maximal depth is 1. 
-It can be changed by setting `sat.lookahead.cube.depth` to a different value than 1.
-By setting the cut-off to `freevars` the depth of cubes is governed by the ratio of non-unit literals in a branch compared to non-unit variables in the root. It can be changed from the default value of 0.8
-by overwriting `sat.lookahead.cube.freevars`.
+* `sat.lookahead.cube.cutoff`{language:python} 
+
+We summarize some of the configuration parameters that depend on the value of `cutoff`.
+
++-----------------+---------+----------------------------+-------------------------------------------+
+| `sat.lookahead` | default | used when `cube.cutoff` is | Description                               |
++-----------------+---------+-------------------------+----------------------------------------------+
+| `cube.depth`    | 1       | `depth`                 | A fixed maximal size of cubes returned       |
++-----------------+---------+-------------------------+----------------------------------------------+
+| `cube.freevars` | 0.8     | `freevars`              | the depth of cubes is governed by the ratio of non-unit literals in a branch compared to non-unit variables in the root   |
++-----------------+---------+-------------------------+----------------------------------------------+
+| `cube.fraction` | 0.4     | `adaptive_freevars`     | adaptive fraction to create lookahead cubes  |
+|                 |         | `adaptive_psat`         |                                              |
++-----------------+---------+-------------------------+----------------------------------------------+
+| `cube.psat.clause_base` | 2 | `psat`                | Base of exponent used for clause weight      |
++-----------------+---------+-------------------------+----------------------------------------------+
+
+<!---
 The free variable ratio can also be made adaptive using the option `adaptive_freevars`, the ratio is then relative to the free variables in branches that were closed. Other options are `adaptive_psat`, which uses a measure for the probability of satisfiability.
+--->
 
 Heuristics used to control which literal is selected in cubes can be configured using the parameter:
 
 * `sat.lookahead.reward`{language:python}
 
-## Using Solvers
+# Using Solvers { #sec-using-solvers }
+We now describe a collection of algorithms.
+They are developed on top of the interfaces 
+described in the previous section.
 
-#### Blocking evaluations
+## Blocking evaluations
 Models can be used to refine the state of a solver. For example, 
 we may wish to invoke the solver in a loop where new calls to 
 the solver blocks solutions that evaluate the constants to the exact same assignment.
@@ -1155,19 +1186,19 @@ def block_model(s):
     s.add(Or([ f() != m[f] for f in m.decls() if f.arity() == 0]))           
 ```
 
-#### Maximizing Satisfying Assignments [@MenciaPM15]
+## Maximizing Satisfying Assignments [@MenciaPM15]
 Another use of models is to use them as a guide to a notion of optimal model.
 A _maximal satisfying solution_, in short _mss_, for a set of formulas `ps`
 is a subset of `ps` that is consistent with respect to the solver state `s`
 and cannot be extended to a bigger subset of `ps` without becoming inconsistent
 relative to `s`. We provide a procedure for finding a maximal satisfying subset below.
 It extends a set `mss` greedily by adding as many satisfied predicates from `ps` 
-in each round. If it finds some predicate `p` that it cannot add, it notes that it
+in each round as possible. If it finds some predicate `p` that it cannot add, it notes that it
 is a backbone with respect to the current `mss`. As a friendly hint, 
 it includes the negation of `p` 
 when querying the solver in future rounds.
 
-~ Figure { #fig-marco; caption: "An algorithm for computing maximal satisfying subsets" }
+~ Figure { #fig-mss; caption: "An algorithm for computing maximal satisfying subsets" }
 ```python
 def tt(s, f): 
     return is_true(s.model().eval(f))
@@ -1201,7 +1232,7 @@ find an mss with the largest value as a binary number. Modify `get_mss`
 to produce such a number.
 ~
 
-#### All Cores and Correction Sets [@liffiton2016fast]
+## All Cores and Correction Sets [@liffiton2016fast]
 The Marco procedure combines models and cores in a process
 that enumerates all unsatisfiable cores and all maximal
 satisfying subsets of a set of formulas `ps` with
@@ -1235,7 +1266,7 @@ Efficiently enumerating cores and correction sets is an active area of research.
 Many significant improvements have been developed over the above basic 
 implementation [@BacchusK15;@MenciaPM15;@BacchusK16;@PrevitiMJM17;@Alviano17;@NarodytskaBMS18].
 
-#### Bounded Model Checking [@Biere09]
+## Bounded Model Checking [@Biere09]
 Figure [#fig-bmc] illustrates a bounded model checker
  that takes a transition system as input and checks if a goal is reachable.
 Transition systems are described as
@@ -1300,6 +1331,85 @@ You can find a simplistic implementation of IC3 using the Python API online
 <https://github.com/Z3Prover/z3/blob/master/examples/python/mini_ic3.py>
 ~
 
+## Monadic Decomposition [@VeanesBNB17]
+
+Suppose we are given a formula $\varphi[x,y]$ using variables $x$ and $y$.
+When is it possible to rewrite it as a Boolean combination of formulas
+$\psi_1(x), \ldots, \psi_k(x)$ and $\theta_1(y), \ldots, \theta_n(y)$?
+We say that the formulas $\psi_j$ and $\theta_j$ are _monadic_; they
+only depend on one variable. An application of monadic decomposition
+is to convert _extended_ symbolic finite transducers into _regular_ symbolic
+finite transducers. The regular versions are amenable to analysis and optimization.
+A procedure for monadic decomposition
+was developed in [@VeanesBNB17], and we here recall the Python prototype. 
+
+~ Figure { #fig-mondec; caption : "Monadic Decomposition" }
+```python
+from z3 import *
+def nu_ab(R, x, y, a, b):
+    x_ = [ Const("x_%d" %i,x[i].sort()) for i in range(len(x))]
+    y_ = [ Const("y_%d" %i,y[i].sort()) for i in range(len(y))]
+    return Or(Exists(y_,R(x+y_)!=R(a+y_)),Exists(x_,R(x_+y)!=R(x_+b)))
+
+def isUnsat(fml):
+    s = Solver(); s.add(fml); return unsat == s.check()
+
+def lastSat(s, m, fmls):
+    if len(fmls) == 0: return m
+    s.push(); s.add(fmls[0])
+    if s.check() == sat: m = lastSat(s, s.model(), fmls[1:])       
+    s.pop(); return m
+
+def mondec(R, variables):
+    print(variables)
+    phi = R(variables);    
+    if len(variables)==1: return phi
+    l = int(len(variables)/2)
+    x, y = variables[0:l], variables[l:]
+    def dec(nu, pi):
+        if isUnsat(And(pi, phi)): 
+           return BoolVal(False)
+        if isUnsat(And(pi, Not(phi))): 
+           return BoolVal(True)
+        fmls = [BoolVal(True), phi, pi] 
+        #try to extend nu
+        m = lastSat(nu, None, fmls)              
+        #nu must be consistent 
+        assert(m != None)                         
+        a = [ m.evaluate(z,True) for z in x ]
+        b = [ m.evaluate(z,True) for z in y ]
+        psi_ab = And(R(a+y), R(x+b))
+        phi_a = mondec(lambda z: R(a+z),y)
+        phi_b = mondec(lambda z: R(z+b),x)
+        nu.push()
+        #exclude: x~a and y~b
+        nu.add(nu_ab(R, x, y, a, b))              
+        t = dec(nu, And(pi, psi_ab)) 
+        f = dec(nu, And(pi, Not(psi_ab)))
+        nu.pop()
+        return If(And(phi_a, phi_b), t, f)
+    #nu is initially true
+    return dec(Solver(),BoolVal(True))             
+```
+~
+An example formula that has a monadic decomposition is 
+the bit-vector assertion for $x$, $y$ being bit-vectors of bit-width $2k$.
+~ Math
+   y > 0 \land (y \& (y - 1)) = 0 \land (x \& (y \% ((1 << k) - 1))) \neq 0
+~
+We can compute the monadic decomposition
+```python
+def test_mondec(k):                             
+    R = lambda v:And(v[1]>0,(v[1]&(v[1]-1))==0,
+                     (v[0]& (v[1]%((1<<k)-1)))!=0)
+    bvs = BitVecSort(2*k)                        #use 2k-bit bitvectors
+    x,y = Consts('x y',bvs)
+    res = mondec(R,[x,y])
+    assert(isUnsat(res != R([x,y])))             #check correctness 
+    print("mondec1(", R([x,y]), ") =", res)
+test_mondec(2)
+```
+
 # Solver Implementations { #sec-solver-implementations }
 
 There are five main solvers embedded in Z3.
@@ -1322,7 +1432,7 @@ and equalities that are relevant in the current branch.
 ![SMTCore]
 ~ 
 
-[SMTCore]: images/SMTCore.jpg "SMTCore" { width:25em }
+[SMTCore]: images/SMTCore.[pdf,jpg] "SMTCore" { width:25em }
 
 
 To force using the SMT solver a user can create 
@@ -1821,7 +1931,7 @@ Figure [#fig-satcore] shows the overall architecture of Z3's SAT solver.
 ~ Figure { #fig-satcore; caption: "Architecture of Z3's SAT Solver" }
 ![SATCore]
 ~
-[SATCore]: images/SATCore.jpg "SATCore" { width:40em }
+[SATCore]: images/SATCore.[pdf,jpg] "SATCore" { width:40em }
 
 There are four main components. Central to the SAT solver is an engine that performs
 case splits, lemma learning and backtracking search. It is the main CDCL engine
@@ -1937,8 +2047,12 @@ information on the Fixedpoint engine can be found on <https://rise4fun.com/z3/tu
 
 We provide a very simple illustration of Horn clause usage here. McCarthy's 91 function illustrates
 nested recursion in a couple of lines, but otherwise makes no sense: it computes a function
-that can be described directly as `If(x > 101, 91, x - 10)`{language:python}. We will pretend
-this is a partial and interesting specification and prove this automatically using Horn clauses.
+that can be described directly as 
+```python
+    If(x > 101, 91, x - 10).
+```
+We will pretend this is a partial and interesting 
+specification and prove this automatically using Horn clauses.
 ```python
 def mc(x):
     if x > 100:
