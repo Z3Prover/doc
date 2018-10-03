@@ -61,9 +61,8 @@ be cast in terms of formulas in a supported logic. It is then useful for the
 tool writer to have an idea of what are available supported logics, and 
 have an idea of how formulas are solved. But interacting with SMT
 solvers is not always limited to posing a query as a single formula. 
-It may require a sequence of interactions to obtain a usable answer. 
-It is then useful to have an idea of what methods and knobs are available
-for the tool writer. 
+It may require a sequence of interactions to obtain a usable answer
+and the need emerges for the tool writer for having an idea of what methods and knobs are available. 
 In summary, this tutorial aims to answer the following types of questions
 through examples and a touch of theory:
 
@@ -1325,6 +1324,7 @@ and equalities that are relevant in the current branch.
 
 [SMTCore]: images/SMTCore.jpg "SMTCore" { width:25em }
 
+
 To force using the SMT solver a user can create 
 a _simple solver_ using the function `SimpleSolver`{language:python}.
 
@@ -1701,7 +1701,7 @@ a single quantified formula with quantifier free body $\varphi$.
 The Model-Based Quantifier Instantiation, MBQI, procedure is 
 described in Figure [#fig-mbqi]:
 
-~ Figure { #fig-mbqi; caption:"Model-Based Quantifier Instantiation algorithm. Notice that this is proto-algorithm code is not directly executable." }
+~ Figure { #fig-mbqi; caption:"Model-Based Quantifier Instantiation algorithm. Notice that this proto-algorithm code is not directly executable." }
 ```python
 s.add(\($\psi$\))
 while True:
@@ -2270,7 +2270,6 @@ for solving optimization queries. The architecture of the optimization context i
 
 
 ~ Snippet
-
 \usetikzlibrary{shapes,arrows}
 \usetikzlibrary{positioning}
 
@@ -2300,8 +2299,6 @@ for solving optimization queries. The architecture of the optimization context i
     \path [line] (optsmt.south)  |-+(0,-1.5em)-| node [above, yshift=0.25em]{}(smtcore);
     \path [line] (smtsolvers.east) --  node [left, yshift=-0.25em]{}(smtcore);
 \end{tikzpicture}
-
-
 ~
 
 The `Optimize`{language:python} context provides three main extensions to satisfiability checking:
