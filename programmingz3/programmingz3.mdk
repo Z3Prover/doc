@@ -298,6 +298,22 @@ Bi-implication is a special case of equality, so from Python, when saying
 `a == b` for Boolean _a_ and _b_ it is treated as a logical formula for the 
 bi-implication of _a_ and _b_.
 
+A set of utilities are available to traverse expressions once they are created.
+Every function application has a function _declaration_ and a set of _arguments_
+accessed as children.
+
+```python
+x = Int('x')
+y = Int('y')
+n = x + y >= 3
+print("num args: ", n.num_args())
+print("children: ", n.children())
+print("1st child:", n.arg(0))
+print("2nd child:", n.arg(1))
+print("operator: ", n.decl())
+print("op name:  ", n.decl().name())
+```
+
 ## Quantifiers
 Universal and existential quantifiers bind variables to the scope of the quantified
 formula. For example
@@ -1356,16 +1372,16 @@ You can find a simplistic implementation of IC3 using the Python API online
 It is possible to compute interpolants using models and cores [@ChocklerIM12].
 A procedure that computes an interpolant $I$ for formulas $A$, $B$, where
 $A \land B$ is unsatisfiable proceeds by initializing $I = \true$ and 
-saturating $\lceil A, B, I \rceil$ with respect to the rules:
+saturating a state $\lceil A, B, I \rceil$ with respect to the rules:
 
 
 ~ MathPre
- \lceil A, B, I \rceil & \Longrightarrow & \lceil A, B, I \land \neg L\rceil & \mbox{if} & B \vdash \neg L, A \land I\not\vdash \neg L \\
-                       &                 & I & \mbox{if} & A \vdash \neg I %\\
+ \lceil A, B, I \rceil & \Longrightarrow & \lceil A, B, I \land \neg L\rceil &        \mbox{if} & B \vdash \neg L, A \land I\not\vdash \neg L \\
+                       &                 & I                                 &        \mbox{if} & A \vdash \neg I %\\
 ~
 
 The partial interpolant $I$ produced by pogo satisfies $B \vdash I$. It terminates when $A \vdash \neg I$.
-The condition $A \land I \not\vdash \neg L$ ensures that the algorithm makes progress and suggests using an implicant $L' \supseteq L$ of $A \land I$ in each iteration.
+The condition $A \land I \not\vdash \neg L$ ensures that the algorithm makes progress and suggests using an implicant $L' \supseteq L$ of $A \land I$ in each iteration. Such an implicant can be obtained from a model for $A \land I$.
 
 ~ Figure { #fig-interpolate; caption : "Propositional interpolation" }
 ```python
@@ -1390,13 +1406,13 @@ def pogo(A, B, xs):
 ~
 
 ~ Example
-The (reverse) interpolant between $A: x_1 = a_1 = a_2 = a_2$ and $B: x_1 = b_1 \neq b_2 = x_2$
+The (reverse) interpolant between $A: x_1 = a_1 \neq a_2 \neq x_2$ and $B: x_1 = b_1 \neq b_2 = x_2$
 using vocabulary $x_1, x_2$ is $x_1 \neq x_2$. It is implied by $B$ and inconsistent with $A$.
 ```python
 A = SolverFor("QF_FD")
 B = SolverFor("QF_FD")
 a1, a2, b1, b2, x1, x2 = Bools('a1 a2 b1 b2 x1 x2')
-A.add(a1 == x1, a2 == a1, a2 == x2)
+A.add(a1 == x1, a2 != a1, a2 != x2)
 B.add(b1 == x1, b2 != b1, b2 == x2)
 print(list(pogo(A, B, [x1, x2])))
 ```
@@ -1507,7 +1523,7 @@ and equalities that are relevant in the current branch.
 ![SMTCore]
 ~ 
 
-[SMTCore]: images/SMTCore.[pdf,jpg] "SMTCore" { width:25em }
+[SMTCore]: images/SMTCore.[pdf,jpg] "SMTCore" { width:45em }
 
 
 To force using the SMT solver a user can create 
@@ -1845,13 +1861,15 @@ The secret sauce to efficiency is to find instantiations
 Z3 uses code-trees [@RamakrishnanSV01] to address scale bottlenecks for search involving 
 thousands of patterns and terms. 
 
-### Model-Based Quantifier Instantiation [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13]
+### Model-Based Quantifier Instantiation 
 
 E-matching provides a highly syntactic restriction on instantiations. 
 An alternative to E-matching is based on using a current model of the quantifier-free part of 
 the search state. It is used to evaluate the universal quantifiers that have to be satisfied
 in order for the current model to extend to a full model of the conjunction of all
-asserted constraints. Take the following example:
+asserted constraints. We call this method _Model-Based Quantifier Instantiation_
+[@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13].
+Take the following example:
 
 ```python
 from z3 import *
@@ -2468,7 +2486,7 @@ for solving optimization queries. The architecture of the optimization context i
 \tikzstyle{block} = [rectangle, draw, text centered, rounded corners, minimum height=2em]
 \tikzstyle{line} = [draw, -latex']
     
-\begin{tikzpicture}[node distance = 5em, auto]
+\begin{tikzpicture}[node distance = 5em, scale = 0.2]
     % Place nodes
     \node [block, text width=7em] (transformation) {0-1 constraints $\Rightarrow$ PBO};
 	\node [block, left=of transformation, text width=7em] (optimization) {SMT formula with objectives};    
@@ -2491,6 +2509,10 @@ for solving optimization queries. The architecture of the optimization context i
     \path [line] (optsmt.south)  |-+(0,-1.5em)-| node [above, yshift=0.25em]{}(smtcore);
     \path [line] (smtsolvers.east) --  node [left, yshift=-0.25em]{}(smtcore);
 \end{tikzpicture}
+<<<<<<< HEAD
+=======
+
+>>>>>>> c7eaf81bddd61c676a9df00dd2105a06c21006ca
 ~
 
 The `Optimize`{language:python} context provides three main extensions to satisfiability checking:
