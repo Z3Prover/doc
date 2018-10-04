@@ -1178,17 +1178,23 @@ of literals. The cut-off for branches is configured using
 
 We summarize some of the configuration parameters that depend on the value of `cutoff`.
 
-+-----------------+---------+----------------------------+-------------------------------------------+
-| `sat.lookahead` | default | used when `cube.cutoff` is | Description                               |
 +-----------------+---------+-------------------------+----------------------------------------------+
-| `cube.depth`    | 1       | `depth`                 | A fixed maximal size of cubes returned       |
+| `sat.lookahead` |         | used when               | Description                                  |
+|                 |         | `cube.cutoff` is        |                                              |
 +-----------------+---------+-------------------------+----------------------------------------------+
-| `cube.freevars` | 0.8     | `freevars`              | the depth of cubes is governed by the ratio of non-unit literals in a branch compared to non-unit variables in the root   |
+| `cube.depth`    | 1       | `depth`                 | A fixed maximal size                         |
+|                 |         |                         | of cubes is returned                         |
 +-----------------+---------+-------------------------+----------------------------------------------+
-| `cube.fraction` | 0.4     | `adaptive_freevars`     | adaptive fraction to create lookahead cubes  |
-|                 |         | `adaptive_psat`         |                                              |
+| `cube.freevars` | 0.8     | `freevars`              | the depth of cubes is governed               |
+|                 |         |                         | by the ratio of non-unit literals            |
+|                 |         |                         | in a branch compared to                      |
+|                 |         |                         | non-unit variables in the root               |
 +-----------------+---------+-------------------------+----------------------------------------------+
-| `cube.psat.clause_base` | 2 | `psat`                | Base of exponent used for clause weight      |
+| `cube.fraction` | 0.4     | `adaptive_freevars`     | adaptive fraction to create                  | 
+|                 |         | `adaptive_psat`         | lookahead cubes                              |
++-----------------+---------+-------------------------+----------------------------------------------+
+| `cube.psat.`    | 2       | `psat`                  | Base of exponent used                        |
+| `clause_base`   |         |                         | for clause weight                            |
 +-----------------+---------+-------------------------+----------------------------------------------+
 
 <!---
@@ -1521,10 +1527,67 @@ is handled by a CDCL SAT solver, and for letting each theory learn constraints
 and equalities that are relevant in the current branch.
 
 ~ Figure { #fig-z3core; caption: "Architecture of Z3's SMT Core solver." }
+~~ Snippet
+
+\begin{picture}(270,210)(0,-10)
+
+\multiput(75,40)(0,77){3}{\oval(20,20)[tr]}
+\multiput(75,0)(0,77){3}{\oval(20,20)[br]}
+\multiput(10,40)(0,77){3}{\oval(20,20)[tl]}
+\multiput(0,0)(0,77){3}{\line(0,1){40}}
+\multiput(85,0)(0,77){3}{\line(0,1){40}}
+\multiput(10,50)(0,77){3}{\line(1,0){65}}
+\multiput(10,-10)(0,77){3}{\line(1,0){65}}
+\multiput(10,0)(0,77){3}{\oval(20,20)[bl]}
+
+\put(16,155){\shortstack{E-matching\\ based \\ Quantifier\\ Instantiation}}
+\put(16, 92){\shortstack{EUF + SAT}}
+\put(16,0){\shortstack{Model\\ based \\ Quantifier\\ Instantiation}}
+
+\put(267,195){\oval(20,20)[tr]}
+\put(267,0){\oval(20,20)[br]}
+\put(149,195){\oval(20,20)[tl]}
+\put(149,0){\oval(20,20)[bl]}
+\put(149,-10){\line(1,0){120}}
+\put(149,205){\line(1,0){120}}
+\put(139,0){\line(0,1){195}}
+\put(277,0){\line(0,1){195}}
+
+
+\multiput(255,20)(0,37){5}{\oval(20,20)[tr]}
+\multiput(255,10)(0,37){5}{\oval(20,20)[br]}
+\multiput(165,10)(0,37){5}{\oval(20,20)[bl]}
+\multiput(165,20)(0,37){5}{\oval(20,20)[tl]}
+\multiput(155,10)(0,37){5}{\line(0,1){10}}
+\multiput(265,10)(0,37){5}{\line(0,1){10}}
+\multiput(165,30)(0,37){5}{\line(1,0){90}}
+\multiput(165,0)(0,37){5}{\line(1,0){90}}
+\put(170,12){Strings/Sequences}
+\put(185,50){Datatypes}
+\put(185,86){Bit-vectors}
+\put(195,122){Arrays}
+\put(185,158){Arithmetic}
+\put(190,190){Theories}
+
+\put(42,50){\vector(0,1){17}}
+\put(42,67){\vector(0,-1){17}}
+\put(42,127){\vector(0,1){17}}
+\put(42,144){\vector(0,-1){17}}
+
+\put(85,95){\vector(1,0){54}}
+\put(139,95){\vector(-1,0){54}}
+
+\end{picture}
+~~
+~
+
+<!---
+~ Figure { #fig-z3core; caption: "Architecture of Z3's SMT Core solver." }
 ![SMTCore]
 ~ 
 
 [SMTCore]: images/SMTCore.[pdf,jpg] "SMTCore" { width:45em }
+--->
 
 To force using the SMT solver a user can create 
 a _simple solver_ using the function `SimpleSolver`{language:python}.
@@ -2022,9 +2085,101 @@ is satisfiable, and a possible model is:
 Figure [#fig-satcore] shows the overall architecture of Z3's SAT solver.
 
 ~ Figure { #fig-satcore; caption: "Architecture of Z3's SAT Solver" }
+~~ Snippet
+\begin{picture}(330,210)(0,-10)
+
+\multiput(95,170)(240,0){2}{\oval(20,20)[tr]}
+\multiput(95,0)(240,0){2}{\oval(20,20)[br]}
+\multiput(10,170)(240,0){2}{\oval(20,20)[tl]}
+\multiput(0,0)(240,0){2}{\line(0,1){170}}
+\multiput(105,0)(240,0){2}{\line(0,1){170}}
+\multiput(10,180)(240,0){2}{\line(1,0){85}}
+\multiput(10,-10)(240,0){2}{\line(1,0){85}}
+\multiput(10,0)(240,0){2}{\oval(20,20)[bl]}
+
+% Middle bottom
+\put(215,100){\oval(20,20)[tr]}
+\put(215,0){\oval(20,20)[br]}
+\put(130,100){\oval(20,20)[tl]}
+\put(130,0){\oval(20,20)[bl]}
+\put(120,0){\line(0,1){100}}
+\put(225,0){\line(0,1){100}}
+\put(130,110){\line(1,0){85}}
+\put(130,-10){\line(1,0){85}}
+
+% Middle top
+\put(215,170){\oval(20,20)[tr]}
+\put(215,140){\oval(20,20)[br]}
+\put(130,170){\oval(20,20)[tl]}
+\put(130,140){\oval(20,20)[bl]}
+\put(120,140){\line(0,1){30}}
+\put(225,140){\line(0,1){30}}
+\put(130,180){\line(1,0){85}}
+\put(130,130){\line(1,0){85}}
+
+% Left box
+\multiput(85,20)(0,50){3}{\oval(20,20)[tr]}
+\multiput(85,10)(0,50){3}{\oval(20,20)[br]}
+\multiput(20,20)(0,50){3}{\oval(20,20)[tl]}
+\multiput(10,10)(0,50){3}{\line(0,1){10}}
+\multiput(95,10)(0,50){3}{\line(0,1){10}}
+\multiput(20,30)(0,50){3}{\line(1,0){65}}
+\multiput(20,0)(0,50){3}{\line(1,0){65}}
+\multiput(20,10)(0,50){3}{\oval(20,20)[bl]}
+
+% Right box
+\multiput(325,20)(0,50){3}{\oval(20,20)[tr]}
+\multiput(325,10)(0,50){3}{\oval(20,20)[br]}
+\multiput(260,20)(0,50){3}{\oval(20,20)[tl]}
+\multiput(260,10)(0,50){3}{\oval(20,20)[bl]}
+\multiput(250,10)(0,50){3}{\line(0,1){10}}
+\multiput(335,10)(0,50){3}{\line(0,1){10}}
+\multiput(260,30)(0,50){3}{\line(1,0){65}}
+\multiput(260,0)(0,50){3}{\line(1,0){65}}
+
+% Middle box
+\multiput(205,10)(0,30){3}{\oval(20,20)[r]}
+\multiput(140,10)(0,30){3}{\oval(20,20)[l]}
+\multiput(130,10)(0,30){3}{\line(0,1){1}}
+\multiput(215,10)(0,30){3}{\line(0,1){1}}
+\multiput(140,20)(0,30){3}{\line(1,0){65}}
+\multiput(140,0)(0,30){3}{\line(1,0){65}}
+
+\put(30,10){Lookahead}
+\put(30,60){Unit Walk}
+\put(30,110){Walk SAT}
+
+\put(265,10){Xor Resolver}
+\put(255,60){Pseudo-Booleans}
+\put(265,110){Cardinalities}
+
+\put(20,150){Co-processors}
+\put(255,150){Boolean Theories}
+\put(135,150){CDCL SAT Core}
+
+\put(140,8){Subsumption, ..}
+\put(134,38){Variable Removal}
+\put(138,66){Blocked Clauses}
+\put(140,90){In-processing}
+
+\put(170,110){\vector(0,1){20}}
+\put(170,130){\vector(0,-1){20}}
+\put(105,155){\vector(1,0){15}}
+\put(120,155){\vector(-1,0){15}}
+\put(225,155){\vector(1,0){15}}
+\put(240,155){\vector(-1,0){15}}
+
+\end{picture}
+
+~~
+~
+
+<!---
+~ Figure { #fig-satcore; caption: "Architecture of Z3's SAT Solver" }
 ![SATCore]
 ~
 [SATCore]: images/SATCore.[pdf,jpg] "SATCore" { width:40em }
+--->
 
 There are four main components. Central to the SAT solver is an engine that performs
 case splits, lemma learning and backtracking search. It is the main CDCL engine
