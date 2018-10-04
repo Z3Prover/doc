@@ -2509,10 +2509,6 @@ for solving optimization queries. The architecture of the optimization context i
     \path [line] (optsmt.south)  |-+(0,-1.5em)-| node [above, yshift=0.25em]{}(smtcore);
     \path [line] (smtsolvers.east) --  node [left, yshift=-0.25em]{}(smtcore);
 \end{tikzpicture}
-<<<<<<< HEAD
-=======
-
->>>>>>> c7eaf81bddd61c676a9df00dd2105a06c21006ca
 ~
 
 The `Optimize`{language:python} context provides three main extensions to satisfiability checking:
@@ -2582,7 +2578,7 @@ while opt.check() == sat:
 
 The conventional definition of MaxSAT is to minimize the number of violated _soft_ assertions.
 There are several algorithms for MaxSAT, and developing new algorithms is a very active area
-of research. We will here describe MaxRes from [@NarodytskaB14]. It is also the default
+of research. We will here describe MaxRes from [@NarodytskaB14]. It is also Z3's default
 solver for MaxSAT/MaxSMT problems. 
 As an illustration assume we are given an _unweighted_ (all soft constraints have weight 1) 
 MaxSAT problem $F, F_1, \ldots, F_5$,
