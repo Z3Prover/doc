@@ -132,16 +132,22 @@ examples using the Python front-end
 <https://yurichev.com/writings/SAT_SMT_by_example.pdf>.
 
 * The Ivy system is written in Python and uses Z3
-<https://github.com/Microsoft/ivy>.
+  ~ Center
+  <https://github.com/Microsoft/ivy>.
+  ~
 
 * The binary analysis kit Angr system is written in Python and uses Z3
-<https://docs.angr.io/>.
+  ~ Center
+  <https://docs.angr.io/>.
+  ~
 
 * There was an online interactive Python tutorial. 
   It is discontinued as it ended up being a target for
   hacks. A snapshot of the web pages, including the non-interactive
   examples can be found at
+  ~ Center
   <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py>.
+  ~
 
 ## Sources
 The material in this tutorial is assembled from several sources.
@@ -788,7 +794,10 @@ Other:
 ## Bit-Vectors
 
 Let us play with some bit-fiddling.
-The resource <https://graphics.stanford.edu/~seander/bithacks.html>, 
+The resource 
+~ Center
+<https://graphics.stanford.edu/~seander/bithacks.html>, 
+~
 lists a substantial
 repertoire of bit-vector operations that can be used as alternatives to potentially more expensive
 operations.
@@ -896,7 +905,8 @@ of the string, the string itself must be the concatenation of the prefix and suf
 ```python
 s, t, u = Strings('s t u')
 prove(Implies(And(PrefixOf(s, t), SuffixOf(u, t), 
-                  Length(t) == Length(s) + Length(u)), t == Concat(s, u)))
+                  Length(t) == Length(s) + Length(u)), 
+             t == Concat(s, u)))
 ```
 
 One can concatenate single elements to a sequence as units:
@@ -1498,10 +1508,10 @@ We can compute the monadic decomposition
 def test_mondec(k):                             
     R = lambda v:And(v[1]>0,(v[1]&(v[1]-1))==0,
                      (v[0]& (v[1]%((1<<k)-1)))!=0)
-    bvs = BitVecSort(2*k)                        #use 2k-bit bitvectors
+    bvs = BitVecSort(2*k)                     #use 2k-bit bitvectors
     x,y = Consts('x y',bvs)
     res = mondec(R,[x,y])
-    assert(isUnsat(res != R([x,y])))             #check correctness 
+    assert(isUnsat(res != R([x,y])))          #check correctness 
     print("mondec1(", R([x,y]), ") =", res)
 test_mondec(2)
 ```
@@ -2587,8 +2597,14 @@ print(t(g))
 ```
 
 
-Additional information on tactics is available from [@MouraP13], <https://rise4fun.com/Z3/tutorial/strategies> 
-and <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py/strategies-examples.htm>.
+Additional information on tactics is available from [@MouraP13], 
+~ Center
+<https://rise4fun.com/Z3/tutorial/strategies> 
+~
+and 
+~ Center
+<http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py/strategies-examples.htm>.
+~
 
 ## Solvers from Tactics
 Given a tactic `t`, the method `t.solver()` extracts a solver object that applies the tactic to the current assertions
