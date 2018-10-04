@@ -19,6 +19,9 @@ Package       : amssymb
 Package       : [curve]xypic
 Package       : tikz
 Package       : algorithm2e
+~Exercise     : @h1-exercise=lower-case @h1-exercise label="@h1@h1-exercise"
+                margin-left=0em
+                before="[**Exercise &label;: **]{margin-left=0em}&br;"
 
 ~ MathDefs
 \newcommand{\Mbp}{Mbp}
@@ -37,6 +40,8 @@ Package       : algorithm2e
 
 
 ~
+
+
 
 [TITLE]
 
@@ -1143,7 +1148,13 @@ def cube_and_conquer(s):
 When the underlying solver is based on the SAT Core, see Section [#sec-sat-core], it uses
 a lookahead solver to select cubes [@HeuleKWB11]. By default, the cuber produces two branches,
 corresponding to a case split on a single literal. The SAT Core based cuber can be configured
-to produce cubes that represent several branches. Each branch is represented as a conjunction
+to produce cubes that represent several branches. An empty cube indicates a failure, such
+as, the solver does not support cubing (only the SMT and SAT cores support cubing, and generic
+solvers based on tactics do not), or a timeout or resource bound was encountered during cubing.
+A cube comprising of the Boolean constant `true` indicates that the state of the solver is
+satisfiable. Finally, it is possible for the `s.cube()` method to return an empty set of cubes.
+This happens when the state of `s` is unsatisfiable.
+Each branch is represented as a conjunction
 of literals. The cut-off for branches is configured using
 
 * `sat.lookahead.cube.cutoff`{language:python} 
@@ -1186,12 +1197,13 @@ def block_model(s):
     s.add(Or([ f() != m[f] for f in m.decls() if f.arity() == 0]))           
 ```
 
-## Maximizing Satisfying Assignments [@MenciaPM15]
+## Maximizing Satisfying Assignments
 Another use of models is to use them as a guide to a notion of optimal model.
 A _maximal satisfying solution_, in short _mss_, for a set of formulas `ps`
 is a subset of `ps` that is consistent with respect to the solver state `s`
 and cannot be extended to a bigger subset of `ps` without becoming inconsistent
-relative to `s`. We provide a procedure for finding a maximal satisfying subset below.
+relative to `s`. We provide a procedure, from [@MenciaPM15], 
+for finding a maximal satisfying subset below.
 It extends a set `mss` greedily by adding as many satisfied predicates from `ps` 
 in each round as possible. If it finds some predicate `p` that it cannot add, it notes that it
 is a backbone with respect to the current `mss`. As a friendly hint, 
@@ -1225,15 +1237,14 @@ def get_mss(s, mss, ps):
 
 
 ~ Exercise
-__Exercise__:
 Suppose `ps` is a list corresponding to digits in a binary number
 and `ps` is ordered by most significant digit down. The goal is to
 find an mss with the largest value as a binary number. Modify `get_mss` 
 to produce such a number.
 ~
 
-## All Cores and Correction Sets [@liffiton2016fast]
-The Marco procedure combines models and cores in a process
+## All Cores and Correction Sets 
+The Marco procedure [@liffiton2016fast] combines models and cores in a process
 that enumerates all unsatisfiable cores and all maximal
 satisfying subsets of a set of formulas `ps` with
 respect to solver `s`. It maintains a `map` solver
@@ -1266,8 +1277,8 @@ Efficiently enumerating cores and correction sets is an active area of research.
 Many significant improvements have been developed over the above basic 
 implementation [@BacchusK15;@MenciaPM15;@BacchusK16;@PrevitiMJM17;@Alviano17;@NarodytskaBMS18].
 
-## Bounded Model Checking [@Biere09]
-Figure [#fig-bmc] illustrates a bounded model checker
+## Bounded Model Checking 
+Figure [#fig-bmc] illustrates a bounded model checking procedure [@Biere09]
  that takes a transition system as input and checks if a goal is reachable.
 Transition systems are described as
 
@@ -1285,6 +1296,9 @@ In Python we provide the initial condition as `init`, using variables `xs`,
 the transition `trans` that uses variables `xs, xns, fvs`, and `goal` using variables `xs`.
 Bounded model checking unfolds the transition relation `trans` until it can establish that
 the goal is reachable. Bounded model checking diverges if `goal` is unreachable.
+The function `substitute(e, subst)` takes an expression `e` and a list of pairs `subst` 
+of the form `[(x1,y1),(x2,y2),..]`{language:python} 
+and replaces variables `x1,x2,..` by `y1,y2,..` in `e`.
 
 ~ Figure { #fig-bmc; caption: "Bounded Model Checking of a transition system" }
 ```python
@@ -1317,8 +1331,14 @@ def bmc(init, trans, goal, fvs, xs, xns):
         goal = substitute(goal, zipp(xs, xns))
         xs, xns, fvs = xns, ys, nfvs
 
+```
+~
+
+~ Example
+Can you count up to 10 if you only visit every 3rd number?
+```python
 x0, x1 = Consts('x0 x1', BitVecSort(4))
-bmc(x0 == 0, x1 == x0 + 1, x0 == 10, [], [x0], [x1])
+bmc(x0 == 0, x1 == x0 + 3, x0 == 10, [], [x0], [x1])
 ```
 ~
 
@@ -1331,7 +1351,59 @@ You can find a simplistic implementation of IC3 using the Python API online
 <https://github.com/Z3Prover/z3/blob/master/examples/python/mini_ic3.py>
 ~
 
-## Monadic Decomposition [@VeanesBNB17]
+## Propositional Interpolation
+
+It is possible to compute interpolants using models and cores [@ChocklerIM12].
+A procedure that computes an interpolant $I$ for formulas $A$, $B$, where
+$A \land B$ is unsatisfiable proceeds by initializing $I = \true$ and 
+saturating $\lceil A, B, I \rceil$ with respect to the rules:
+
+
+~ MathPre
+ \lceil A, B, I \rceil & \Longrightarrow & \lceil A, B, I \land \neg L\rceil & \mbox{if} & B \vdash \neg L, A \land I\not\vdash \neg L \\
+                       &                 & I & \mbox{if} & A \vdash \neg I %\\
+~
+
+The partial interpolant $I$ produced by pogo satisfies $B \vdash I$. It terminates when $A \vdash \neg I$.
+The condition $A \land I \not\vdash \neg L$ ensures that the algorithm makes progress and suggests using an implicant $L' \supseteq L$ of $A \land I$ in each iteration.
+
+~ Figure { #fig-interpolate; caption : "Propositional interpolation" }
+```python
+def mk_lit(m, x):
+    if is_true(m.eval(x)):
+       return x
+    else:
+       return Not(x)
+
+def pogo(A, B, xs):   
+    while sat == A.check():
+       m = A.model()
+       L = [mk_lit(m, x) for x in xs]
+       if unsat == B.check(L):
+          notL = Not(And(B.unsat_core()))
+          yield notL
+          A.add(notL)
+       else:
+          print("expecting unsat")
+          break
+```
+~
+
+~ Example
+The (reverse) interpolant between $A: x_1 = a_1 = a_2 = a_2$ and $B: x_1 = b_1 \neq b_2 = x_2$
+using vocabulary $x_1, x_2$ is $x_1 \neq x_2$. It is implied by $B$ and inconsistent with $A$.
+```python
+A = SolverFor("QF_FD")
+B = SolverFor("QF_FD")
+a1, a2, b1, b2, x1, x2 = Bools('a1 a2 b1 b2 x1 x2')
+A.add(a1 == x1, a2 == a1, a2 == x2)
+B.add(b1 == x1, b2 != b1, b2 == x2)
+print(list(pogo(A, B, [x1, x2])))
+```
+
+~
+
+## Monadic Decomposition 
 
 Suppose we are given a formula $\varphi[x,y]$ using variables $x$ and $y$.
 When is it possible to rewrite it as a Boolean combination of formulas
@@ -1392,11 +1464,13 @@ def mondec(R, variables):
     return dec(Solver(),BoolVal(True))             
 ```
 ~
-An example formula that has a monadic decomposition is 
+
+~ Example
+A formula that has a monadic decomposition is 
 the bit-vector assertion for $x$, $y$ being bit-vectors of bit-width $2k$.
-~ Math
+~~ Math
    y > 0 \land (y \& (y - 1)) = 0 \land (x \& (y \% ((1 << k) - 1))) \neq 0
-~
+~~
 We can compute the monadic decomposition
 ```python
 def test_mondec(k):                             
@@ -1409,6 +1483,7 @@ def test_mondec(k):
     print("mondec1(", R([x,y]), ") =", res)
 test_mondec(2)
 ```
+~
 
 # Solver Implementations { #sec-solver-implementations }
 
@@ -2038,11 +2113,14 @@ SPACER Horn clause solver by Arie Gurfinkel to solve Horn clauses over arithmeti
 A Constrained Horn Clause is a disjunction of literals over a set of uninterpreted 
 predicates and interpreted functions and interpreted predicates (such as arithmetical 
 operations `+` and relations `<=`). The uninterpreted predicates, 
-may occur negatively without restrictions, but only occur positively in at most one literal.
+may occur negatively without restrictions, but only occur positively in at most one place.
 
 The solver also contains a Datalog engine that can be used to solve Datalog queries
 (with stratified negation) over finite domains and "header spaces" that are large finite
-domains, but can be encoded succinctly using ternary bit-vectors. Additional
+domains, but can be encoded succinctly using ternary bit-vectors. The `Fixedpoint`{language:python}
+context contains facilities for building Horn clauses, and generally a set of stratified Datalog rules, 
+and for querying the resulting set of rules and facts.
+Additional
 information on the Fixedpoint engine can be found on <https://rise4fun.com/z3/tutorial/fixedpoints>.
 
 We provide a very simple illustration of Horn clause usage here. McCarthy's 91 function illustrates
