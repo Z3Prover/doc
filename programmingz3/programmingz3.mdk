@@ -320,7 +320,7 @@ print("operator: ", n.decl())
 print("op name:  ", n.decl().name())
 ```
 
-## Quantifiers
+## Quantifiers and Lambda binding
 Universal and existential quantifiers bind variables to the scope of the quantified
 formula. For example
 ```python
@@ -340,16 +340,19 @@ $\lambda$s may be convenient when expressing properties of arrays and Z3 uses ar
 sorts of lambda expressions. 
 Thus, the result of `memset` is an array from integers to integers.
 Z3 reasons about quantifier free formulas that contains `memset` by instantiating the body of
-the $\lambda.
+the $\lambda$.
 ```python
 m, m1 = Array('m', Z, Z), Array('m1', Z, Z)
 def memset(lo,hi,y,m):
     return Lambda([x], If(And(lo <= x, x <= hi), y, Select(m, x)))
 solve([m1 == memset(1, 700, z, m), Select(m1, 6) != z])
 ```
-Lambda binding is convenient for creating closures. 
-Lambda lifting, in conjunction with Reynold's defunctionalization, is used to
-reduce reasoning about closures to universally quantified definitions.
+Lambda binding is convenient for creating closures. Recall that meaining
+of ```Lambda([x,y], e)```, where `e` is an expression with free
+occurrences of `x` and `y` is as a function that takes two arguments
+and substitutes their values for `x` and `y` in `e`.
+Z3 uses Lambda lifting, in conjunction with Reynold's defunctionalization, 
+to reduce reasoning about closures to universally quantified definitions.
 Z3 treats arrays as general function spaces. All first-order definable functions may be arrays.
 Some second-order theorems can be established by synthesizing $\lambda$ terms by instantiation.
 Thus,
