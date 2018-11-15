@@ -934,6 +934,17 @@ retracted when the scope is popped. In this section we describe the interface
 to solvers. The next section describes the main solver instances the support
 the Solver interface.
 
+## Incrementality
+Solvers can be used to check satisfiability of assertions in an incremental way.
+An initial set of assertions can be checked for satisiability followed
+by additional assertions and checks. Assertions can be retracted using
+scopes that are pushed and popped. Under the hood, Z3 uses a one-shot solver
+during the first check. If further calls are made into the solver, the default 
+behavior is to switch to an _incremental_ solver. The incremental solver 
+uses the SMT core, see [#sec-smt-core], by default. For use-cases that don't 
+require all features by the SMT core, it may be beneficiary to use specialized
+solvers, such as solvers for finite domains (bit-vectors, enumeration types, bounded integers, and Booleans)
+as specified using the `QF_FD`{language:smt} logic.
 
 ## Scopes
 The operations `push`{language:python} and `pop`{language:python} create, respectively revert, 
@@ -1527,7 +1538,7 @@ The SMT Solver is a general purpose solver that covers a wide range of supported
 It is supplemented with specialized solvers for SAT formulas, polynomial arithmetic, 
 Horn clauses and quantified formulas over theories that admit quantifier-elimination.
 
-## SMT Core
+## SMT Core { #sec-smt-core }
 
 The SMT Solver is a general purpose solver that covers a wide range of 
 supported theories. It is built around a CDCL(T) architecture where theory
