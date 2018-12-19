@@ -67,9 +67,8 @@ be cast in terms of formulas in a supported logic. It is then useful for the
 tool writer to have an idea of what are available supported logics, and 
 have an idea of how formulas are solved. But interacting with SMT
 solvers is not always limited to posing a query as a single formula. 
-It may require a sequence of interactions to obtain a usable answer. 
-It is then useful to have an idea of what methods and knobs are available
-for the tool writer. 
+It may require a sequence of interactions to obtain a usable answer
+and the need emerges for the tool writer for having an idea of what methods and knobs are available. 
 In summary, this tutorial aims to answer the following types of questions
 through examples and a touch of theory:
 
@@ -134,16 +133,22 @@ examples using the Python front-end
 <https://yurichev.com/writings/SAT_SMT_by_example.pdf>.
 
 * The Ivy system is written in Python and uses Z3
-<https://github.com/Microsoft/ivy>.
+  ~ Center
+  <https://github.com/Microsoft/ivy>.
+  ~
 
 * The binary analysis kit Angr system is written in Python and uses Z3
-<https://docs.angr.io/>.
+  ~ Center
+  <https://docs.angr.io/>.
+  ~
 
 * There was an online interactive Python tutorial. 
   It is discontinued as it ended up being a target for
   hacks. A snapshot of the web pages, including the non-interactive
   examples can be found at
+  ~ Center
   <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py>.
+  ~
 
 ## Sources
 The material in this tutorial is assembled from several sources.
@@ -316,7 +321,7 @@ print("operator: ", n.decl())
 print("op name:  ", n.decl().name())
 ```
 
-## Quantifiers
+## Quantifiers and Lambda binding
 Universal and existential quantifiers bind variables to the scope of the quantified
 formula. For example
 ```python
@@ -343,9 +348,12 @@ def memset(lo, hi, y, m):
     return Lambda([x], If(And(lo <= x, x <= hi), y, Select(m, x)))
 solve([m1 == memset(1, 700, z, m), Select(m1, 6) != z])
 ```
-Lambda binding is convenient for creating closures. 
-Lambda lifting, in conjunction with Reynold's defunctionalization, is used to
-reduce reasoning about closures to universally quantified definitions.
+Lambda binding is convenient for creating closures. Recall that meaining
+of ```Lambda([x,y], e)```, where `e` is an expression with free
+occurrences of `x` and `y` is as a function that takes two arguments
+and substitutes their values for `x` and `y` in `e`.
+Z3 uses Lambda lifting, in conjunction with Reynold's defunctionalization, 
+to reduce reasoning about closures to universally quantified definitions.
 Z3 treats arrays as general function spaces. All first-order definable functions may be arrays.
 Some second-order theorems can be established by synthesizing $\lambda$ terms by instantiation.
 Thus,
@@ -799,7 +807,10 @@ Other:
 ## Bit-Vectors
 
 Let us play with some bit-fiddling.
-The resource <https://graphics.stanford.edu/~seander/bithacks.html>, 
+The resource 
+~ Center
+<https://graphics.stanford.edu/~seander/bithacks.html>, 
+~
 lists a substantial
 repertoire of bit-vector operations that can be used as alternatives to potentially more expensive
 operations.
@@ -910,7 +921,8 @@ of the string, the string itself must be the concatenation of the prefix and suf
 ```python
 s, t, u = Strings('s t u')
 prove(Implies(And(PrefixOf(s, t), SuffixOf(u, t), 
-                  Length(t) == Length(s) + Length(u)), t == Concat(s, u)))
+                  Length(t) == Length(s) + Length(u)), 
+             t == Concat(s, u)))
 ```
 
 One can concatenate single elements to a sequence as units:
@@ -936,6 +948,17 @@ to solvers. Section [#sec-using-solvers] provides a set of use cases and
 section [#sec-solver-implementations] describes the underlying solver
 implementations available in Z3.
 
+## Incrementality
+Solvers can be used to check satisfiability of assertions in an incremental way.
+An initial set of assertions can be checked for satisiability followed
+by additional assertions and checks. Assertions can be retracted using
+scopes that are pushed and popped. Under the hood, Z3 uses a one-shot solver
+during the first check. If further calls are made into the solver, the default 
+behavior is to switch to an _incremental_ solver. The incremental solver 
+uses the SMT core, see [#sec-smt-core], by default. For use-cases that don't 
+require all features by the SMT core, it may be beneficiary to use specialized
+solvers, such as solvers for finite domains (bit-vectors, enumeration types, bounded integers, and Booleans)
+as specified using the `QF_FD`{language:smt} logic.
 
 ## Scopes
 The operations `push`{language:python} and `pop`{language:python} create, respectively revert, 
@@ -1531,7 +1554,7 @@ The SMT Solver is a general purpose solver that covers a wide range of supported
 It is supplemented with specialized solvers for SAT formulas, polynomial arithmetic, 
 Horn clauses and quantified formulas over theories that admit quantifier-elimination.
 
-## SMT Core
+## SMT Core { #sec-smt-core }
 
 The SMT Solver is a general purpose solver that covers a wide range of 
 supported theories. It is built around a CDCL(T) architecture where theory
@@ -1604,6 +1627,7 @@ and equalities that are relevant in the current branch.
 
 [SMTCore]: images/SMTCore.[pdf,jpg] "SMTCore" { width:45em }
 --->
+
 
 To force using the SMT solver a user can create 
 a _simple solver_ using the function `SimpleSolver`{language:python}.
@@ -1986,7 +2010,7 @@ a single quantified formula with quantifier free body $\varphi$.
 The Model-Based Quantifier Instantiation, MBQI, procedure is 
 described in Figure [#fig-mbqi]:
 
-~ Figure { #fig-mbqi; caption:"Model-Based Quantifier Instantiation algorithm. Notice that this is proto-algorithm code is not directly executable." }
+~ Figure { #fig-mbqi; caption:"Model-Based Quantifier Instantiation algorithm. Notice that this proto-algorithm code is not directly executable." }
 ```python
 s.add(\($\psi$\))
 while True:
@@ -2606,8 +2630,14 @@ print(t(g))
 ```
 
 
-Additional information on tactics is available from [@MouraP13], <https://rise4fun.com/Z3/tutorial/strategies> 
-and <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py/strategies-examples.htm>.
+Additional information on tactics is available from [@MouraP13], 
+~ Center
+<https://rise4fun.com/Z3/tutorial/strategies> 
+~
+and 
+~ Center
+<http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py/strategies-examples.htm>.
+~
 
 ## Solvers from Tactics
 Given a tactic `t`, the method `t.solver()` extracts a solver object that applies the tactic to the current assertions
@@ -2755,7 +2785,7 @@ while opt.check() == sat:
 
 The conventional definition of MaxSAT is to minimize the number of violated _soft_ assertions.
 There are several algorithms for MaxSAT, and developing new algorithms is a very active area
-of research. We will here describe MaxRes from [@NarodytskaB14]. It is also the default
+of research. We will here describe MaxRes from [@NarodytskaB14]. It is also Z3's default
 solver for MaxSAT/MaxSMT problems. 
 As an illustration assume we are given an _unweighted_ (all soft constraints have weight 1) 
 MaxSAT problem $F, F_1, \ldots, F_5$,
