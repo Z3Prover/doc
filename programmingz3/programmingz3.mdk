@@ -58,7 +58,9 @@ almost all available features of Z3 and the essence of the underlying algorithms
 
 # Introduction { #sec-intro }
 
-Satisfiability Modulo Theory (SMT) solving enjoys a synergetic 
+Satisfiability Modulo Theories (SMT) solving refers to theorem proving 
+on logical formulas that use symbols whose meaning are given by background theories, 
+such as arithmetic. SMT solving enjoys a synergetic 
 relationship with software analysis, verification and symbolic execution tools. 
 This is in many respects thanks to the emphasis on supporting domains commonly 
 found in programs and specifications.
@@ -225,7 +227,7 @@ Dually, the _negation_ of `fml` is unsatisfiable and the call to Z3 produces `un
 Formulas accepted by Z3 generally follow the formats described in the SMT-LIB2 standard [@SMTLIB2].
 This standard (currently at version 2.6) defines a textual language for first-order multi-sorted
 logic and a set of _logics_ that are defined by a selection of background theories. 
-For example, the logic of _quantifier-free integer linear arithmetic_, known in SMT-LIB2 
+For example, the logic of _quantifier-free linear integer arithmetic_, known in SMT-LIB2 
 as `QF_LIA`{language:smt}, is a fragment of first-order logic, where formulas are _quantifier free_, 
 variables range over integers, interpreted constants are integers, the allowed functions are _+_, _-_, 
 integer multiplication, division, remainder, modulus with a constant, and the allowed relations
@@ -262,7 +264,8 @@ Generally, SMT-LIB2 formulas use a finite set of simple sorts.
 It includes the built-in sort `Bool`{language:smt}, and supported theories
 define their own sorts, noteworthy `Int`{language:smt}, `Real`{language:smt}, 
 bit-vectors `(_ BitVec n)`{language:smt}
-for every positive bit-width _n_, arrays `(Array Index Elem)`{language:smt} for every sort _Index_ and _Elem_, 
+for every positive bit-width _n_, arrays \
+`(Array Index Elem)`{language:smt} for every sort _Index_ and _Elem_, 
 `String`{language:smt} and sequences `(Seq S)`{language:smt} for every sort _S_.
 It is also possible to declare new sorts. Their domains may never be empty.
 Thus, the formula
@@ -527,8 +530,8 @@ $\mathcal{T}$, such that:
 * if $(s = t) \in \mathcal{E}$, then $s, t$ are in the same partition in $cc$.
 
 * for $s := f(s_1, \ldots, s_k), t := f(t_1, \ldots, t_k) \in \mathcal{T}$, 
-  * if $s_i, t_i$ are in same partition of $cc$ for each $i = 1, \ldots k$, then
-  * $s, t$ are in the same partition under $cc$.
+  * if $s_i, t_i$ are in same partition of $cc$ for each $i = 1, \ldots k$, 
+  * then $s, t$ are in the same partition under $cc$.
 
 ~ Definition
  $cc: \mathcal{T} \rightarrow 2^{\mathcal{T}}$, maps term to its equivalence class.
@@ -1213,7 +1216,7 @@ When the underlying solver is based on the SAT Core, see Section [#sec-sat-core]
 a lookahead solver to select cubes [@HeuleKWB11]. By default, the cuber produces two branches,
 corresponding to a case split on a single literal. The SAT Core based cuber can be configured
 to produce cubes that represent several branches. An empty cube indicates a failure, such
-as, the solver does not support cubing (only the SMT and SAT cores support cubing, and generic
+as the solver does not support cubing (only the SMT and SAT cores support cubing, and generic
 solvers based on tactics do not), or a timeout or resource bound was encountered during cubing.
 A cube comprising of the Boolean constant `true` indicates that the state of the solver is
 satisfiable. Finally, it is possible for the `s.cube()` method to return an empty set of cubes.
@@ -2843,6 +2846,7 @@ Let $j$ be the first index among where $M(F_j)$ is false.
 Then $M$ evaluates all other soft constraints the same, 
 e.g., $\forall i < j: \ M(F'_i) = M(F_{i})$, 
 and $\forall i > j: M(F'_{i-1}) = M(F_i)$.
+$\Box$
 ~
 
 Thus, eventually, it is possible to satisfy all soft constraints 
