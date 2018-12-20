@@ -163,7 +163,7 @@ Z3 takes as input simple-sorted formulas that may contain
 symbols with pre-defined meanings defined by a _theory_.
 This section provides an introduction to logical formulas that can be used as input to Z3. 
 
-As a basis, propositional formulas are built from logical connectives and atomic variables.
+As a basis, propositional formulas are built from atomic variables and logical connectives.
 An example propositional logical formula
 accepted by Z3 is:
 ```python
@@ -339,7 +339,8 @@ has a solution where _x_ is 1 and the free occurrence of _y_ is 2.
 Z3 supports also $\lambda$-binding with rudimentary reasoning support based on a model-constructing instantiation engine.
 $\lambda$s may be convenient when expressing properties of arrays and Z3 uses array sorts for representing the
 sorts of lambda expressions. 
-Thus, the result of `memset` is an array from integers to integers.
+Thus, the result of `memset` is an array from integers to integers, that produces the value `y` in 
+the range from `lo` to `hi` and otherwise behaves as `m` outside the range.
 Z3 reasons about quantifier free formulas that contains `memset` by instantiating the body of
 the $\lambda$.
 ```python
@@ -360,7 +361,8 @@ Thus,
 
 ```python
 Q = Array('Q', Z, B)
-prove(Implies(ForAll(Q, Implies(Select(Q, x), Select(Q, y))), x == y))
+prove(Implies(ForAll(Q, Implies(Select(Q, x), Select(Q, y))), 
+              x == y))
 ```
 is provable. Z3 synthesizes an instantiation corresponding to `Lambda(z, z == x)` for _Q_.
 
@@ -572,7 +574,9 @@ it produces a model, that may look as follows:
  g = [else -> S!val!2]]
 ```
 In the model the value `S!val!0` is a fresh constant that is distinct from `S!val!1`.
-The graph for `f` maps the arguments `(S!val!2, S!val!0)` to `S!val!4`.
+The graph for `f` maps the arguments `(S!val!2, S!val!0)` to `S!val!4`. All
+other arguments are mapped by the `else` clause to `S!val!3`. The `else` clause
+is used as the default interpretation of arguments that are not listed in the interpretation.
 The interpretation of _S_ is a finite set 
 ```python
     {S!val!0, S!val!1, S!val!2, S!val!3, S!val!4}.
@@ -794,7 +798,7 @@ We can convince ourselves that asserting these additional constraints force mode
 a solver `s` to satisfy the array axioms.
 Suppose we are given a model $M$ satisfying all the additional asserted equalities.
 These equalities enforce the axioms for `Store` on all indices that occur in `s`. They 
-also enforce extensionality between arrays: two arrays are equal if and only if they
+also enforce extensionality between arrays: Two arrays are equal if and only if they
 evaluate to the same value on all indices in `s`.
 
 
@@ -816,6 +820,8 @@ repertoire of bit-vector operations that can be used as alternatives to potentia
 operations.
 Note that modern compilers already contain a vast set of optimizations that automatically perform
 these conversions and Z3 can be used to check and synthesize such optimizations [@LopesMNR18].
+For example, to test whether a bit-vector is a power of two we can use a combination
+of bit-wise operations and subtraction:
 
 ```python
 def is_power_of_two(x):
@@ -837,7 +843,7 @@ In particular, for bit-vector arithmetic `-v` is fully specified, in contrast
 to, say C, which specifies that `-v` is _undefined_ when `v`
 is a signed integer with the value $-2^{31}$.
 
-### Solving BV: bit-vectors
+### Solving bit-vectors
 Z3 mostly uses a bit-blasting approach to deciding bit-vectors.
 By bit-blasting we refer to a reduction of bit-vector constraints to
 propositional logic by treating each bit in a bit-vector as a 
@@ -889,7 +895,7 @@ It is characterized by the properties that:
 
 A basic example of a binary tree data-type is given in Figure [#fig-dt].
 
-~ Figure { #fig-dt; .align-left; caption : "binary tree datatypes" }
+~ Figure { #fig-dt; .align-left; caption : "Binary tree datatypes" }
 ```python
 Tree = Datatype('Tree')
 Tree.declare('Empty')
@@ -942,7 +948,7 @@ by setting the parameter
 # Interfacing with Solvers { #sec-solver-interfacing }
 
 Solvers maintain a set of formulas and supports satisfiability checking, 
-and scope management: formulas that are added under one scope can be
+and scope management: Formulas that are added under one scope can be
 retracted when the scope is popped. In this section we describe the interface
 to solvers. Section [#sec-using-solvers] provides a set of use cases and 
 section [#sec-solver-implementations] describes the underlying solver
@@ -999,7 +1005,9 @@ print(s.check())
 ```
 
 ## Cores
-We can extract a subset of assumptions used to derive unsatisfiability.
+We can extract a subset of assumptions used to derive unsatisfiability. 
+Such subsets of assumptions are known as _unsatisfiable cores_, 
+or simply as a _core_.
 In the following example, the unsatisfiable core has the single element `p`. 
 The unrelated assumption `v` does not appear in the core.
 
@@ -1017,6 +1025,7 @@ Note that we invoke `s.check()`{language:python} prior to extracting a core.
 Cores are only available after the last call to `s.check()`{language:python} produced `unsat`.
 
 By default solvers do not return minimal cores. 
+A core is _minimal_ if there is no proper subset that is also a core.
 The default behavior can be changed when the solver
 corresponds to either the SMT Core or SAT Core
 (if the underlying solver is created from a sequence of
@@ -1112,7 +1121,8 @@ print(s.proof())
 ```
 The granularity of proof objects is on a best-effort basis. 
 Proofs for the SMT Core, are relatively fined-grained, while
-proofs for QSAT and other modules are exposed as big opaque 
+proofs for procedures that perform quantifier elimination, 
+for instance QSAT described in Section [#sec-qsat], are exposed as big opaque 
 steps.
 
 ### Retrieving Solver State
@@ -1272,7 +1282,7 @@ is a backbone with respect to the current `mss`. As a friendly hint,
 it includes the negation of `p` 
 when querying the solver in future rounds.
 
-~ Figure { #fig-mss; caption: "An algorithm for computing maximal satisfying subsets" }
+~ Figure { #fig-mss; caption: "An algorithm for computing [maximal satisfying subsets](https://github.com/Z3Prover/doc/blob/master/programmingz3/code/mss.py)" }
 ```python
 def tt(s, f): 
     return is_true(s.model().eval(f))
@@ -1314,7 +1324,7 @@ that tells us which subsets of `ps` are not yet
 known to be a superset of a core or a subset of
 an `mss`.
 
-~ Figure { #fig-marco; caption: "The MARCO algorithm for computing cores and maximal satisfying assignments" }
+~ Figure { #fig-marco; caption: "The [MARCO](https://github.com/Z3Prover/doc/blob/master/programmingz3/code/marco.py) algorithm for computing cores and maximal satisfying assignments" }
 ```python 
 def ff(s, p): 
     return is_false(s.model().eval(p))
@@ -1362,7 +1372,7 @@ The function `substitute(e, subst)` takes an expression `e` and a list of pairs 
 of the form `[(x1, y1), (x2, y2),..]`{language:python} 
 and replaces variables `x1, x2,..` by `y1, y2,..` in `e`.
 
-~ Figure { #fig-bmc; caption: "Bounded Model Checking of a transition system" }
+~ Figure { #fig-bmc; caption: "[Bounded Model Checking](https://github.com/Z3Prover/doc/blob/master/programmingz3/code/bmc.py) of a transition system" }
 ```python
 index = 0
 def fresh(s):
@@ -1429,7 +1439,7 @@ saturating a state $\lceil A, B, I \rceil$ with respect to the rules:
 The partial interpolant $I$ produced by pogo satisfies $B \vdash I$. It terminates when $A \vdash \neg I$.
 The condition $A \land I \not\vdash \neg L$ ensures that the algorithm makes progress and suggests using an implicant $L' \supseteq L$ of $A \land I$ in each iteration. Such an implicant can be obtained from a model for $A \land I$.
 
-~ Figure { #fig-interpolate; caption : "Propositional interpolation" }
+~ Figure { #fig-interpolate; caption : "[Propositional interpolation](https://github.com/Z3Prover/doc/blob/master/programmingz3/code/interp.py)" }
 ```python
 def mk_lit(m, x):
     if is_true(m.eval(x)):
@@ -1477,7 +1487,7 @@ finite transducers. The regular versions are amenable to analysis and optimizati
 A procedure for monadic decomposition
 was developed in [@VeanesBNB17], and we here recall the Python prototype. 
 
-~ Figure { #fig-mondec; caption : "Monadic Decomposition" }
+~ Figure { #fig-mondec; caption : "[Monadic Decomposition](https://github.com/Z3Prover/doc/blob/master/programmingz3/code/mondec.py)" }
 ```python
 from z3 import *
 def nu_ab(R, x, y, a, b):
@@ -1559,7 +1569,7 @@ Horn clauses and quantified formulas over theories that admit quantifier-elimina
 The SMT Solver is a general purpose solver that covers a wide range of 
 supported theories. It is built around a CDCL(T) architecture where theory
 solvers interact with a SAT + EUF blackboard. 
-Theory solvers, on the right in figure [#fig-z3core], communicate
+Theory solvers, on the right in Figure [#fig-z3core], communicate
 with a core that exchanges equalities between variables and assignments
 to atomic predicates. The core is responsible for case splitting, which
 is handled by a CDCL SAT solver, and for letting each theory learn constraints
@@ -1710,7 +1720,7 @@ produced by `prop`. Figure [#cdclT-aux] lists auxiliary
 routines required to create the abstraction.
 
 
-~ Figure { #simple-cdclT; caption: "Simple CDCL(T)" }
+~ Figure { #simple-cdclT; caption: "Simple [CDCL(T)](https://github.com/Z3Prover/doc/blob/master/programmingz3/code/cdclT.py)" }
 ```python
 def simple_cdclT(clauses):
     prop   = Solver()
@@ -1844,7 +1854,7 @@ quantifier-free formula is satisfiable in an infinite model.
 
 * EUF and arithmetic are stably infinite.
 
-* Bit-vectors are not
+* Bit-vectors are not.
 
 
 #### Nelson-Oppen combination.
@@ -1860,20 +1870,17 @@ Then
 in $O(2^{n^2} \times (\Th_1(n) + \Th_2(n)))$.
 
 3. If $\Th_1$ and $\Th_2$ are _convex_, then so is
-$\Th$ and satisfiability in $\Th$ is
+$\Th$ and satisfiability in $\Th$ can be decided
 in $O(n^3 \times (\Th_1(n) + \Th_2(n)))$.
 
 #### Convexity.
-A theory $\Th$ is _convex_ iff:
+A theory $\Th$ is _convex_ if for every finite sets $S$ of literals, and every disjunction $a_1 = b_1 \vee \ldots \vee a_n = b_n$:
 
-* For all finite sets $S$ of literals
-* For every disjunction $a_1 = b_1 \vee \ldots \vee a_n = b_n$
-  ~ MathPre
+~ MathPre
    S \models a_1 = b_1 \vee \ldots \vee a_n = b_n  iff S \models a_i = b_i for some 1 \leq i \leq n.
-  ~ 
+~ 
 
-Many theories are convex, and when they are there are some useful 
-properties. 
+Many theories are convex and therefore admit efficient theory combinations
 
 * Linear Real Arithmetic is convex.
 
@@ -1882,7 +1889,7 @@ properties.
 
 Finally note that every convex theory with non trivial models is stably infinite.
 
-But, far from all theories are convex. Notably, 
+But, far from every theory is convex. Notably, 
 
 * Integer arithmetic
   * $1 \leq a \leq 2, b = 1, c = 2$ implies $a = b \vee a = c$.
@@ -1891,7 +1898,7 @@ But, far from all theories are convex. Notably,
   * $a^2 = 1, b = 1, c = -1$ implies $a = b \vee a = c$.
 
 * The theory of arrays
-  * `Store(a, i, v)[j] == v` implies `i == j` or `a[j] == v`
+  * `Store(a, i, v)[j] == v` implies `i == j` or `a[j] == v`.
 
 #### A Reduction Approach to Theory Combination [@KapurZarbaReduction;@MouraB09].
 Theory Combination in Z3 is essentially by reduction to a set of 
@@ -2060,7 +2067,7 @@ and `g(3)` evaluates to -10 as before, but elsewhere follows the graph of
 
 Model-Based Quantifier Instantiation 
 is quite powerful when search space for instantiation terms is finite. 
-It covers many decidable logical fragments, including EPR, UFBV 
+It covers many decidable logical fragments, including EPR (Effectively Propositional Reasoning), UFBV 
 (uninterpreted functions and bit-vectors), 
 the Array property fragment [@BradleyMS06] and extensions [@GeM09]. 
 We will here only give a taste with an example from UFBV [@WintersteigerHM13]:
@@ -2089,6 +2096,17 @@ The quantified fragment is another complexity jump.
 Related to `UFBV`{language:smt}, decision procedures for quantified bit-vector formulas were 
 developed by John and Chakraborty in [@JohnC16;@JohnC13;@JohnC11], and by Niemetz et al
 in [@NiemetzPRBT18].
+
+Recall taht EPR is a fragment of first-order logic where formulas have the quantifier
+prefix $\exists \vec{x} \forall \vec{y}$, thus a block of existential quantified variables
+followed by a block of universally quantified variables. The formula inside the quantifier prefix
+is a Boolean combination of equalities, disequalities between bound variables and free constants
+as well as predicate symbols applied to bound variables or free constants. Noteworthy, EPR formulas
+do not contain functions. It is easy to see that EPR is decidable by first replacing the existentially quantified
+variables by fresh constants and then instantiate the universally quantified variables by all combinations of the
+free constant. If the resulting ground formula is satisfiable, we obtain a finite model of the quantified
+formula by bounding the size of the universe by the free constants. The formula $\exists x \forall y . (p(x, y) \lor q(a, y) \lor y = a)$,
+where $a$ is a free constant, is in EPR.
 
 
 
@@ -2234,7 +2252,7 @@ In-processing provides a means for the SAT solver to
 simplify the current set of clauses using _global_ inferences.
 In-processing is performed on a periodic basis. It integrates several 
 of the techniques that have been developed in the SAT solving literature
-in the past decade: known as Blocked Clause Elimination, 
+in the past decade, known as Blocked Clause Elimination, 
 Asymmetric Literal Addition, Asymmetric Covered Clause Elimination, 
 Subsumption, Asymmetric Branching [@HeuleJLSB15].
 
@@ -2340,7 +2358,7 @@ Additional
 information on the Fixedpoint engine can be found on <https://rise4fun.com/z3/tutorial/fixedpoints>.
 
 We provide a very simple illustration of Horn clause usage here. McCarthy's 91 function illustrates
-nested recursion in a couple of lines, but otherwise makes no sense: it computes a function
+nested recursion in a couple of lines, but otherwise makes no sense: It computes a function
 that can be described directly as 
 ```python
     If(x > 101, 91, x - 10).
@@ -2393,12 +2411,13 @@ And(Or(Not(y >= 92), Not(x + -1*y <= 9)),
     Not(y <= 90))
 ```
 
-## QSAT
+## QSAT { #sec-qsat }
 
 The QSAT Solver is a decision procedure for satisfiability of select theories that 
 admit quantifier elimination. It can be used to check satisfiability of quantified formulas
-over Linear Integer, Linear Real, Non-linear (polynomial) real arithmetic, Booleans, and
-algebraic data-types. It is described in [@BjornerJ15].
+over Linear Integer (Figure [#fig-qsat-lia]), Linear Real (Figure [#fig-qsat-lra]), 
+Non-linear (polynomial) real arithmetic (Figure [#fig-qsat-nra]), Booleans, and
+algebraic data-types (Figure [#fig-qsat-dt]). It is described in [@BjornerJ15].
 It is invoked whenever a solver is created for one of the supported quantified logics, or
  a solver is created from the `qsat` tactic.
 
@@ -2529,7 +2548,7 @@ To summarize the approach:
   $\exists x_1 \forall x_2 \exists x_3 \forall x_4 \ldots F$ at round $2$: 
   * value of $x_1$ is already fixed,
   * $\forall$ fixes value of $x_2$, 
-  * $\forall$ fixes value of $x_4$, but can change again it at round $4$,
+  * $\forall$ fixes value of $x_4$, but can change again at round $4$,
   * $\forall$ can guess values of $x_3$ to satisfy $\neg F$.
 
 * Some player loses at round $i + 2$. At this stage;
@@ -2631,13 +2650,9 @@ print(t(g))
 
 
 Additional information on tactics is available from [@MouraP13], 
-~ Center
 <https://rise4fun.com/Z3/tutorial/strategies> 
-~
 and 
-~ Center
 <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py/strategies-examples.htm>.
-~
 
 ## Solvers from Tactics
 Given a tactic `t`, the method `t.solver()` extracts a solver object that applies the tactic to the current assertions
@@ -2651,7 +2666,7 @@ e.g., the logic `NRA`{language:smt}), `qffd` for `QF_FD`{language:smt} and `nlsa
 ## Parallel Z3 { #sec-parallel-z3 }
 
 By setting the parameter `set_param("parallel.enable", True)`{language:python} enables Z3's parallel mode. 
-   For select tactics, including `qfbv`, that uses the SAT solver for sub-goals the option, when enabled, 
+   Selected tactics, including `qfbv`, that uses the SAT solver for sub-goals the option, when enabled, 
    will cause Z3 to use a cube-and-conquer approach to solve subgoals. The tactics `psat`, `psmt` and `pqffd`
    provide direct access to the parallel mode, but you have to make sure that `"parallel.enable"` is true
    to force them to use parallel mode.
@@ -2729,7 +2744,8 @@ The `Optimize`{language:python} context provides three main extensions to satisf
       u, v = BitVecs('u v', 32)
       o.minimize(u + v)             # minimizes BV objective
 
-      o.add_soft(x > 4, 4)          # soft constraint with optional weight
+      o.add_soft(x > 4, 4)          # soft constraint with 
+                                    # optional weight
 ```
 
 Using soft assertions is equivalent to posing
@@ -2810,11 +2826,11 @@ For this purpose, consider the _cost_ of a model with respect to a MaxSAT
 problem. The cost, written $cost(M, A)$ is the number of soft constraints
 in $A$ that are _false_ under $M$. More precisely,
 
-~ Lemma 
+~ Lemma { #lemma-dec }
 For every model $M$ of $F$, $cost(M, A) = 1 + cost(M, A')$
 ~
 
-~ Proof
+~ Proof { #pr-dec; caption: "of lemma [#lemma-dec]" }
 To be able to refer to the soft constraints in the transformed systems $A'$
 we will give names to the new soft constraints, such that
 $F_1'$ is a name for $F_2 \vee F_1$, $F_2'$ names 
@@ -2833,7 +2849,7 @@ Thus, eventually, it is possible to satisfy all soft constraints
 (weakening could potentially create 0 soft constraints), and a solution
 to the weakened system is an optimal solution.
 
-~ Figure { #fig-maxres; caption:"Core based MaxSAT using MaxRes" }
+~ Figure { #fig-maxres; caption:"Core based MaxSAT using [MaxRes](https://github.com/Z3Prover/doc/blob/master/programmingz3/code/maxres.py)" }
 ```python
 def add_def(s, fml):
     name = Bool("%s" % fml)
@@ -2873,7 +2889,7 @@ print(o.model())
 
 Efficient implementations of MaxSAT flatten weights on demand. 
 Given a core of soft constraints it is split into two parts: 
-in one part all soft constraints have the same coefficient as the
+In one part all soft constraints have the same coefficient as the
 weight of the soft constraint with the minimal weight. 
 The other part comprises of the remaining soft constraints.
 For our example, `a, b` is a core and the weight of `a` is 2, while
