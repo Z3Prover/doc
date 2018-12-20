@@ -1,8 +1,5 @@
 Title         : Programming Z3
-Author        : Nikolaj Bj&oslash;rner
-Author        : Leonardo de Moura
-Author        : Lev Nachmanson
-Author        : Christoph Wintersteiger
+Author        : Nikolaj Bj&oslash;rner, Leonardo de Moura, Lev Nachmanson, and Christoph Wintersteiger
 Affiliation   : Microsoft Research
 Bibliography  : refs.bib
 
@@ -58,9 +55,11 @@ almost all available features of Z3 and the essence of the underlying algorithms
 
 # Introduction { #sec-intro }
 
-Satisfiability Modulo Theories (SMT) solving refers to theorem proving 
-on logical formulas that use symbols whose meaning are given by background theories, 
-such as arithmetic. SMT solving enjoys a synergetic 
+Satisfiability Modulo Theories (SMT) problem is a decision problem for logical 
+formulas with respect to combinations of background theories such as 
+arithmetic, bit-vectors, arrays, and uninterpreted functions.
+Z3 is an efficient SMT solver with specialized algorithms for solving background
+theories. SMT solving enjoys a synergetic 
 relationship with software analysis, verification and symbolic execution tools. 
 This is in many respects thanks to the emphasis on supporting domains commonly 
 found in programs and specifications.
@@ -1410,7 +1409,10 @@ def bmc(init, trans, goal, fvs, xs, xns):
 ~
 
 ~ Example
-Can you count up to 10 if you only visit every 3rd number?
+Let us check whether there is some $k$, such that $\underbrace{3 + 3 + \ldots + 3}_k = 10$
+when numbers are represented using 4 bits. The corresponding transition system uses a state variable `x0`
+which is named `x1` in the next state. Initially `x0 == 0` and in each step the variable is incremented by 3.
+The goal state is `x0 == 10`.
 ```python
 x0, x1 = Consts('x0 x1', BitVecSort(4))
 bmc(x0 == 0, x1 == x0 + 3, x0 == 10, [], [x0], [x1])
@@ -1834,8 +1836,8 @@ Two theories are disjoint if they do not share function/constant and predicate s
 $=$ is the only exception. For example,
 
 * The theories of arithmetic and arrays are disjoint. 
-* Arithmetic symbols: `0, -1, 1, -2, 2, +, -, *, >, <, ==, >=`{language:python}.
-* Array symbols: `Select, Store`{language:python}
+  * Arithmetic symbols: `0, -1, 1, -2, 2, +, -, *, >, <, ==, >=`{language:python}.
+  * Array symbols: `Select, Store`{language:python}
 
 The process of _purification_ can be used as a formal tool to bring 
 formulas into signature-disjoint form. It introduces fresh symbols for 
@@ -1911,7 +1913,7 @@ Other theories are _reduced_ to core theories. We provided an
 example of this reduction in Section [#sec-arrays].
 
 
-### E-matching and Pattern based quantifier instantiation 
+### E-matching based quantifier instantiation 
 
 E-matching [@MouraB07] based quantifier instantiation uses ground terms 
 to find candidate instantiations of quantifiers.
@@ -1965,8 +1967,8 @@ where E-matching is defined by recursion on the pattern $p$:
 ~
 
 It is not always possible to capture all quantified variables in a single pattern.
-For this purpose E-matching is applied to a sequence of patterns, known as a _multi-pattern_ 
-that collectively contain all bound variables. 
+For this purpose E-matching is applied to a sequence of patterns, known as a _multi-pattern_,
+that collectively contains all bound variables. 
 
 The secret sauce to efficiency is to find instantiations
 
@@ -2419,12 +2421,12 @@ And(Or(Not(y >= 92), Not(x + -1*y <= 9)),
 The QSAT Solver is a decision procedure for satisfiability of select theories that 
 admit quantifier elimination. It can be used to check satisfiability of quantified formulas
 over Linear Integer (Figure [#fig-qsat-lia]), Linear Real (Figure [#fig-qsat-lra]), 
-Non-linear (polynomial) real arithmetic (Figure [#fig-qsat-nra]), Booleans, and
-algebraic data-types (Figure [#fig-qsat-dt]). It is described in [@BjornerJ15].
+Non-linear (polynomial) Real arithmetic (Figure [#fig-qsat-nra]), Booleans, and
+Algebraic Data-types (Figure [#fig-qsat-dt]). It is described in [@BjornerJ15].
 It is invoked whenever a solver is created for one of the supported quantified logics, or
  a solver is created from the `qsat` tactic.
 
-~ Figure { #fig-qsat-lia; caption:"Given a supply of 5 and 7 cent stamps. Is there a lower bound, after which all denominations of stamps can be produced?" }
+~ Figure { #fig-qsat-lia; caption:"Given a supply of 5 and 7 cent stamps. Is there a lower bound, after which all denominations of stamps can be produced? Thus, find `v`, such that every `u` larger or equal to `v` can be written as a non-negative combination of 5 and 7." }
 ```python
 s = SolverFor("LIA") # Quantified Linear Integer Arithmetic
 x, y, u, v = Ints('x y u v')
@@ -2448,7 +2450,7 @@ print(s.check())
 
 ~ Figure { #fig-qsat-nra; caption:"Quantified non-linear real polynomial arithmetic" }
 ```python
-s = SolverFor("NRA") # Quantified non-linear Real Arithmetic
+s = SolverFor("NRA") # Quantified Non-linear Real Arithmetic
 x, y, z = Reals('x y z')
 s.add(x < y)
 s.add(y * y < x)
@@ -2554,7 +2556,7 @@ To summarize the approach:
   * $\forall$ fixes value of $x_4$, but can change again at round $4$,
   * $\forall$ can guess values of $x_3$ to satisfy $\neg F$.
 
-* Some player loses at round $i + 2$. At this stage;
+* Some player loses at round $i + 2$:
   * Create succinct _no-good_ to strengthen $F$ resp. $\neg F$ depending on who lost.
   * Backjump to round $i$ (or below).
 
@@ -2668,7 +2670,7 @@ e.g., the logic `NRA`{language:smt}), `qffd` for `QF_FD`{language:smt} and `nlsa
 
 ## Parallel Z3 { #sec-parallel-z3 }
 
-By setting the parameter `set_param("parallel.enable", True)`{language:python} enables Z3's parallel mode. 
+The parameter `set_param("parallel.enable", True)`{language:python} enables Z3's parallel mode. 
    Selected tactics, including `qfbv`, that uses the SAT solver for sub-goals the option, when enabled, 
    will cause Z3 to use a cube-and-conquer approach to solve subgoals. The tactics `psat`, `psmt` and `pqffd`
    provide direct access to the parallel mode, but you have to make sure that `"parallel.enable"` is true
@@ -2696,7 +2698,15 @@ is bound by the number of processes.
 Depending on applications, learning that a formula is satisfiable or not, may not be sufficient.
 Sometimes, it is useful to retrieve models that are _optimal_ with respect to some objective function.
 Z3 supports a small repertoire of objective functions and invokes a specialized optimization module
-when objective functions are supplied. From the Python API, one uses the `Optimize`{language:python}
+when objective functions are supplied. The main approach for specifying an optimization objective
+is through functions that specify whether to find solutions that _maximize_ or _minimize_ values
+of an arithmetical (in the case of Z3, the term has to a _linear_ arithmetic term) or bit-vector term $t$. 
+Thus, when specifying the objective $\mathit{maximize}(t)$ the solver is instructed to find solutions
+to the variables in $t$ that maximizes the value of $t$. An alternative way to specify objectives is 
+through _soft constraints_. These are assertions, optionally annotated with weights. The objective is
+to satisfy as many soft constraints as possible in a solution. When weights are used, the objective
+is to find a solution with the least penalty, given by the sum of weights, for unsatisfied constraints.
+From the Python API, one uses the `Optimize`{language:python}
 context to specify optimization problems. The `Optimize` context relies on the built-in solvers
 for solving optimization queries. The architecture of the optimization context is provided in Figure [#fig-maxsmt].
 
