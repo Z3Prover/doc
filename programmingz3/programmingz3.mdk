@@ -946,6 +946,110 @@ by setting the parameter
 * `s.set("smt.string.solver","seq")` with contributions by Thai Trinh, or
 * `s.set("smt.string.solver","z3str3")` by Murphy Berzish.
 
+## Special Relations
+In some cases it is possible to use first-order axioms to capture all required
+properties of relations. For example, to say that `R`{language:python} is a partial order it 
+suffices to assert the axioms:
+
+```python
+  s = Solver()
+  A = DeclareSort()
+  R = Function('R', A, A, B)
+  x, y, z = Consts('x y z', A)
+  s.Add(ForAll([x], R(x, x)))  
+  s.Add(ForAll([x,y], Implies(And(R(x, y), R(y, x)), x == y)))
+  s.Add(ForAll([x,y,z], Implies(And(R(x, y), R(y, z)), R(x, z))))
+  # and other assertions using R
+```
+
+The catch is that reasoning about `R`{language:python} often requires instantiating 
+the full transitive closure of the relation. This is impractical when the number
+of instances can lead to a quadratic overhead compared to the size of the initial
+constraints. For example, when asserting `s.add(R(a1,a2),R(a2,a3),...,R(a999,a1000))`{language:python}
+we obtain half a million instances. Instead of axiomatizing a relation to be a partial
+ordering, Z3 allows to declare a relation that as a built-in property satisfies the partial
+ordering axioms. Thus, the definition
+
+```python
+  R = PartialOrder(A, 0)
+```
+
+creates a binary relation `R`{language:python} over `A`{language:python} that satisfies
+the partial order axioms. The second argument is an unsigned integer used to distinguish 
+the partial order `R` from other partial order relations over the same signature. 
+Thus `PartialOrder(A, 2)`{language:python} creates a partial ordering relation that
+is different from `R` because it uses a different index. 
+As usual, other properties of the relation have to be added to the solver
+`s`{language:python}. The built-in decision procedure for partial orders avoids the quadratic
+instantiation from the transitive closure axiom. It reasons about graph reachability to check 
+consistency of assertions involving `R`{language:python}.
+
+Other binary relations that have special relations support are
+Total Linear orders:
+
+```python
+  s.Add(ForAll([x], R(x, x)))  
+  s.Add(ForAll([x,y], Implies(And(R(x, y), R(y, x)), x == y)))
+  s.Add(ForAll([x,y,z], Implies(And(R(x, y), R(y, z)), R(x, z))))
+  s.Add(ForAll([x,y], Or(R(x, y), R(y, x))))
+
+# use instead:
+
+  R = TotalLinearOrder(A, 0)
+```
+
+Tree-like orderings:
+
+```python
+  s.Add(ForAll([x], R(x, x)))  
+  s.Add(ForAll([x,y], Implies(And(R(x, y), R(y, x)), x == y)))
+  s.Add(ForAll([x,y,z], Implies(And(R(x, y), R(y, z)), R(x, z))))
+  s.Add(ForAll([x,y,z], Implies(And(R(x, y), R(x, z)), Or(R(y, z), R(z, y)))))
+
+# use instead:
+
+  R = TreeOrder(A, 0)
+
+```
+
+Piecewise Linear orders:
+
+```python
+  s.Add(ForAll([x], R(x, x)))  
+  s.Add(ForAll([x,y], Implies(And(R(x, y), R(y, x)), x == y)))
+  s.Add(ForAll([x,y,z], Implies(And(R(x, y), R(y, z)), R(x, z))))
+  s.Add(ForAll([x,y,z], Implies(And(R(x, y), R(x, z)), Or(R(y, z), R(z, y)))))
+  s.Add(ForAll([x,y,z], Implies(And(R(y, x), R(z, x)), Or(R(y, z), R(z, y)))))
+
+# use instead:
+  R = PiecewiseLinearOrder(A, 0)
+```
+
+Additional examples of special relations constraints 
+are [available online](https://github.com/Z3Prover/doc/blob/master/programmingz3/code/special_relations.py).
+
+## Transitive Closure
+
+The transitive closure of a relation is a property that cannot be fully axiomatized using
+first-order formalisms. Quantifier-free formulas using the transitive closure of relations
+remain decidable, however, using a finite model construction.
+Given a relation binary `R`{language:python}, the _transitive closure_ of `R` is another
+relation `TC_R`{language:python} that relates two elements by if there is a non-empty path
+that connect them through `R`. The _transitive-reflexive closure_ extends transitive closure by also
+relating two elements if they are equal.
+To create a transitive closure or transitive reflexive closure of `R`.
+
+```python
+  R = Function('R', A, A, B)
+  TC_R = TransitiveClosure(R)
+  TRC_R = TransitiveReflexiveClosure(R)
+  s = Solver()
+  a, b, c = Consts('a b c', A)
+  s.add(R(a, b))
+  s.add(R(b, c))
+  s.add(Not(TC_R(a, c)))
+  print(s.check())   # produces unsat
+```
 
 # Interfacing with Solvers { #sec-solver-interfacing }
 
