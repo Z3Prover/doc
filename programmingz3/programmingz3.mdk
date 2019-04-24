@@ -943,8 +943,8 @@ prove(Concat(s, Unit(IntVal(2))) != Concat(Unit(IntVal(1)), s))
 There are two solvers available in Z3 for strings. They can be exchanged
 by setting the parameter 
 
-* `s.set("smt.string.solver","seq")` with contributions by Thai Trinh, or
-* `s.set("smt.string.solver","z3str3")` by Murphy Berzish.
+* `s.set("smt.string_solver","seq")` with contributions by Thai Trinh, or
+* `s.set("smt.string_solver","z3str3")` by Murphy Berzish.
 
 ## Special Relations
 In some cases it is possible to use first-order axioms to capture all required
