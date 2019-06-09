@@ -203,7 +203,7 @@ arrays and arithmetic:
 ```  
 
 The formula `fml` is valid. It is true for all values of integers _x_, _y_, _z_, array _A_, 
-and no matter what the graph of the function _f_ is. 
+and no matter what the graph of the function _f_ is. Note that _z_ does not even occur in the formula, but we declare it here because we will use _z_ to represent an integer variable.
 Note that we are using `array[index]` as shorthand for `Select(array, index)`.
 We can manually verify the validity of the formula using the following argument:
 The integer constants `x` and `y` are created using the function `Ints` that
@@ -1035,14 +1035,12 @@ first-order formalisms. Quantifier-free formulas using the transitive closure of
 remain decidable, however, using a finite model construction.
 Given a relation binary `R`{language:python}, the _transitive closure_ of `R` is another
 relation `TC_R`{language:python} that relates two elements by if there is a non-empty path
-that connect them through `R`. The _transitive-reflexive closure_ extends transitive closure by also
-relating two elements if they are equal.
+that connect them through `R`. 
 To create a transitive closure or transitive reflexive closure of `R`.
 
 ```python
   R = Function('R', A, A, B)
   TC_R = TransitiveClosure(R)
-  TRC_R = TransitiveReflexiveClosure(R)
   s = Solver()
   a, b, c = Consts('a b c', A)
   s.add(R(a, b))
