@@ -1379,7 +1379,7 @@ model. The corresponding `block_model` is then
 ```python
 def block_model(s, terms);
     m = s.model()
-    s.add(Or([t != m.eval(t) for t in terms])
+    s.add(Or([t != m.eval(t) for t in terms]))
 ```
 
 A loop that cycles through multiple solutions can then be formulated:
