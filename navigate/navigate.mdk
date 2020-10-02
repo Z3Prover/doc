@@ -1,0 +1,349 @@
+Title         : Navigating the Universe of Z3 Solvers
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Bibliography  : refs.bib
+
+
+Colorizer     : python
+Bib style     : plainnat
+Bibliography  : example
+Logo          : True
+
+Doc class     : llncs
+
+Package       : url
+Package       : amssymb
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+~Exercise     : @h1-exercise=lower-case @h1-exercise label="@h1@h1-exercise"
+                margin-left=0em
+                before="[**Exercise &label;: **]{margin-left=0em}&br;"
+
+~ MathDefs
+\newcommand{\Mbp}{Mbp}
+\newcommand{\pre}{pre}
+\newcommand{\true}{\mathit{true}}
+\newcommand{\false}{\mathit{false}}
+\newcommand{\safe}{\mathit{Safe}}
+\newcommand{\Lit}{\mathcal{L}}
+\newcommand{\Model}{\mathsf{M}}
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\nsb}[1]{[\emph{Nikolaj:} #1]}
+\newcommand{\papercomment}[1]{}
+\newcommand{\onenorm}[1]{|\!|#1|\!|_1}
+\newcommand{\Th}{{T}}
+\newcommand{\relaxOp}{\mathit{relax}}
+\newcommand{\restrictOp}{\mathit{restrict}}
+\newcommand{\Decision}[1]{#1^\delta}
+\newcommand{\Propagation}[2]{#1^{#2}}
+\newcommand{\Theory}{\mathit{Theory}}
+~
+
+[TITLE]
+
+
+~ Abstract
+Modular combination of little engines of proof is an integral theme
+in engineering modern SMT solvers. The CDCL(T) architecture provides
+an overall setting for how theory solvers may cooperate
+around a SAT solver based on conflict driven clause learning.
+The Nelson-Oppen framework provides the interface contracts between
+theory solvers for disjoint signatures. In this paper we review principles
+of theory integration in CDCL(T) and then examine
+the theory solvers available in Z3, how they integrate, feedback from 
+use scenarios, and we reflect on lessons derived from the integration.
+~
+
+[TOC]
+
+# Introduction { #sec-intro }
+
+* A tour through Z3's current main solver engines.
+* Shankar, little-engines of proof.
+* Model-based theory combination.
+* Differentiate from other cores: Horn, NLSAT, Opt, QSAT.
+
+# Solvers { #sec-solvers}
+
+* SAT core
+* EUF
+* Arithmetic
+* Arrays
+* User Theories
+* Recursive Functions
+* Sequences and Regular expressions
+* Bit-vectors
+* IEEE floating points
+* Quantifier Solving
+* Algebraic Datatypes
+
+# Taxonomy:
+ 
+* Finite domain theories
+* Base Theories
+* Reduction Theories
+* Hybrid Theories
+* External Theories
+
+
+# CDCL(T) - In the light of Theory Solvers
+
+We here recap the main mechanisms used in mainstream modern SAT solvers in the light of theory solving.
+When SAT solving, as implemented using conflict driven clause learning, CDCL, is combined with theory solving
+it augments propositional satisfiability with theory reasoning. The CDCL solver maintains a set of 
+formulas $F$ and a partial assignment to literals in $F$ that we refer to as $M$.  
+From the point of view of the CDCL(T) solver
+theory reasoning is a module that can take a state during search and produce verdicts on how search should progress.
+We use the following verdicts of a theory invocation $\Theory(M,F)$:
+
+* $SAT$. The theory solver may determine that the assignment $M$ extendes to a model of $F$.
+* Conflict $C$. The theory solver may determine that a subset $M$ is inconsistent relative to $F$. 
+  In the propositional case an inconsistent clause $C$ is a member of $F$, such that each literal in $C$ is false in $M$.
+  With theory reasoning, $C$ does not need to correspond to a clause in $F$, but be assignments in $M$ that are inconsistent modulo theories.
+* A propagation $\Propagation{\ell}{C}$. The theory solver propagates a literal $\ell$.
+* A decision $\Decision{\ell}$. 
+
+the partial model extends to a model of the theories, can identify a subset of $M$ as an unsatisfiable core, 
+propagate the truth assignment of a literal $\ell$, or create a new case split $\Decision{\ell}$ for a
+literal $\ell$ that has not already been assigned in $M$.
+
+We outline the main transitions of an abstract CDCL solver below. The solver starts in a state $\langle M, F\rangle$, where
+$F$ maintains constraints and the trail $M$ is initially empty. The state during conflict analysis is $\langle M, C, F\rangle$.
+The auxiliary function _Theory_ is used to advance decisions, propagations and identify conflicts.
+If _Theory_ determines that $S$ is conflicting with respect to the literals in $M$ it produces a conflict clause $C$, that
+contains a subset of conflicting literals from $M$. It can also produce a trail assignment $A$, which is either a propagation
+or decision and finally, if it determines that $S$ is satisfiable under trail $M$ it produces $SAT$.
+
+~MathPre
+\langle M, {F} \rangle                      & \Rightarrow & SAT                                                    & SAT = \Theory(M, F)
+
+\langle M, F \rangle                        & \Rightarrow & \langle M, C, F \rangle                                & C = \Theory(M, F) 
+
+\langle M, {F} \rangle                      & \Rightarrow & \langle M A, F \rangle                                 & A = \Theory(M, F) 
+
+\langle M, \emptyset, {F} \rangle           & \Rightarrow & UNSAT 
+
+\langle M \Decision{\ell}, {C}, {F} \rangle & \Rightarrow & \langle M \Propagation{\ell}{C}, {F} \rangle         & \overline{\ell} \in {C}
+
+\langle M \Propagation{\ell}{C'}, {C}, {F} \rangle     & \Rightarrow & \langle M, (C \setminus \{\ell\}) \cup C', {F} \rangle & \overline{\ell} \in {C}
+
+\langle M A, {C}, {F} \rangle               & \Rightarrow & \langle M, C, {F} \rangle                              & otherwise
+
+~
+
+To be well-behaved we expect _Theory_ to produce propagations on literals that don't already appear in $M$. 
+
+
+## Invariants
+
+* For state $\langle M, C, F \rangle$ we have $F \models \bigvee_{\ell \in C} \neg \ell$
+* For state $\langle M \Propagation{\ell}{C}, F \rangle$ we have $F \models C \Rightarrow \ell$, each $\ell' \in C: \ell' \in M$.
+
+That, is: each conflict clause is a consequence of $F$ and each propagation is also a consequence of $F$, and the premises of a propagation is justified by $T$.
+
+
+# Theories
+
+# Base Theories
+## Uninterpreted Functions 
+ 
+## Arithmetic 
+
+* Waterfall model for new arithmetic solver. 
+  * Incremental linearization
+  * Integrates NLSAT
+
+### Rational linear arithmetic
+
+### Integer linear arithmetic
+
+* GCD lemmas
+* patch
+* cubes
+* Hermite cuts
+* Gomory cuts
+* Branch
+
+### Non-linear arithmetic
+
+Initialization: to-refine, patch
+
+* bounds propagation on monomials
+* Horner lemmas
+* Groebner reduction
+* Basic lemmas I/II
+* Order lemmas
+* Monotonicity
+* Tangent
+* NLSat
+
+
+## Reductions
+
+Let us illustrate a use of _reduction_ from richer theories to base theories based on 
+a simple example. We here introduce a theory of refinement types that is currently only available 
+in a prototype stage in Z3. It encodes refinement types using auxiliary functions as explained
+in [@BartJacobsCategoricalLogicAndTypeTheory]. Abstractly, a predicatie refinement
+type of sort $S$ uses a predicate $p$ over $S$. At least one element of $S$ must satisfy $p$ for the
+construction to make sense. The refinement type $S \mid p$ represents the elements of $S$ that satisfy
+$p$. The properties we need to know about elements of $S\mid p$ can be encoded using two auxiliary
+functions that form a surjection $\restrictOp$ from $S \mid p$ into $S$ with a partial inverse $\restrictOp$ that maps
+elements from $S$ into $S \mid p$. The properties of these functions are summarized as follows:
+
+~MathPre
+  p : S \rightarrow Bool
+  \relaxOp : S \mid p \rightarrow S
+  \restrictOp : S \rightarrow S \mid p
+  \forall x : S \mid p \ . \ \restrictOp(\relaxOp(x)) = x
+  \forall s : S \ . \ p(s)\ \rightarrow \ \relaxOp(\restrictOp(s)) = s
+  \forall x : S \mid p \ . \ p(\relaxOp(s))
+~
+
+Let us illustrate the sort of natural numbers as a refinement type of integers:
+
+~Example
+
+~~MathPre
+  sort Nat = Int \mid \lambda x \ . \ x \geq 0
+  \forall n : Nat \ . \ \restrictOp(\relaxOp(n)) = n \wedge \relaxOp(n) \geq 0
+  \forall i : Int \ . \ i \geq 0 \rightarrow \relaxOp(\restrictOp(i)) = i
+~~
+
+~
+
+We obtain a theory solver for formulas with refinement types by instantiating these axioms whenever there is a term $t$ introduced
+of sort $S \mid p$ introduced as part of the input or during search (from instantiating quantifiers).
+The main challenge with supporting this theory is to ensure that the new terms introduced from axiom instantiation 
+is bounded. We don't want the solver to create terms $\relaxOp(\restrictOp(\relaxOp(\restrictOp(\ldots))))$.
+
+
+* For every sub-term of the form $\restrictOp(t)$, where $t$ is not $\relaxOp(t')$ instantiate the axiom:
+  * $p(t) \Rightarrow \relaxOp(\restrictOp(t)) = t$
+
+* For every term $t$ of sort $S \mid p$ instantiate the axioms:
+    * $\restrictOp(\relaxOp(t)) = t$
+    * $p(\relaxOp(t))$ 
+
+## Arrays and Function Spaces
+
+* Describe overall methodology of arrays based on new solver architecture:
+  * lambda
+  * select
+  * lambda parents
+* Note that proper lambdas are added after FMCAD work 
+  and what are perspectives on lambda solving.
+
+Search maintains 
+
+A node $n$ has attributes:
+
+~Pre
+    parent_selects:   { A[i] | A ~ n }
+    parent_lambdas:     { store(A,i,v) | A ~ n } u { map(f, .., A, ..) | A ~ n }
+    lambdas:            { const(v) | const(v) ~ n }
+                      u { map(f,..) | map(f,..) ~ n }
+                      u { store(A,i,v) | store(A,i,v) ~ n }
+                      u { as-array(f) | as-array(f) ~ n }
+                      u { lambda term ~ n}
+
+The attributes are used for propagation.
+When n1 is merged with n2, and n1 is the new root, the attributes from n2 are added to n1.
+The merge also looks for new redexes.
+
+
+Let A[j] in parent_selects(n2) :
+
+        lambda in parent_lambdas(n1)
+    -------------------------------
+     lambda[j] = beta-reduce(lambda[j])
+
+            lambda in lambdas(n1)
+    -------------------------------
+     lambda[j] = beta-reduce(lambda[j])
+
+Beta reduction rules are:
+      beta-reduce(store(A,j,v)[i]) = if(i = j, v, A[j])
+      beta-reduce(map(f,A,B)[i]) = f(A[i],B[i])
+      beta-reduce(as-array(f)[i]) = f(i)
+      beta-reduce(const(v)[i]) = v
+      beta-reduce((lambda x M[x])[i]) = M[i]
+
+For enforcing
+      store(A,j,v)[i] = beta-reduce(store(A,j,v)[i])
+
+      only the following axiom is instantiated:
+      - i = j or store(A,j,v)[i] = A[i]
+
+The other required axiom, store(A,j,v)[j] = v
+is added eagerly whenever store(A,j,v) is created.
+
+Current setup: to enforce extensionality on lambdas, 
+also currently, as a base-line it is eager:
+
+        A ~ B, A = lambda x. M[x]
+    -------------------------------
+    A = B => forall i . M[i] = B[i]
+~
+
+A hypothetical refinement could use some limited HO pattern unification steps.
+For example
+    lambda x y z . Y z y x = lambda x y z . X x z y
+-> Y = lambda x y z . X ....
+
+## Other reduction theories
+
+* Floating points
+  * compiled into bit-vectors
+
+* Algebraic Datatypes
+  * except for occurs check
+
+* Special Relations
+
+
+# Hybrid Theories
+
+
+## Sequences and Strings
+
+The theory of strings and regular expressions has entered mainstream SMT solving
+thanks to community efforts around standardization and solvers. The SMTLIB2 format
+for unicode strings [@SMTUnicode] ...
+
+* Describe skolem function idea.
+* Describe normalization
+* Describe waterfall
+* Regular expression solving
+
+## BAPA
+
+
+# External Theories
+
+
+
+
+
+
+
+## Extensions
+
+* In-processing
+* Induction Solvers
+* Word-level bit-vectors
+* Combination of MBQI and Quantifier Projection. Model-based projection.
+
+* Model counting
+
+* Interpolation
+
+# A modernized architecture { #sec-new-arch }
+
+* Where can benefits from one solver be imported into the main soup.
+* MCSAT promises and challenges
+* 
+
+[BIB]

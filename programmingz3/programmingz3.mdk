@@ -953,12 +953,12 @@ suffices to assert the axioms:
 
 ```python
   s = Solver()
-  A = DeclareSort()
+  A = DeclareSort("A")
   R = Function('R', A, A, B)
   x, y, z = Consts('x y z', A)
-  s.Add(ForAll([x], R(x, x)))  
-  s.Add(ForAll([x,y], Implies(And(R(x, y), R(y, x)), x == y)))
-  s.Add(ForAll([x,y,z], Implies(And(R(x, y), R(y, z)), R(x, z))))
+  s.add(ForAll([x], R(x, x)))  
+  s.add(ForAll([x,y], Implies(And(R(x, y), R(y, x)), x == y)))
+  s.add(ForAll([x,y,z], Implies(And(R(x, y), R(y, z)), R(x, z))))
   # and other assertions using R
 ```
 
