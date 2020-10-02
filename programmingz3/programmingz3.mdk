@@ -1373,6 +1373,52 @@ def block_model(s):
     s.add(Or([ f() != m[f] for f in m.decls() if f.arity() == 0]))           
 ```
 
+It is naturally also possible to block models based on the evaluation
+of only a selected set of terms, and not all constants mentioned in the
+model. The corresponding `block_model` is then
+```python
+def block_model(s, terms);
+    m = s.model()
+    s.add(Or([t != m.eval(t) for t in terms]))
+```
+
+A loop that cycles through multiple solutions can then be formulated:
+```python
+def all_smt(s, terms):
+    while sat == s.check():
+       print(s.model())
+       block_model(s, terms)
+```
+A limitation of this approach is that the solver state is innudated
+with new lemmas that accumulate over multiple calls. Z3 does not offer
+any built-in method for solution enumeration that would avoid this overhead, 
+but you can approximate a space efficient solver using scopes:
+```python
+def all_smt(s, initial_terms):
+    def block_term(s, m, t):
+        s.add(t != m.eval(t))
+    def fix_term(s, m, t):
+        s.add(t == m.eval(t))
+    def all_smt_rec(terms):
+        if sat == s.check():
+           m = s.model()
+           yield m
+           for i in range(len(terms)):
+               s.push()
+               block_term(s, m, terms[i])
+               for j in range(i):
+                   fix_term(s, m, terms[j])
+               for m in all_smt_rec(terms[i+1:]):
+                   yield m
+               s.pop()   
+    for m in all_smt_rec(list(initial_terms)):
+        yield m           
+```
+The `all_smt`{language:python} method splits the search space into 
+disjoint models. It does so by dividing
+it into portions according to the _first_ term in a list of terms evaluating
+differently in the next set of models.
+
 ## Maximizing Satisfying Assignments
 Another use of models is to use them as a guide to a notion of optimal model.
 A _maximal satisfying solution_, in short _mss_, for a set of formulas `ps`
