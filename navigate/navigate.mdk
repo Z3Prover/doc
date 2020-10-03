@@ -1,5 +1,7 @@
-Title         : Navigating the Universe of Z3 Solvers
+Title         : Navigating the Universe of Z3 Theory Solvers
 Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Author        : Lev Nachmanson
 Affiliation   : Microsoft Research
 Bibliography  : refs.bib
 
@@ -61,40 +63,70 @@ use scenarios, and we reflect on lessons derived from the integration.
 
 # Introduction { #sec-intro }
 
-* A tour through Z3's current main solver engines.
-* Shankar, little-engines of proof.
-* Model-based theory combination.
-* Differentiate from other cores: Horn, NLSAT, Opt, QSAT.
+The aim of this paper is to provide an up-to-date overview of Z3's core solver engines.
+While some of the engines date back quite some time, other engines have been 
+replaced over time, added, and some engines added and then removed. We here provide
+a first description of the underlying principles of some of the engines that is
+not documented elsewhere. As an overview paper, we will not be able to go into
+depth into any one of the engines, but hopefully provide enough of an idea
+of each of the approaches.
 
-# Solvers { #sec-solvers}
+We will apply the following taxonomy when discussing the theory solvers.
+It extends the reduction approach to decision procedures [@KapurZarbaReduction]
+as explained in the context of Z3 in [@MouraB09].
 
-* SAT core
-* EUF
-* Arithmetic
-* Arrays
-* User Theories
-* Recursive Functions
-* Sequences and Regular expressions
-* Bit-vectors
-* IEEE floating points
-* Quantifier Solving
-* Algebraic Datatypes
 
-# Taxonomy:
- 
-* Finite domain theories
-* Base Theories
-* Reduction Theories
-* Hybrid Theories
-* External Theories
+* Boolean Theories 
+  * Domains that are inherently finite domain and can be solved by reducing to an underlying CDCL engine.
+  * Instances: Bit-vectors, Cardinality and Pseudo-Boolean constraints
+* Base theories 
+  * Theories that form a basis for all other theories.
+  * Instances: the theory of uninterpreted functions and the theory of arithmetic
+* Reducible theories 
+  * Theories that can be solved by reducing into base theories.
+  * Instances: Arrays, IEEE floating points, algebraic datatypes, recursive functions
+* Hybrid theories 
+  * Theories that combine non-disjoint signatures from different theories.
+  * Instances: Sequences, Model-based quantifier instantiation
+* External theories 
+  * Theories that may be developed externally by propagating consequences and identifying conflicts.
+  * Instance: an external propagator plugin
+
+## Present and Future
+Z3 has now in fact two CDCL(T) solvers. For main SMT workloads it offers a CDCL(T) core
+that integrates all the theories that we mention here. This core is a continuation
+of the main solver of Z3 since its inception. A core with near up-to-date advances in SAT
+solving has been used so far for workloads originating from bit-vector and Pseudo-Boolean constraints.
+This core is currently being updated to handle most if not all the SMT workloads of the legacy
+core with the intent of modernizing Z3's core and allow integrating new techniques around
+in-processing, logging of clausal proofs, model repair, and other goodies.
+From the perspective we give in this paper, we consider these cores the same.
+Z3 exposes several other core solvers that either build on top of the SMT solver or entirely 
+bypass it. For Horn clauses, Z3 contains dedicated engines for finite domain Horn clauses using finite hash-tables, 
+and for Constrained Horn Clauses (CHC) it uses the SPACER [@GurfinkelSPACER] solver; for quantifier-free formulas
+over Tarski's fragment of polynomial arithmetic it exposes a self-contained solver; and for quantified
+formulas for theories that admit quantifier-elimination it exposes self-contained solvers.
 
 
 # CDCL(T) - In the light of Theory Solvers
 
-We here recap the main mechanisms used in mainstream modern SAT solvers in the light of theory solving.
+We here recall the main mechanisms used in mainstream modern SAT solvers in the light of theory solving.
 When SAT solving, as implemented using conflict driven clause learning, CDCL, is combined with theory solving
 it augments propositional satisfiability with theory reasoning. The CDCL solver maintains a set of 
 formulas $F$ and a partial assignment to literals in $F$ that we refer to as $M$.  
+The solver starts in a state $\langle M, F\rangle$, where $M$ is initially empty. 
+It then attempts to complete $M$ to a full model of $F$ to show that $F$ is satisfiable
+and at the same time addes consequences
+to $F$ to establish that $F$ is unsatisfiable. The transition between the search for a satisfying
+solution and a consequence is handled by a _conflict resolution_ phase. 
+The state during conflict resolution is a triple $\langle M, F, C\rangle$, 
+where, besides the partial model $M$ and formula $F$, there is also a conflict clause $C$,
+that is false under $M$.
+The auxiliary function _Theory_ is used to advance decisions, propagations and identify conflicts.
+If _Theory_ determines that $S$ is conflicting with respect to the literals in $M$ it produces a conflict clause $C$, that
+contains a subset of conflicting literals from $M$. It can also produce a trail assignment $A$, which is either a propagation
+or decision and finally, if it determines that $S$ is satisfiable under trail $M$ it produces $SAT$.
+
 From the point of view of the CDCL(T) solver
 theory reasoning is a module that can take a state during search and produce verdicts on how search should progress.
 We use the following verdicts of a theory invocation $\Theory(M,F)$:
@@ -110,12 +142,6 @@ the partial model extends to a model of the theories, can identify a subset of $
 propagate the truth assignment of a literal $\ell$, or create a new case split $\Decision{\ell}$ for a
 literal $\ell$ that has not already been assigned in $M$.
 
-We outline the main transitions of an abstract CDCL solver below. The solver starts in a state $\langle M, F\rangle$, where
-$F$ maintains constraints and the trail $M$ is initially empty. The state during conflict analysis is $\langle M, C, F\rangle$.
-The auxiliary function _Theory_ is used to advance decisions, propagations and identify conflicts.
-If _Theory_ determines that $S$ is conflicting with respect to the literals in $M$ it produces a conflict clause $C$, that
-contains a subset of conflicting literals from $M$. It can also produce a trail assignment $A$, which is either a propagation
-or decision and finally, if it determines that $S$ is satisfiable under trail $M$ it produces $SAT$.
 
 ~MathPre
 \langle M, {F} \rangle                      & \Rightarrow & SAT                                                    & SAT = \Theory(M, F)
@@ -126,46 +152,122 @@ or decision and finally, if it determines that $S$ is satisfiable under trail $M
 
 \langle M, \emptyset, {F} \rangle           & \Rightarrow & UNSAT 
 
-\langle M \Decision{\ell}, {C}, {F} \rangle & \Rightarrow & \langle M \Propagation{\ell}{C}, {F} \rangle         & \overline{\ell} \in {C}
+\langle M \Decision{\ell}, {F}, C \rangle & \Rightarrow & \langle M \Propagation{\ell}{C}, {F} \rangle         & \overline{\ell} \in {C}
 
-\langle M \Propagation{\ell}{C'}, {C}, {F} \rangle     & \Rightarrow & \langle M, (C \setminus \{\ell\}) \cup C', {F} \rangle & \overline{\ell} \in {C}
+\langle M, F \Propagation{\ell}{C'}, {C}\rangle     & \Rightarrow & \langle M, F, (C \setminus \{\ell\}) \cup C' \rangle & \overline{\ell} \in {C}
 
-\langle M A, {C}, {F} \rangle               & \Rightarrow & \langle M, C, {F} \rangle                              & otherwise
+\langle M A, F, C \rangle               & \Rightarrow & \langle M, F, {C} \rangle                              & otherwise
 
 ~
 
-To be well-behaved we expect _Theory_ to produce propagations on literals that don't already appear in $M$. 
 
 
 ## Invariants
 
-* For state $\langle M, C, F \rangle$ we have $F \models \bigvee_{\ell \in C} \neg \ell$
-* For state $\langle M \Propagation{\ell}{C}, F \rangle$ we have $F \models C \Rightarrow \ell$, each $\ell' \in C: \ell' \in M$.
+To be well-behaved we expect _Theory_ to produce propagations on literals that don't already appear in $M$, and crucially
+enforce the main invariants:
+
+* The conflict clause $C$ is false in $M$ and a consequence of $F$. Thus, 
+  for state $\langle M, F, C \rangle$ we have $F \models_T \bigvee_{\ell \in C} \neg \ell$, as well as $\overline{C} \in M$.
+* A propagated literal is justified by the current partial model $M$. Thus, 
+  for state $\langle M \Propagation{\ell}{C}, F \rangle$ we have $F \models_T C \Rightarrow \ell$, each $\ell' \in C: \ell' \in M$.
 
 That, is: each conflict clause is a consequence of $F$ and each propagation is also a consequence of $F$, and the premises of a propagation is justified by $T$.
 
 
-# Theories
+# Boolean Theories
+
+## Bit-vectors
+
+## Pseudo-Booleans
 
 # Base Theories
 ## Uninterpreted Functions 
  
 ## Arithmetic 
 
-* Waterfall model for new arithmetic solver. 
-  * Incremental linearization
-  * Integrates NLSAT
+There are several alternate engines for arithmetical constraints in Z3. 
+Some of the engines are engineered for fragments of arithmetic, such
+as difference arithmetic, where all inequalities are of the form $x - y \leq k$, 
+for $k$ a constant, and unit-two-variable-per-inequality (UTVPI), where
+all inequalities are of the form $\pm x \pm y \leq k$. A new main solver
+for general arithmetic formulas has emerged recently, with the longer term
+objective of entirely replacing Z3's legacy arithmetic solver. We will here
+describe internals of the newer solver in more detail.
+
+In overview, the arithmetic solver uses a waterfall model for solving arithmetic constraints.
+
+* First it establishes feasibility with respect to linear inequalities. Variables are solved over the rationals.
+* Second, it establishes feasibility with respect to mixed integer linear constraints. Integer variables are solved if they are assigned integer values.
+* Finally, it establishes feasibility with respect to non-linear polynomial constraints.
 
 ### Rational linear arithmetic
 
+The solver for rational linear inequalities uses a dual simplex solver as explained in [@DutertreM06].
+It maintains a global set of equalities of the form $A\vec{x} = 0$, and
+each variable $x_j$ is assigned lower and upper bounds during search.
+The solver then checks for feasibility of the resulting system
+$A\vec{x} = 0, lo_j \leq x_j \leq hi_j, \forall j$ for dynamically
+changing bounds $lo_j, hi_j$.
+
+#### Bounds propagation
+
+* Lev's new idea.
+
 ### Integer linear arithmetic
 
-* GCD lemmas
-* patch
-* cubes
+The mixed integer linear solver comprises of several layers. It contains several substantial improvements
+over Z3's original arithmetic solver and currently outperforms the legacy solver on most known benchmark sets.
+It does not mean that it consistently outperforms the legacy solver and with user feedback we are learning
+several 
+
+#### GCD consistency
+Each row is first normalized by multiplying the least common multiple of the denominators of each coefficient. 
+For each row it assembles a value from the fixed variables. 
+A variable $x_j$ is fixed if the current values $lo_j$, $hi_j$ are equal. 
+Then it checks that the gcd of the coefficients to variables divide the fixed value. If they don't the row has no integer solution.
+
+#### Patching
+
+#### Cubes
+One of the deciding factors in leapfrogging the previous solver in number of benchmarks solved
+included so far an integration with the method by Bromberger and Weidenbach [@BrombergerW16], [@BrombergerW17] to detect integer feasible
+solutions from strengthened inequalities. We observed that the default strengthening proposed by Bromberger and Weidenbach
+can often be avoided: integer solutions can be guaranteed from weaker systems.
 * Hermite cuts
 * Gomory cuts
 * Branch
+
+#### Cubes
+In the following we let $A, A'$ range over integer matrices 
+and $a$, $b$, $c$ over integer vectors. The 1-norm $\onenorm{A}$ of a matrix
+is a column vector, such that each entry $i$ is the sum of the absolute
+values of the elements in the corresponding row $A_i$. We write
+$\onenorm{A_i}$ to directly access the 1-norm of a row.
+
+A (unit) _cube_ is a polyhedron that is a Cartesian 
+product of intervals of length one for each variable.
+Since each variable therefore contains an integer point, the interior of the polyhedron
+contains an integer point. The condition for a convex polyhedron to contain a cube can be
+recast as follows:
+
+
+~Example
+Suppose we have $3x + y \leq 9 \wedge - 3y \leq -2$ and wish to find an integer solution. 
+By solving $3x + y \leq 9 - \frac{1}{2}(3 + 1) = 7, -3y \leq -2 - \frac{1}{2}3 = -3.5$ we find
+a model where $y = \frac{7}{6}, x = 0$. After rounding $y$ to $1$ and maintaining $x$ at $0$ we obtain an
+integer solution to the original inequalities.
+~
+
+#### Special Inequalities
+
+~Definition
+[Difference Matrix] We say that $D$ is \emph{difference matrix} if it comprises of entries over $-1, 0, 1$ 
+and every row contains at most one entry with value $-1$
+and at most one entry with value $1$.
+~
+
+
 
 ### Non-linear arithmetic
 
@@ -181,7 +283,7 @@ Initialization: to-refine, patch
 * NLSat
 
 
-## Reductions
+# Reducible Theories
 
 Let us illustrate a use of _reduction_ from richer theories to base theories based on 
 a simple example. We here introduce a theory of refinement types that is currently only available 
@@ -290,8 +392,11 @@ also currently, as a base-line it is eager:
 
 A hypothetical refinement could use some limited HO pattern unification steps.
 For example
+
+~Pre
     lambda x y z . Y z y x = lambda x y z . X x z y
 -> Y = lambda x y z . X ....
+~
 
 ## Other reduction theories
 
@@ -323,13 +428,49 @@ for unicode strings [@SMTUnicode] ...
 
 # External Theories
 
+```python
 
+class PropagateInequality(UserPropagate):
+   def __init__(self, s):
+    def __init__(self, s):
+        super(self.__class__, self).__init__(s)
+        self.add_fixed(self.is_fixed)
+        self.add_final(self.final_check)
+        self.add_eq(self._add_eq)
+        self.add_diseq(self._add_diseq)
 
+    #override
+    def push(self):
+        print("push")
 
+    #override
+    def pop(self, num_scopes):
+        print("pop", num_scopes)
+    
+    def is_fixed(self, id, e):
+        print("fixed", id, e)
 
+    def final_check(self):
+        print("final")
 
+    def _add_eq(self, x, y):
+        pass
 
-## Extensions
+    def _add_diseq(self, x, y):
+        pass
+
+    # TBD test
+    def fresh(self, new_ctx):        
+        return PropagateInequality(s)
+        
+```
+
+~Example 
+Pseudo Booleans
+
+~
+
+# Extensions
 
 * In-processing
 * Induction Solvers
