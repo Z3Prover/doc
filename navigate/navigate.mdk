@@ -210,6 +210,8 @@ each variable $x_j$ is assigned lower and upper bounds during search.
 The solver then checks for feasibility of the resulting system
 $A\vec{x} = 0, lo_j \leq x_j \leq hi_j, \forall j$ for dynamically
 changing bounds $lo_j, hi_j$.
+The bounds are _justified_ by assignments in $M$. 
+
 
 #### Finding equal variables - cheaply
 
@@ -224,35 +226,38 @@ The tableau contains a sub-tableau of equalities where at most two variables are
 in every equation, such that the coefficients of the non-fixed variables have the same
 absolute value. 
 That is, it contains a system $S$ be a system of linear equations of the form 
-$e_i:=a_{i_0} x_{i} + a_{i_1} y_{i}=c_i$, where $x_{i},y_{i}$ are variables and
- $c_i$ is a constant, and $a_{i,k} \in \{-1,1\}$ for $0 \le i < n$. 
+$e_i:=a_{i} x_{i} + b_{i} y_{i}=c_i$, where $x_{i},y_{i}$ are variables and
+ $c_i$ is a constant, and $a_i, b_i \in \{-1,1\}$ for $0 \le i < n$. 
+It is relatively cheap to detect whether a row in a tableau corresponds
+to such an equation: it can have at most two non-fixed variables whose coefficients
+must have the same absolute values.
 We assume that the variable values and the constants are rational numbers.
 For bounds propagation it is only relevant to consider feasible tableaux. 
 So $S$ has a solution $V$, so we have
- $a_{i_0} V(x_{i})+ a_{i_1} V(y_{i})=c_i$ for every $i$. Let us call
+ $a_{i} V(x_{i})+ b_{i} V(y_{i})=c_i$ for every $i$. Let us call
  variables $u$ and $v$ equivalent if in every solution of $S$ they
  have the same values.
 
- Given $S$ and $V$, we provide an efficient
- algorithm for finding pairs of variables $(u, t)$ such that $u$ is equivalent
-  to $t$. We will formulate the result more precisely further on.
+Given $S$ and $V$, we provide an efficient
+algorithm for finding pairs of variables $(u, t)$ such that $u$ is equivalent
+to $t$. We will formulate the result more precisely later.
 
 Let us start from an example. Consider the following system
 ~MathPre
 x - y = 3, &    y - w = 2, &    w + t = 4
 y + z = 3, &    z + u = 4, &    v - z = 2, t - s = 1
 ~
- and solution $V$
+ and solution
 
 ~MathPre
-  x \rightarrow 5, y \rightarrow 2, z \rightarrow 1, u \rightarrow 3, w \rightarrow 1, s \rightarrow 3, t \rightarrow 3, v \rightarrow 3
+V:  x \rightarrow 5, y \rightarrow 2, z \rightarrow 1, u \rightarrow 3, w \rightarrow 1, s \rightarrow 3, t \rightarrow 3, v \rightarrow 3
 ~
 
  By examining $V$, we might suspect that the
  $u,t$, and $v$ are pairwise equivalent. However, if we increase $x$ by one
- we have another solution $V'$:
+ we have another solution
 ~MathPre
-  x \rightarrow 6, y \rightarrow 3, z \rightarrow 0, u \rightarrow 4, w \rightarrow 2, , s \rightarrow 2, t \rightarrow 2, v \rightarrow 2
+V':  x \rightarrow 6, y \rightarrow 3, z \rightarrow 0, u \rightarrow 4, w \rightarrow 2, , s \rightarrow 2, t \rightarrow 2, v \rightarrow 2
 ~
  Since $V'(u) \ne V'(t)$, we can conclude that $u$ is not equivalent to
  either $t$ or $v$. 
@@ -298,11 +303,13 @@ Note that the same method also detects fixed variables; whenever deriving $x + x
 $x$ to be fixed at value $c/2$. In this case, the method needs to calculate $c$. All other variables connected
 to $x$ through binary equalities are naturally also fixed.
 
-To implement search over the derivation rules efficiently, our implementation maintains a depth-first search
-forest where the nodes are annotated by signed variables (and their values) and edges are annotated by octagon equations. 
+To implement search over the derivation rules efficiently, we build a depth-first search
+forest where the nodes are annotated by variables annotated by polarities and their values from $V$.
+Edges are annotated by octagon equations. 
 The forest is built by picking a so-far unprocessed variable and growing a tree under it
 by traversing all equations involving the variable. Similar to algorithms for finding strongly connected
 components, our search keeps track of whether there is a self-loop to a matching _value_ and _polarity_ that was previously explored.
+To propagate a new equality we trace back the path that was used to derive the equality and assemble the justifications from each row.
 
 ### Integer linear arithmetic
 
@@ -317,13 +324,21 @@ A variable $x_j$ is fixed if the current values $lo_j$, $hi_j$ are equal.
 Then it checks that the gcd of the coefficients to variables divide the fixed value. If they don't the row has no integer solution.
 
 #### Patching
+Following [@MouraB08], the integer solver moves non-basic variables away from their bounds in order to ensure that
+basic, integer, variables are assigned integer values. The process examines each non-basic variable and checks every row where it occurs
+to estimate a safe zone where its value can be changed without breaking any bounds. If the safe zone is sufficiently large to patch
+a basic integer variable it performs an update. This heuristic is highly incomplete, but is able to locally patch several variables
+without resorting to more expensive analyses.
 
 #### Cubes
-One of the deciding factors in leapfrogging the previous solver in number of benchmarks solved
-included so far an integration with the method by Bromberger and Weidenbach [@BrombergerW16], [@BrombergerW17] to detect integer feasible
-solutions from strengthened inequalities. We observed that the default strengthening proposed by Bromberger and Weidenbach
+One of the deciding factors in leapfrogging the previous solver relied on 
+a method by Bromberger and Weidenbach [@BrombergerW16;@BrombergerW17].
+It allows to detect feasible inequalities over integer variables 
+by solving a stronger linear system.
+In addition, we observed that the default strengthening proposed by Bromberger and Weidenbach
 can often be avoided: integer solutions can be guaranteed from weaker systems.
 
+We will here recall the main method and our twist.
 In the following we let $A, A'$ range over integer matrices 
 and $a$, $b$, $c$ over integer vectors. The 1-norm $\onenorm{A}$ of a matrix
 is a column vector, such that each entry $i$ is the sum of the absolute
@@ -344,15 +359,19 @@ a model where $y = \frac{7}{6}, x = 0$. After rounding $y$ to $1$ and maintainin
 integer solution to the original inequalities.
 ~
 
+Our twist on Bromberger and Weidenbach's method is to avoid strengthening on selected inequalities.
+First we note that _difference_ inequalities of the form $x - y \leq k$, where $x, y$ are integer variables
+and $k$ is an integer offset need not be strengthened. For octagon constraints $\pm x \pm y \leq k$
+there is a boundary condition: they need only require strengthening if $x, y$ are assigned at mid-points
+between integral solutions. For example, if $V(x) = \frac{1}{2}$ and $V(y) = \frac{3}{2}$, for $x + y \leq 2$.
+Our approach is described in detail in [@Vampire17Theorem].
 
-~Definition
-[Difference Matrix] We say that $D$ is \emph{difference matrix} if it comprises of entries over $-1, 0, 1$ 
-and every row contains at most one entry with value $-1$
-and at most one entry with value $1$.
-~
 
 #### Branching
-The solver 
+Similar to traditional MIP branch-and-bound methods, 
+the solver creates somewhat eagerly case splits on bounds 
+of integer variables if the dual simplex solver fails to assign them integer values.
+
 
 #### Gomory and Hermite cuts
 The arithmetic solver produces Gomory cuts from rows where the basic variables are non-integers after
@@ -369,14 +388,60 @@ into Hermite matrices.
 
 Initialization: to-refine, patch
 
-* bounds propagation on monomials
-* Horner lemmas
-* Groebner reduction
-* Basic lemmas I/II
-* Order lemmas
-* Monotonicity
-* Tangent
-* NLSat
+Similar to solving for integer feasibility, the arithmetic solver
+solves constraints over polynomials using a waterfall model for non-linear
+constraints.
+At the basis it maintains for every monomial 
+term $x \cdot x \cdot y \cdot z$ an equation
+$m := x \cdot x \cdot y \cdot z$, where $m$ is a variable
+that represents the monomial $x \cdot x \cdot y \cdot z$.
+The module for non-linear arithmetic then attempts to 
+establish a valuation $V$ where $V(m) = V(x) \cdot V(x) \cdot V(y) \cdot V(z)$, 
+or derive a consequence that no such valuation exists.
+The stages in the waterfall model are summarized as follows:
+
+
+#### Bounds propagation on monomials
+A relatively inexpensive step is to propagate and check bounds based on 
+on non-linear constraints. 
+
+~Pre
+     * val(v)^p should be in range.
+     * if val(v)^p > upper(range) add 
+     *             v <= root(p, upper(range)) and v >= -root(p, upper(range)) if p is even
+     *             v <= root(p, upper(range))                                 if p is odd
+     * if val(v)^p < lower(range) add
+     *             v >= root(p, lower(range)) or v <= -root(p, lower(range)) if p is even
+     *             v >= root(p, lower(range))                                if p is odd
+
+     * Propagate bounds for monomial 'm'.
+     * For each variable v in m, compute the intervals of the remaining variables in m.
+     * Compute also the interval for m.var() as mi
+     * If the value of v is outside of mi / product_of_other, add a bounds lemma.
+     * If the value of m.var() is outside of product_of_all_vars, add a bounds lemma.
+
+     * Count the number of unbound (free) variables.
+     * Variables with no lower and no upper bound multiplied 
+     * to an odd degree have unbound ranges when it comes to 
+     * bounds propagation.
+
+~
+
+#### Horner lemmas
+#### Groebner reduction
+We use an adaptation of ZDD (Zero suppressed decision diagrams [@Minato]) to represent polynomials.
+The representation has the advantage that polynomials are stored in a shared data-structure and operations
+over polynomials are memoized. A polynomial over the real is represented as an acyclic graph where 
+nodes are labeled by variables and edges are labeled by coefficients.
+
+TBD: picture of a PDD representation of a polynomial.
+
+* Say what is a simplification step and what is a completion step and give bounds on completion steps.
+
+#### Incremental linearization
+Following [@GriggioLinearization] we incrementally linearize monomial constraints
+
+#### NLSat
 
 
 # Reducible Theories
