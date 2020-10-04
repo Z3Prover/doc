@@ -18,6 +18,7 @@ Package       : amssymb
 Package       : [curve]xypic
 Package       : tikz
 Package       : algorithm2e
+Package       : bussproofs
 ~Exercise     : @h1-exercise=lower-case @h1-exercise label="@h1@h1-exercise"
                 margin-left=0em
                 before="[**Exercise &label;: **]{margin-left=0em}&br;"
@@ -210,16 +211,104 @@ The solver then checks for feasibility of the resulting system
 $A\vec{x} = 0, lo_j \leq x_j \leq hi_j, \forall j$ for dynamically
 changing bounds $lo_j, hi_j$.
 
-#### Bounds propagation
+#### Finding equal variables - cheaply
 
-* Lev's new idea.
+The new arithmetic solver contains a novel, efficient, method for finding pairs of variables
+that are forced equal. By finding such variable, the arithmetic solver can then propagate
+equalities to other theories. Such equality propagation can make a big difference for 
+efficiently integrating arithmetic in hybrid theories, such as the theory of sequences.
+We will in the following outline the new idea.
+
+A starting point is a tableau with bounds $A\vec{x} = 0, lo_j \leq x_j \leq hi_j, \forall j$.
+The tableau contains a sub-tableau of equalities where at most two variables are non-fixed
+in every equation, such that the coefficients of the non-fixed variables have the same
+absolute value. 
+That is, it contains a system $S$ be a system of linear equations of the form 
+$e_i:=a_{i_0} x_{i} + a_{i_1} y_{i}=c_i$, where $x_{i},y_{i}$ are variables and
+ $c_i$ is a constant, and $a_{i,k} \in \{-1,1\}$ for $0 \le i < n$. 
+We assume that the variable values and the constants are rational numbers.
+For bounds propagation it is only relevant to consider feasible tableaux. 
+So $S$ has a solution $V$, so we have
+ $a_{i_0} V(x_{i})+ a_{i_1} V(y_{i})=c_i$ for every $i$. Let us call
+ variables $u$ and $v$ equivalent if in every solution of $S$ they
+ have the same values.
+
+ Given $S$ and $V$, we provide an efficient
+ algorithm for finding pairs of variables $(u, t)$ such that $u$ is equivalent
+  to $t$. We will formulate the result more precisely further on.
+
+Let us start from an example. Consider the following system
+~MathPre
+x - y = 3, &    y - w = 2, &    w + t = 4
+y + z = 3, &    z + u = 4, &    v - z = 2, t - s = 1
+~
+ and solution $V$
+
+~MathPre
+  x \rightarrow 5, y \rightarrow 2, z \rightarrow 1, u \rightarrow 3, w \rightarrow 1, s \rightarrow 3, t \rightarrow 3, v \rightarrow 3
+~
+
+ By examining $V$, we might suspect that the
+ $u,t$, and $v$ are pairwise equivalent. However, if we increase $x$ by one
+ we have another solution $V'$:
+~MathPre
+  x \rightarrow 6, y \rightarrow 3, z \rightarrow 0, u \rightarrow 4, w \rightarrow 2, , s \rightarrow 2, t \rightarrow 2, v \rightarrow 2
+~
+ Since $V'(u) \ne V'(t)$, we can conclude that $u$ is not equivalent to
+ either $t$ or $v$. 
+There is in fact only a single pair of variables that are equivalent in our example. 
+We reveal the equivalent variables after outlining our algorithm.
+Another observation is that each variable changed its
+value by $\pm 1$: changing as $x$ or as $-x$. 
+
+We introduce our algorithm by recalling which inference rules it simulates, without 
+actually literally performing the inferences. The inferences are
+
+~Math
+\begin{array}{ccc}
+\AxiomC{$x - y = c_1$}
+\AxiomC{$y - z = c_2$}
+\BinaryInfC{$x - z = c_1 + c_2$}
+\DisplayProof
+&
+\AxiomC{$x + y = c_1$}
+\AxiomC{$z - y = c_2$}
+\BinaryInfC{$x + z = c_1 + c_2$}
+\DisplayProof
+&
+\AxiomC{$x + y = c_1$}
+\AxiomC{$z + y = c_2$}
+\BinaryInfC{$x - z = c_1 - c_2$}
+\DisplayProof
+\end{array}
+~
+ 
+The goal of deriving implied equalities is achieved if we can infer an equality $x - y = 0$ 
+using the above inference rules.
+Now, the crucial observation is that there is no need to perform arithmetic on the constant offsets
+$c_i$ because we have a valuation $V$ and the property for every derived equation $x - y = c$:
+
+~Math
+   c = 0  \Leftrightarrow V(x) = V(y)
+~
+So it is enough to look at the variables $x, y$ and check if their values are the same for a derived equality.
+The benefit of avoiding arithmetic on the coefficients can be signficant when the coefficients cannot be 
+represented using ordinary 64-bit registers, but require arbitrary precision arithmetic.
+Note that the same method also detects fixed variables; whenever deriving $x + x = c$, we have proved
+$x$ to be fixed at value $c/2$. In this case, the method needs to calculate $c$. All other variables connected
+to $x$ through binary equalities are naturally also fixed.
+
+To implement search over the derivation rules efficiently, our implementation maintains a depth-first search
+forest where the nodes are annotated by signed variables (and their values) and edges are annotated by octagon equations. 
+The forest is built by picking a so-far unprocessed variable and growing a tree under it
+by traversing all equations involving the variable. Similar to algorithms for finding strongly connected
+components, our search keeps track of whether there is a self-loop to a matching _value_ and _polarity_ that was previously explored.
 
 ### Integer linear arithmetic
 
 The mixed integer linear solver comprises of several layers. It contains several substantial improvements
-over Z3's original arithmetic solver and currently outperforms the legacy solver on most known benchmark sets.
-It does not mean that it consistently outperforms the legacy solver and with user feedback we are learning
-several 
+over Z3's original arithmetic solver and currently outperforms the legacy solver on the main SMTLIB benchmark
+sets, and to our knowledge mostly on user scenarios.
 
 #### GCD consistency
 Each row is first normalized by multiplying the least common multiple of the denominators of each coefficient. 
@@ -234,11 +323,7 @@ One of the deciding factors in leapfrogging the previous solver in number of ben
 included so far an integration with the method by Bromberger and Weidenbach [@BrombergerW16], [@BrombergerW17] to detect integer feasible
 solutions from strengthened inequalities. We observed that the default strengthening proposed by Bromberger and Weidenbach
 can often be avoided: integer solutions can be guaranteed from weaker systems.
-* Hermite cuts
-* Gomory cuts
-* Branch
 
-#### Cubes
 In the following we let $A, A'$ range over integer matrices 
 and $a$, $b$, $c$ over integer vectors. The 1-norm $\onenorm{A}$ of a matrix
 is a column vector, such that each entry $i$ is the sum of the absolute
@@ -259,13 +344,24 @@ a model where $y = \frac{7}{6}, x = 0$. After rounding $y$ to $1$ and maintainin
 integer solution to the original inequalities.
 ~
 
-#### Special Inequalities
 
 ~Definition
 [Difference Matrix] We say that $D$ is \emph{difference matrix} if it comprises of entries over $-1, 0, 1$ 
 and every row contains at most one entry with value $-1$
 and at most one entry with value $1$.
 ~
+
+#### Branching
+The solver 
+
+#### Gomory and Hermite cuts
+The arithmetic solver produces Gomory cuts from rows where the basic variables are non-integers after
+the non-basic variables have been pushed to the bounds. It also incorporates algorithms from [@DilligDA09;@ChristH15]
+to generate cuts after the linear systems have been transformed
+into Hermite matrices.
+
+
+
 
 
 
