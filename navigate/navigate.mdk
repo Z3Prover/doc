@@ -153,9 +153,9 @@ literal $\ell$ that has not already been assigned in $M$.
 
 \langle M, \emptyset, {F} \rangle           & \Rightarrow & UNSAT 
 
-\langle M \Decision{\ell}, {F}, C \rangle & \Rightarrow & \langle M \Propagation{\ell}{C}, {F} \rangle         & \overline{\ell} \in {C}
+\langle M \Decision{\overline{\ell}}, {F}, C \rangle & \Rightarrow & \langle M \Propagation{\ell}{C}, {F} \rangle         & \ell \in {C}
 
-\langle M, F \Propagation{\ell}{C'}, {C}\rangle     & \Rightarrow & \langle M, F, (C \setminus \{\ell\}) \cup C' \rangle & \overline{\ell} \in {C}
+\langle M, F \Propagation{\ell}{C'}, {C}\rangle     & \Rightarrow & \langle M, F, (C \setminus \{\overline{\ell}\}) \cup (C'\setminus\{{\ell}\}) \rangle & \overline{\ell} \in {C}
 
 \langle M A, F, C \rangle               & \Rightarrow & \langle M, F, {C} \rangle                              & otherwise
 
@@ -173,7 +173,7 @@ enforce the main invariants:
 * A propagated literal is justified by the current partial model $M$. Thus, 
   for state $\langle M \Propagation{\ell}{C}, F \rangle$ we have $F \models_T C \Rightarrow \ell$, each $\ell' \in C: \ell' \in M$.
 
-That, is: each conflict clause is a consequence of $F$ and each propagation is also a consequence of $F$, and the premises of a propagation is justified by $T$.
+That is, each conflict clause is a consequence of $F$ and each propagation is also a consequence of $F$, and the premises of a propagation is justified by $T$.
 
 
 # Boolean Theories
@@ -428,7 +428,7 @@ on non-linear constraints.
 ~
 
 #### Horner lemmas
-#### Groebner reduction
+#### Gr{\"o}bner reduction
 We use an adaptation of ZDD (Zero suppressed decision diagrams [@Minato]) to represent polynomials.
 The representation has the advantage that polynomials are stored in a shared data-structure and operations
 over polynomials are memoized. A polynomial over the real is represented as an acyclic graph where 
