@@ -123,8 +123,8 @@ and at the same time addes consequences
 to $F$ to establish that $F$ is unsatisfiable. The transition between the search for a satisfying
 solution and a consequence is handled by a _conflict resolution_ phase. 
 The state during conflict resolution is a triple $\langle M, F, C\rangle$, 
-where, besides the partial model $M$ and formula $F$, there is also a conflict clause $C$,
-that is false under $M$.
+where, besides the partial model $M$ and formula $F$, there is also a conflict clause $C$
+false under $M$.
 The auxiliary function _Theory_ is used to advance decisions, propagations and identify conflicts.
 If _Theory_ determines that $S$ is conflicting with respect to the literals in $M$ it produces a conflict clause $C$, that
 contains a subset of conflicting literals from $M$. It can also produce a trail assignment $A$, which is either a propagation
