@@ -104,7 +104,7 @@ in-processing, logging of clausal proofs, model repair, and other goodies.
 From the perspective we give in this paper, we consider these cores the same.
 Z3 exposes several other core solvers that either build on top of the SMT solver or entirely 
 bypass it. For Horn clauses, Z3 contains dedicated engines for finite domain Horn clauses using finite hash-tables, 
-and for Constrained Horn Clauses (CHC) it uses the SPACER [@GurfinkelSPACER] solver; for quantifier-free formulas
+and for Constrained Horn Clauses (CHC) it uses the SPACER [@KomuravelliGCC13] solver; for quantifier-free formulas
 over Tarski's fragment of polynomial arithmetic it exposes a self-contained solver; and for quantified
 formulas for theories that admit quantifier-elimination it exposes self-contained solvers.
 
@@ -171,7 +171,8 @@ enforce the main invariants:
 * The conflict clause $C$ is false in $M$ and a consequence of $F$. Thus, 
   for state $\langle M, F, C \rangle$ we have $F \models_T \bigvee_{\ell \in C} \neg \ell$, as well as $\overline{C} \in M$.
 * A propagated literal is justified by the current partial model $M$. Thus, 
-  for state $\langle M \Propagation{\ell}{C}, F \rangle$ we have $F \models_T C \Rightarrow \ell$, each $\ell' \in C: \ell' \in M$.
+  for state $\langle M \Propagation{\ell}{C}, F \rangle$ we have $F \models_T C$, $\ell \in C$, 
+  and for each $\ell' \in C \setminus \{ \ell \}: \ell' \in M$.
 
 That is, each conflict clause is a consequence of $F$ and each propagation is also a consequence of $F$, and the premises of a propagation is justified by $T$.
 
@@ -250,19 +251,17 @@ y + z = 3, &    z + u = 4, &    v - z = 2, t - s = 1
  and solution
 
 ~MathPre
-V:  x \rightarrow 5, y \rightarrow 2, z \rightarrow 1, u \rightarrow 3, w \rightarrow 1, s \rightarrow 3, t \rightarrow 3, v \rightarrow 3
+V:  x \rightarrow 5, y \rightarrow 2, z \rightarrow 1, u \rightarrow 3, w \rightarrow 0, s \rightarrow 3, t \rightarrow 4, v \rightarrow 3
 ~
 
  By examining $V$, we might suspect that the
- $u,t$, and $v$ are pairwise equivalent. However, if we increase $x$ by one
+ $u,v$, and $s$ are pairwise equivalent. However, if we increase $x$ by one
  we have another solution
 ~MathPre
-V':  x \rightarrow 6, y \rightarrow 3, z \rightarrow 0, u \rightarrow 4, w \rightarrow 2, , s \rightarrow 2, t \rightarrow 2, v \rightarrow 2
+V':  x \rightarrow 6, y \rightarrow 3, z \rightarrow 0, u \rightarrow 4, w \rightarrow 1, s \rightarrow 2, t \rightarrow 3, v \rightarrow 2
 ~
- Since $V'(u) \ne V'(t)$, we can conclude that $u$ is not equivalent to
- either $t$ or $v$. 
-There is in fact only a single pair of variables that are equivalent in our example. 
-We reveal the equivalent variables after outlining our algorithm.
+ Since $V'(u) \ne V'(v)$, we can conclude that $u$ is not equivalent to
+ either $s$ or $v$. But we can prove that $v$ and $s$ are equivalent.
 Another observation is that each variable changed its
 value by $\pm 1$: changing as $x$ or as $-x$. 
 
@@ -304,13 +303,22 @@ $x$ to be fixed at value $c/2$. In this case, the method needs to calculate $c$.
 to $x$ through binary equalities are naturally also fixed.
 
 To implement search over the derivation rules efficiently, we build a depth-first search
-forest where the nodes are annotated by variables annotated by polarities and their values from $V$.
+forest where the nodes are annotated by variables annotated by signs and their values from $V$.
 Edges are annotated by octagon equations. 
 The forest is built by picking a so-far unprocessed variable and growing a tree under it
-by traversing all equations involving the variable. Similar to algorithms for finding strongly connected
-components, our search keeps track of whether there is a self-loop to a matching _value_ and _polarity_ that was previously explored.
+by traversing all equations involving the variable. During the tree expansion the algorithm
+checks if two nodes with the same _value_ and same _signs_ are connected.
 To propagate a new equality we trace back the path that was used to derive the equality and assemble the justifications from each row.
 
+~Example
+Let us show how the procedure works on the example from above and valuation $V$. 
+Starting with the node $\langle +t, 4 \rangle$, the equation $t - s = 1$ 
+produces the children $\langle +s, 3\rangle$ and $\langle -w, 0\rangle$.
+The second child can be expanded in turn into 
+$\langle -y, -2 \rangle$, $\langle z, 1\rangle$, $\langle v, 3\rangle$.
+This establishes a path from $\langle s, 3\rangle$ to $\langle v, 3\rangle$. 
+The two nodes are labeled by the same values and same signs.
+~
 ### Integer linear arithmetic
 
 The mixed integer linear solver comprises of several layers. It contains several substantial improvements
@@ -386,70 +394,99 @@ into Hermite matrices.
 
 ### Non-linear arithmetic
 
-Initialization: to-refine, patch
-
 Similar to solving for integer feasibility, the arithmetic solver
 solves constraints over polynomials using a waterfall model for non-linear
 constraints.
 At the basis it maintains for every monomial 
-term $x \cdot x \cdot y \cdot z$ an equation
-$m := x \cdot x \cdot y \cdot z$, where $m$ is a variable
-that represents the monomial $x \cdot x \cdot y \cdot z$.
+term $x \cdot x \cdot y$ an equation
+$m := x \cdot x \cdot y$, where $m$ is a variable
+that represents the monomial $x \cdot x \cdot y $.
 The module for non-linear arithmetic then attempts to 
-establish a valuation $V$ where $V(m) = V(x) \cdot V(x) \cdot V(y) \cdot V(z)$, 
+establish a valuation $V$ where $V(m) = V(x) \cdot V(x) \cdot V(y)$, 
 or derive a consequence that no such valuation exists.
 The stages in the waterfall model are summarized as follows:
 
 
 #### Bounds propagation on monomials
 A relatively inexpensive step is to propagate and check bounds based on 
-on non-linear constraints. 
+on non-linear constraints. For example, for $y \geq 3$, then $m := x\cdot x\cdot y \geq 3$,
+if furthermore $x \leq -2$, we have the strengthened bound $m \geq 12$.
+Bounds propagation can also flow from bounds on $m$ to bounds on the 
+variables that make up the monomial, such that when $m \geq 8, 1 \leq y \leq 2, x \leq 0$, 
+then we learn the stronger bound $x \leq -2$ on $x$.
 
-~Pre
-     * val(v)^p should be in range.
-     * if val(v)^p > upper(range) add 
-     *             v <= root(p, upper(range)) and v >= -root(p, upper(range)) if p is even
-     *             v <= root(p, upper(range))                                 if p is odd
-     * if val(v)^p < lower(range) add
-     *             v >= root(p, lower(range)) or v <= -root(p, lower(range)) if p is even
-     *             v >= root(p, lower(range))                                if p is odd
+#### Bounds propagation with Horner expansions
+If $x \geq 2, y \geq -1, z \geq 2$, then $y + z \geq 1$ 
+and therefore $x\cdot (y + z) \geq 2$, but we would not be
+able to deduce this fact if combining bounds individually for $x\cdot y$ 
+and $x \cdot z$ because no bounds can be inferred for $x \cdot y$ in isolation.
+The solver therefore attempts different re-distribution of multiplication
+in an effort to find stronger bounds.
 
-     * Propagate bounds for monomial 'm'.
-     * For each variable v in m, compute the intervals of the remaining variables in m.
-     * Compute also the interval for m.var() as mi
-     * If the value of v is outside of mi / product_of_other, add a bounds lemma.
-     * If the value of m.var() is outside of product_of_all_vars, add a bounds lemma.
-
-     * Count the number of unbound (free) variables.
-     * Variables with no lower and no upper bound multiplied 
-     * to an odd degree have unbound ranges when it comes to 
-     * bounds propagation.
-
-~
-
-#### Horner lemmas
-#### Gr{\"o}bner reduction
-We use an adaptation of ZDD (Zero suppressed decision diagrams [@Minato]) to represent polynomials.
+#### Gr&ouml;bner reduction
+We use an adaptation of ZDD (Zero suppressed decision diagrams [@Minato93;@NishinoYMN16]) to represent polynomials.
 The representation has the advantage that polynomials are stored in a shared data-structure and operations
 over polynomials are memoized. A polynomial over the real is represented as an acyclic graph where 
-nodes are labeled by variables and edges are labeled by coefficients.
+nodes are labeled by variables and edges are labeled by coefficients. For example, the polynomial $5x^2y + xy + y + x + 1$
+is represented by the acyclic graph shown below.
 
-TBD: picture of a PDD representation of a polynomial.
+~ Snippet
 
-* Say what is a simplification step and what is a completion step and give bounds on completion steps.
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+
+\tikzstyle{block} = [rectangle, draw, text centered, rounded corners, minimum height=2em]
+\tikzstyle{line} = [draw, -latex']
+
+\begin{tikzpicture}[node distance = 3em, scale = 0.2]
+  \node [circle, draw] (xroot) {$x$};
+  \node [circle, below of = xroot, left of= xroot, draw] (xnext) {$x$};
+  \node [circle, below of = xnext, left of= xnext, draw] (y1) {$y$};
+  \node [circle, below of = xnext, right of= xnext, draw] (y2) {$y$};
+  \node [circle, below of = y1, left of = y1] (t1) {$5$};
+  \node [circle, below of = y1, right of = y1] (t2) {$0$};
+  \node [circle, right of = t2] (t3) {$1$};
+  \node [circle, below of = y2, right of = y2] (t4) {$1$};
+  \path [line] (xroot.west) -- (xnext.north);
+  \path [line] (xroot.east) -- (y2.north);
+  \path [line] (xnext.west) -- (y1.north);
+  \path [line] (xnext.east) -- (y2.north);
+  \path [line] (y1.west) -- (t1.north);
+  \path [line] (y1.east) -- (t2.north);
+  \path [line] (y2.west) -- (t3.north);
+  \path [line] (y2.east) -- (t4.north);
+
+\end{tikzpicture}
+~
+
+The root node labeled by $x$ represents the polynomial $x\cdot l + r$, 
+where $l$ is the polynomial of the left sub-graph and $r$ the polynomial
+of the right sub-graph. The left sub-graph is allowed to be labeled again by $x$, 
+but the rigth sub-graph may only have nodes labeled by variables that are smaller
+in a fixed ordering. The fixed ordering used in this example sets $x$ above $y$.
+Then the polynomial for the right sub-graph is $y + 1$, and the polynomial with the
+left subgraph is $5xy + (y + 1)$.
+
+The Gr&ouml;bner module performs a set of partial completion steps, preferring
+to eliminate variables that can be isolated, and expanding a bounded number of super-position
+steps.
 
 #### Incremental linearization
-Following [@GriggioLinearization] we incrementally linearize monomial constraints
+Following [@CimattiGIRS18] we incrementally linearize monomial constraints. 
+For example, we include lemmas of the form $x = 0 \rightarrow m = 0$
+and $x = 1 \rightarrow m = y$, for $m = x^2y$. 
 
 #### NLSat
-
+As an end-game attempt, the solver attempts to solver the non-linear constraints using a complete solver
+for Tarski's fragment supported by the NLSat solver [@JovanovicM12].
 
 # Reducible Theories
 
+## Refinement Types
 Let us illustrate a use of _reduction_ from richer theories to base theories based on 
-a simple example. We here introduce a theory of refinement types that is currently only available 
-in a prototype stage in Z3. It encodes refinement types using auxiliary functions as explained
-in [@BartJacobsCategoricalLogicAndTypeTheory]. Abstractly, a predicatie refinement
+a simple example based on refinement types. 
+It encodes refinement types using auxiliary functions as explained
+in [@BartJacobsCategoricalLogicAndTypeTheory]. Abstractly, a refinement
 type of sort $S$ uses a predicate $p$ over $S$. At least one element of $S$ must satisfy $p$ for the
 construction to make sense. The refinement type $S \mid p$ represents the elements of $S$ that satisfy
 $p$. The properties we need to know about elements of $S\mid p$ can be encoded using two auxiliary
@@ -490,90 +527,67 @@ is bounded. We don't want the solver to create terms $\relaxOp(\restrictOp(\rela
     * $\restrictOp(\relaxOp(t)) = t$
     * $p(\relaxOp(t))$ 
 
-## Arrays and Function Spaces
+## Reducible theories in Z3
 
-* Describe overall methodology of arrays based on new solver architecture:
-  * lambda
-  * select
-  * lambda parents
-* Note that proper lambdas are added after FMCAD work 
-  and what are perspectives on lambda solving.
+### Arrays
 
-Search maintains 
+Z3 reduces the theory of arrays to reasoning about uninterpreted functions.
+It furthermore treats arrays as function spaces. The first-order theory
+of arrays enjoys compactness and so the following formula is satisfiable[^jazzman]
 
-A node $n$ has attributes:
+[^jazzman]: thanks to Jasmin Blanchette for drawing attention to this distinction.
 
-~Pre
-    parent_selects:   { A[i] | A ~ n }
-    parent_lambdas:     { store(A,i,v) | A ~ n } u { map(f, .., A, ..) | A ~ n }
-    lambdas:            { const(v) | const(v) ~ n }
-                      u { map(f,..) | map(f,..) ~ n }
-                      u { store(A,i,v) | store(A,i,v) ~ n }
-                      u { as-array(f) | as-array(f) ~ n }
-                      u { lambda term ~ n}
-
-The attributes are used for propagation.
-When n1 is merged with n2, and n1 is the new root, the attributes from n2 are added to n1.
-The merge also looks for new redexes.
-
-
-Let A[j] in parent_selects(n2) :
-
-        lambda in parent_lambdas(n1)
-    -------------------------------
-     lambda[j] = beta-reduce(lambda[j])
-
-            lambda in lambdas(n1)
-    -------------------------------
-     lambda[j] = beta-reduce(lambda[j])
-
-Beta reduction rules are:
-      beta-reduce(store(A,j,v)[i]) = if(i = j, v, A[j])
-      beta-reduce(map(f,A,B)[i]) = f(A[i],B[i])
-      beta-reduce(as-array(f)[i]) = f(i)
-      beta-reduce(const(v)[i]) = v
-      beta-reduce((lambda x M[x])[i]) = M[i]
-
-For enforcing
-      store(A,j,v)[i] = beta-reduce(store(A,j,v)[i])
-
-      only the following axiom is instantiated:
-      - i = j or store(A,j,v)[i] = A[i]
-
-The other required axiom, store(A,j,v)[j] = v
-is added eagerly whenever store(A,j,v) is created.
-
-Current setup: to enforce extensionality on lambdas, 
-also currently, as a base-line it is eager:
-
-        A ~ B, A = lambda x. M[x]
-    -------------------------------
-    A = B => forall i . M[i] = B[i]
+~Math
+\forall a : Array(Int, Int) \ . \ \exists k \ . \ \forall i \geq k \ . \ a[i] = 0.
 ~
 
-A hypothetical refinement could use some limited HO pattern unification steps.
-For example
+The same formula is not satisfiable when arrays range over function spaces.
+The distinction is only relevant for formulas that contain quantifiers over arrays.
 
-~Pre
-    lambda x y z . Y z y x = lambda x y z . X x z y
--> Y = lambda x y z . X ....
+The central functionality of the decision procedure for arrays is to ensure
+that a satisfying model under the theory of EUF translates to a satisfying
+model in the theory of arrays. To this end, the main service of the theory
+solver is to saturate the search state with $\beta$ reduction axioms
+for array terms that admit beta-reduction. We call these terms $\lambda$ terms
+and they are defined by the beta-reduction axioms:
+~MathPre
+\beta(\mathit{Store}(A,j,v)[i]) & = & \mathit{if}\ i = j\ \mathit{then} \ v \ \mathit{else}\ A[i]
+\beta(\mathit{Map}(f,A,B)[i]) & = & f(A[i],B[i])
+\beta(\mathit{AsArray}(f)[i]) & = & f(i)
+\beta(\mathit{Const}(v)[i]) & = & v
+\beta((\mathit{Lambda}(x, M))[i]) & = & M[i/x]
 ~
 
-## Other reduction theories
+The reduction into EUF, is then in a nutshell an application of the following inference rule:
 
-* Floating points
-  * compiled into bit-vectors
+~Math
+\AxiomC{$b$ is a lambda term}
+\AxiomC{$a[j]$ is a term}
+\AxiomC{$b \sim a$ ($a, b$ are equal under EUF)}
+\TrinaryInfC{$b[j] = \beta(b[j])$}
+\DisplayProof
+~
 
-* Algebraic Datatypes
-  * except for occurs check
 
-* Special Relations
+### Floating points
+Floating point semantics can be defined in terms of bit-vector operations. The solver for floating points
+uses this connection to reduce the theory of floating points to bit-vectors.
 
+### Algebraic Datatypes
+The theory of algebraic datatypes is compiled into uninterpreted functions. 
+In this theory, constructors are injective functions. Injectivity is ensured
+by adding axioms for partial inverses. For the example of LISP S-expressions
+these axioms are: 
+~Math
+  car(cons(x,y)) = x, cdr(cons(x,y)) = y
+~
+The main functionality provided by the theory solver that cannot be reduced to EUF 
+is the _occurs check_.
+
+### Special Relations
 
 # Hybrid Theories
-
-
-## Sequences and Strings
+The prime example of a hybrid theory in Z3 is the theory of strings, regular expressions and sequences.
 
 The theory of strings and regular expressions has entered mainstream SMT solving
 thanks to community efforts around standardization and solvers. The SMTLIB2 format
@@ -584,15 +598,21 @@ for unicode strings [@SMTUnicode] ...
 * Describe waterfall
 * Regular expression solving
 
-## BAPA
-
-
 # External Theories
+
+* Add an example, where the Pseudo-Boolean constraint, if written
+directly, is enormous, but maintaining it incrementally is cheap.
+
+```python
+   f = Function('f', BitVec(10), BitVec(10))
+   g = Function('g', BitVec(10), BitVec(10))
+
+   Sum(i*j*(f[i]=i,g[j]=j)) <= 100
+```
 
 ```python
 
 class PropagateInequality(UserPropagate):
-   def __init__(self, s):
     def __init__(self, s):
         super(self.__class__, self).__init__(s)
         self.add_fixed(self.is_fixed)
