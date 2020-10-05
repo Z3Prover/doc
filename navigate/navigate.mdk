@@ -69,8 +69,9 @@ While some of the engines date back quite some time, other engines have been
 replaced over time, added, and some engines added and then removed. We here provide
 a first description of the underlying principles of some of the engines that is
 not documented elsewhere. As an overview paper, we will not be able to go into
-depth into any one of the engines, but hopefully provide enough of an idea
-of each of the approaches.
+depth into any one of the engines. A recent addition has been a completely rewritten
+theory solver for arithmetic. We give an overview of the main features of this new engine
+and explain selected new approaches used in the solver.
 
 We will apply the following taxonomy when discussing the theory solvers.
 It extends the reduction approach to decision procedures [@KapurZarbaReduction]
@@ -161,6 +162,9 @@ literal $\ell$ that has not already been assigned in $M$.
 
 ~
 
+~Example
+TODO: add example derivation
+~
 
 
 ## Invariants
@@ -486,7 +490,7 @@ for Tarski's fragment supported by the NLSat solver [@JovanovicM12].
 Let us illustrate a use of _reduction_ from richer theories to base theories based on 
 a simple example based on refinement types. 
 It encodes refinement types using auxiliary functions as explained
-in [@BartJacobsCategoricalLogicAndTypeTheory]. Abstractly, a refinement
+in [@JacobsCategorical]. Abstractly, a refinement
 type of sort $S$ uses a predicate $p$ over $S$. At least one element of $S$ must satisfy $p$ for the
 construction to make sense. The refinement type $S \mid p$ represents the elements of $S$ that satisfy
 $p$. The properties we need to know about elements of $S\mid p$ can be encoded using two auxiliary
@@ -555,7 +559,7 @@ and they are defined by the beta-reduction axioms:
 \beta(\mathit{Map}(f,A,B)[i]) & = & f(A[i],B[i])
 \beta(\mathit{AsArray}(f)[i]) & = & f(i)
 \beta(\mathit{Const}(v)[i]) & = & v
-\beta((\mathit{Lambda}(x, M))[i]) & = & M[i/x]
+\beta((\lambda x \ . \ M)[i]) & = & M[i/x]
 ~
 
 The reduction into EUF, is then in a nutshell an application of the following inference rule:
@@ -591,7 +595,7 @@ The prime example of a hybrid theory in Z3 is the theory of strings, regular exp
 
 The theory of strings and regular expressions has entered mainstream SMT solving
 thanks to community efforts around standardization and solvers. The SMTLIB2 format
-for unicode strings [@SMTUnicode] ...
+for unicode strings [@SMTLIB2]
 
 * Describe skolem function idea.
 * Describe normalization
@@ -600,56 +604,97 @@ for unicode strings [@SMTUnicode] ...
 
 # External Theories
 
-* Add an example, where the Pseudo-Boolean constraint, if written
-directly, is enormous, but maintaining it incrementally is cheap.
+The universe of theories is in principle unbounded. Many theories can be captured using
+a set of quantified axioms and therefore be handled by machinery for quantifiers.
+But encodings have their own limitations, noteworthy it might not be possible to 
+encode a theory using a small number of axioms. Users can of course encode theory
+solvers directly themselves within Z3's core. This has been accomplished in the case
+of Z3Str3 [@BerzishGZ17], but it is a significant engineering effort and ties a theory
+to a fixed signature. A more flexible approach was exposed around 2010 in the format
+of user theories. A user theory plugin could be encoded outside of Z3 and it integrated
+with the main CDCL(T) engine. Some examples of the user theory were presented in [@Bjorner11].
+The user theories were subsequently removed from Z3 as it was not possible to properly
+integrate them in model construction. Recent experiences with solving constraint satisfaction
+problems suggested that a restricted version of user theories would be instrumental. 
+A variant of user theories have therefore been resurrected under the banner of a _user propagator_
+to capture its main functionality: it allows client code participate in propagation and 
+creating conflicts in response to variable assignments. 
+
+We will illustrate the user propagator by a simple example. The example
+illustrates as a Pseudo-Boolean constraint that when encoded directly would
+be quadratic in the number of variables. The user propagator, though, does not require
+quadratic space overhead. We encode the constraint that 
+
+~Math 
+\sum \{ 1 \mid 
+~
+
 
 ```python
-   f = Function('f', BitVec(10), BitVec(10))
-   g = Function('g', BitVec(10), BitVec(10))
+from z3 import *
 
-   Sum(i*j*(f[i]=i,g[j]=j)) <= 100
-```
+xs = BitVecs(["x%d" % i for i in range(8)], 10)
 
-```python
 
-class PropagateInequality(UserPropagate):
+class UserPropagate(UserPropagateBase):
     def __init__(self, s):
         super(self.__class__, self).__init__(s)
-        self.add_fixed(self.is_fixed)
-        self.add_final(self.final_check)
-        self.add_eq(self._add_eq)
-        self.add_diseq(self._add_diseq)
+        self.add_fixed(self.myfix)
+        self.add_final(self.myfinal)
+        self.xvalues = {}
+        self.id2x = {self.add(x) : x for x in xs}
+        self.x2id = { self.id2x[id] : id for id in self.id2x }
+        self.trail = []
+        self.lim = []
+        self.sum = 0
 
-    #override
+    def undo(self, s, x):
+        self.sum = s
+        del self.xvalues[x]
+
     def push(self):
-        print("push")
+        self.lim.append(len(self.trail))
 
-    #override
     def pop(self, num_scopes):
-        print("pop", num_scopes)
-    
-    def is_fixed(self, id, e):
-        print("fixed", id, e)
+        lim_sz = len(self.lim)-num_scopes
+        trail_sz = self.lim[lim_sz]
+        while len(self.trail) > trail_sz:
+            fn = self.trail.pop()
+            fn()
+        self.lim = self.lim[0:lim_sz]
 
-    def final_check(self):
-        print("final")
+    def myfix(self, id, e):
+        x = self.id2x[id]
+        v = e.as_long()
+        old_sum = self.sum        
+        self.trail.append(lambda : self.undo(old_sum, x))        
+        for w in self.xvalues.values():
+            print(v, w)
+            if v + w == 42:
+                if v > 30 or w > 30:
+                    self.sum += 3
+                else:
+                    self.sum += 1
+        self.xvalues[x] = v
+        if self.sum > 100:
+            self.conflict([self.x2id[x] for x in self.xvalues])
+        elif self.sum < 10 and len(self.xvalues) > len(xs)/2:
+            self.conflict([self.x2id[x] for x in self.xvalues])
+            
 
-    def _add_eq(self, x, y):
-        pass
+    def myfinal(self):
+        print("test-final")
 
-    def _add_diseq(self, x, y):
-        pass
 
-    # TBD test
-    def fresh(self, new_ctx):        
-        return PropagateInequality(s)
+s = SimpleSolver()
+for x in xs:
+    s.add(x % 2 == 1)
+p = UserPropagate(s)
+s.check()
+print(s.model())
+
         
 ```
-
-~Example 
-Pseudo Booleans
-
-~
 
 # Extensions
 
