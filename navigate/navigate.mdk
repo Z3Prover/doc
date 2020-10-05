@@ -174,7 +174,7 @@ A possible next state is to propagate on the unit literal $x + y < 0$, producing
 ~~Math
 \langle \Propagation{x + y < 0}{x + y < 0}, (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
-This step may be followed by a case split setting $x \leq 0$.
+This step may be followed by a case split setting $x > 0$.
 ~~Math
 \langle \Propagation{x + y < 0}{x + y < 0}\Decision{\neg(x > 0)}, (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
@@ -183,7 +183,21 @@ which triggers a propagation
 \langle \Propagation{x + y < 0}{x + y < 0}\Decision{\neg(x > 0)}\Propagation{y > 0}{x > 0 \vee y > 0}, (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
 The resulting state is satisfiable in the theory of arithmetic.
+On the other hand, if we had made the case split on $x > 0$ instead of $\neg(x > 0)$, and then $y > 0$, 
+we would have encountered a conflicting state with conflict clause 
+$\neg (x > 0) \vee \neg (y > 0)$[^unitremove]:
+~~Math
+\langle \Propagation{x + y < 0}{x + y < 0}\Decision{x > 0}\Decision{y > 0},\
+ (x > 0 \vee y > 0) \wedge x + y < 0, \ \neg (x > 0) \vee \neg (y > 0)\rangle
+~~
+The last decision is then reverted to produce the satisfiable state
+~~Math
+\langle \Propagation{x + y < 0}{x + y < 0}\Decision{x > 0}\Propagation{\neg(y > 0)}{\neg (x > 0) \vee \neg (y > 0)},\
+ (x > 0 \vee y > 0) \wedge x + y < 0\rangle
+~~
+
 ~
+[^unitremove]: To keep the formula short we have applied a shortcut and removed the literal $\neg(x + y < 0)$ from the conflict clause. In practice, solvers automatically remove unit literals that are false from conflict clauses. 
 
 
 ## Invariants
@@ -195,7 +209,7 @@ enforce the main invariants:
   for state $\langle M, F, C \rangle$ we have $F \models_T \bigvee_{\ell \in C} \neg \ell$, as well as $\overline{C} \in M$.
 * A propagated literal is justified by the current partial model $M$. Thus, 
   for state $\langle M \Propagation{\ell}{C}, F \rangle$ we have $F \models_T C$, $\ell \in C$, 
-  and for each $\ell' \in C \setminus \{ \ell \}: \ell' \in M$.
+  and for each $\ell' \in C \setminus \{ \ell \}: \overline{\ell}' \in M$.
 
 That is, each conflict clause is a consequence of $F$ and each propagation is also a consequence of $F$, and the premises of a propagation is justified by $T$.
 
