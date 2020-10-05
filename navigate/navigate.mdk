@@ -245,7 +245,7 @@ So $S$ has a solution $V$, so we have
 
 Given $S$ and $V$, we provide an efficient
 algorithm for finding pairs of variables $(u, t)$ such that $u$ is equivalent
-to $t$. We will formulate the result more precisely later.
+to $t$. 
 
 Let us start from an example. Consider the following system
 ~MathPre
@@ -326,11 +326,11 @@ The two nodes are labeled by the same values and same signs.
 ### Integer linear arithmetic
 
 The mixed integer linear solver comprises of several layers. It contains several substantial improvements
-over Z3's original arithmetic solver and currently outperforms the legacy solver on the main SMTLIB benchmark
-sets, and to our knowledge mostly on user scenarios.
+over Z3's original arithmetic solver and currently outperforms the legacy solver on the main SMTLIB benchmark sets, and to our knowledge 
+mostly on user scenarios.
 
 #### GCD consistency
-Each row is first normalized by multiplying the least common multiple of the denominators of each coefficient. 
+Each row is first normalized by multiplying it with the the least common multiple of the denominators of each coefficient.
 For each row it assembles a value from the fixed variables. 
 A variable $x_j$ is fixed if the current values $lo_j$, $hi_j$ are equal. 
 Then it checks that the gcd of the coefficients to variables divide the fixed value. If they don't the row has no integer solution.
