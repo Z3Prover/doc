@@ -66,8 +66,8 @@ and detect conflicts.
 
 The aim of this paper is to provide an up-to-date overview of Z3's core solver engines.
 While some of the engines date back quite some time, other engines have been 
-replaced over time, added, and some engines added and then removed. 
-A recent addition has been a completely rewritten theory solver for arithmetic. 
+replaced over time, added, and even some have been removed; and then re-added in different guise.
+A recent addition has been a theory solver for arithmetic developed from the ground up.
 We give an overview of the main features of this new engine
 and explain selected new approaches used in the solver. A recent addition
 includes a mechanism for pluggable propagation. We also provide an introduction
@@ -80,19 +80,19 @@ as explained in the context of Z3 in [@MouraB09].
 
 * Boolean theories 
   * Domains that are inherently finite domain and can be solved by reducing to an underlying CDCL engine.
-  * Instances: Bit-vectors, Cardinality and Pseudo-Boolean constraints
+  * Instances: Bit-vectors, Cardinality and Pseudo-Boolean constraints.
 * Base theories 
   * Theories that form a basis for all other theories.
-  * Instances: the theory of uninterpreted functions and the theory of arithmetic
+  * Instances: the theory of uninterpreted functions and the theory of arithmetic.
 * Reducible theories 
   * Theories that can be solved by reducing into base theories.
-  * Instances: Arrays, IEEE floating points, algebraic datatypes, recursive functions
+  * Instances: Arrays, IEEE floating points, algebraic datatypes, recursive functions.
 * Hybrid theories 
   * Theories that combine non-disjoint signatures from different theories.
-  * Instances: Sequences, Model-based quantifier instantiation
+  * Instances: Sequences, Model-based quantifier instantiation.
 * External theories 
   * Theories that may be developed externally by propagating consequences and identifying conflicts.
-  * Instance: an external propagator plugin
+  * Instance: an external propagator plugin.
 
 ## Present and Future
 Z3 has now in fact two CDCL(T) solvers. For main SMT workloads it offers a CDCL(T) core
@@ -102,9 +102,10 @@ solving has been used so far for workloads originating from bit-vector and Pseud
 This core is currently being updated to handle most if not all the SMT workloads of the legacy
 core with the intent of modernizing Z3's core and allow integrating new techniques around
 in-processing, logging of clausal proofs, model repair, and other goodies.
-From the perspective we give in this paper, we consider these cores the same.
+From the perspective of this paper, we do not distinguish these cores.
 Z3 exposes several other core solvers that either build on top of the SMT solver or entirely 
-bypass it. For Horn clauses, Z3 contains dedicated engines for finite domain Horn clauses using finite hash-tables, 
+bypass it. For Horn clauses, Z3 contains dedicated engines for finite domain 
+Horn clauses using finite hash-tables, 
 and for Constrained Horn Clauses (CHC) it uses the SPACER [@KomuravelliGCC13] solver; for quantifier-free formulas
 over Tarski's fragment of polynomial arithmetic it exposes a self-contained solver; and for quantified
 formulas for theories that admit quantifier-elimination it exposes self-contained solvers.
@@ -766,9 +767,17 @@ $v < 30 \wedge w < 30$ the constraints are not solved with the same ease.
 
 # Conclusion
 We provided an overview of solver integration in Z3 with special emphasis on a newly revised
-arithmetic solver and a user propagator. While most applications use a small combination of
+arithmetic solver and a user propagator. 
+While most applications use a small combination of
 mainstream theories, there is plenty of room for expanding theory solvers both in depth,
 in terms of capabilities and efficiency; and expand the repertoire of solvers to new theories.
-
+While applications have been enabled by current SMT solvers, 
+they also introdue new challenges by highlighting bottlenecks and shortcomings.
+Current efforts center around modernizing Z3's entire core engine around up-to-date SAT solving
+techniques. Among many potential advantages it would allow Z3 to apply inprocessing 
+simplifications for quantifiers and SMT theories, and for instance, 
+handle large bit-vectors by integrating algebraic methods, incremental bit-blasting, 
+local search and leverage other recent advances in bit-vector reasoning. 
+The universe (of solvers) is still expanding.
 
 [BIB]
