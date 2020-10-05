@@ -119,7 +119,7 @@ it augments propositional satisfiability with theory reasoning. The CDCL solver 
 formulas $F$ and a partial assignment to literals in $F$ that we refer to as $M$.  
 The solver starts in a state $\langle M, F\rangle$, where $M$ is initially empty. 
 It then attempts to complete $M$ to a full model of $F$ to show that $F$ is satisfiable
-and at the same time addes consequences
+and at the same time adds consequences
 to $F$ to establish that $F$ is unsatisfiable. The transition between the search for a satisfying
 solution and a consequence is handled by a _conflict resolution_ phase. 
 The state during conflict resolution is a triple $\langle M, F, C\rangle$, 
@@ -134,7 +134,7 @@ From the point of view of the CDCL(T) solver
 theory reasoning is a module that can take a state during search and produce verdicts on how search should progress.
 We use the following verdicts of a theory invocation $\Theory(M,F)$:
 
-* $SAT$. The theory solver may determine that the assignment $M$ extendes to a model of $F$.
+* $SAT$. The theory solver may determine that the assignment $M$ extends to a model of $F$.
 * Conflict $C$. The theory solver may determine that a subset $M$ is inconsistent relative to $F$. 
   In the propositional case an inconsistent clause $C$ is a member of $F$, such that each literal in $C$ is false in $M$.
   With theory reasoning, $C$ does not need to correspond to a clause in $F$, but be assignments in $M$ that are inconsistent modulo theories.
@@ -219,14 +219,14 @@ Bit-vectors are in the current solver treated as tuples of Boolean variables and
 operations are translated to Boolean SAT. The approach is called bit-blasting.
 Only mild equational reasoning is performed over bit-vectors.
 The benefits of the CDCL SAT engine have been mostly enjoyed for applications in symbolic execution 
-of 32-bit arithmetic instructins. Bit-blasting has its limitations: applications that use quantifiers
+of 32-bit arithmetic instructions. Bit-blasting has its limitations: applications that use quantifiers
 and applications around smart contracts that use 256 bits per word are stressing this approach. A
 revised bit-vector solver that integrates algebraic reasoning and lazy bit-blasting is therefore currently
 being developed.
 
 Cardinality and Pseudo-Boolean inequalities can also be translated into CNF clauses. It is often an advantage
 when there are very few variables in the summations, but the overhead of translation can quickly become
-impractical. Z3 therfore contains dedicated solvers for cardinality and Pseudo-Boolean constraints.
+impractical. Z3 therefore contains dedicated solvers for cardinality and Pseudo-Boolean constraints.
 
 # Base Theories
 A first base theory is the theory of uninterpreted functions. 
@@ -343,7 +343,7 @@ $c_i$ because we have a valuation $V$ and the property for every derived equatio
    c = 0  \Leftrightarrow V(x) = V(y)
 ~
 So it is enough to look at the variables $x, y$ and check if their values are the same for a derived equality.
-The benefit of avoiding arithmetic on the coefficients can be signficant when the coefficients cannot be 
+The benefit of avoiding arithmetic on the coefficients can be significant when the coefficients cannot be 
 represented using ordinary 64-bit registers, but require arbitrary precision arithmetic.
 Note that the same method also detects fixed variables; whenever deriving $x + x = c$, we have proved
 $x$ to be fixed at value $c/2$. In this case, the method needs to calculate $c$. All other variables connected
@@ -509,10 +509,10 @@ is represented by the acyclic graph shown below.
 The root node labeled by $x$ represents the polynomial $x\cdot l + r$, 
 where $l$ is the polynomial of the left sub-graph and $r$ the polynomial
 of the right sub-graph. The left sub-graph is allowed to be labeled again by $x$, 
-but the rigth sub-graph may only have nodes labeled by variables that are smaller
+but the right sub-graph may only have nodes labeled by variables that are smaller
 in a fixed ordering. The fixed ordering used in this example sets $x$ above $y$.
 Then the polynomial for the right sub-graph is $y + 1$, and the polynomial with the
-left subgraph is $5xy + (y + 1)$.
+left sub-graph is $5xy + (y + 1)$.
 
 The Gr&ouml;bner module performs a set of partial completion steps, preferring
 to eliminate variables that can be isolated, and expanding a bounded number of super-position
@@ -689,7 +689,7 @@ from z3 import *
 xs = BitVecs(["x%d" % i for i in range(8)], 10)
 ```
 
-Then a user-propagator can be initialized by subclassing to the `UserPropagateBase`{python}
+Then a user-propagator can be initialized by sub-classing to the `UserPropagateBase`{python}
 class that implements the main interface to Z3's user propagation functionality.
 
 ```python
@@ -752,7 +752,7 @@ and the Pseudo-Boolean inequalities are then enforced.
             self.conflict([self.x2id[x] for x in self.xvalues])
 ```
 
-It remains to define the last auxililary methods for backtracking and testing.
+It remains to define the last auxiliary methods for backtracking and testing.
 
 ```python
             
@@ -786,9 +786,9 @@ While most applications use a small combination of
 mainstream theories, there is plenty of room for expanding theory solvers both in depth,
 in terms of capabilities and efficiency; and expand the repertoire of solvers to new theories.
 While applications have been enabled by current SMT solvers, 
-they also introdue new challenges by highlighting bottlenecks and shortcomings.
+they also introduce new challenges by highlighting bottlenecks and shortcomings.
 Current efforts center around modernizing Z3's entire core engine around up-to-date SAT solving
-techniques. Among many potential advantages it would allow Z3 to apply inprocessing 
+techniques. Among many potential advantages it would allow Z3 to apply in-processing 
 simplifications for quantifiers and SMT theories, and for instance, 
 handle large bit-vectors by integrating algebraic methods, incremental bit-blasting, 
 local search and leverage other recent advances in bit-vector reasoning. 
