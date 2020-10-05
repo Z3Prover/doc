@@ -1,7 +1,5 @@
 Title         : Navigating the Universe of Z3 Theory Solvers
-Author        : Nikolaj Bj&oslash;rner
-Affiliation   : Microsoft Research
-Author        : Lev Nachmanson
+Author        : Nikolaj Bj&oslash;rner, Lev Nachmanson
 Affiliation   : Microsoft Research
 Bibliography  : refs.bib
 
@@ -49,36 +47,38 @@ Package       : bussproofs
 
 
 ~ Abstract
-Modular combination of little engines of proof is an integral theme
+Modular combination of theory solvers is an integral theme
 in engineering modern SMT solvers. The CDCL(T) architecture provides
 an overall setting for how theory solvers may cooperate
 around a SAT solver based on conflict driven clause learning.
 The Nelson-Oppen framework provides the interface contracts between
-theory solvers for disjoint signatures. In this paper we review principles
+theory solvers for disjoint signatures. This paper provides an update
+on theories integrated in Z3. We briefly review principles
 of theory integration in CDCL(T) and then examine
-the theory solvers available in Z3, how they integrate, feedback from 
-use scenarios, and we reflect on lessons derived from the integration.
+the theory solvers available in Z3, with special 
+emphasis on two recent solvers: a new solver for arithmetic and
+a pluggable user solver that allows callbacks to invoke propagations
+and detect conflicts.
 ~
 
-[TOC]
 
 # Introduction { #sec-intro }
 
 The aim of this paper is to provide an up-to-date overview of Z3's core solver engines.
 While some of the engines date back quite some time, other engines have been 
-replaced over time, added, and some engines added and then removed. We here provide
-a first description of the underlying principles of some of the engines that is
-not documented elsewhere. As an overview paper, we will not be able to go into
-depth into any one of the engines. A recent addition has been a completely rewritten
-theory solver for arithmetic. We give an overview of the main features of this new engine
-and explain selected new approaches used in the solver.
+replaced over time, added, and some engines added and then removed. 
+A recent addition has been a completely rewritten theory solver for arithmetic. 
+We give an overview of the main features of this new engine
+and explain selected new approaches used in the solver. A recent addition
+includes a mechanism for pluggable propagation. We also provide an introduction
+to this engine. 
 
 We will apply the following taxonomy when discussing the theory solvers.
 It extends the reduction approach to decision procedures [@KapurZarbaReduction]
 as explained in the context of Z3 in [@MouraB09].
 
 
-* Boolean Theories 
+* Boolean theories 
   * Domains that are inherently finite domain and can be solved by reducing to an underlying CDCL engine.
   * Instances: Bit-vectors, Cardinality and Pseudo-Boolean constraints
 * Base theories 
@@ -591,11 +591,14 @@ is the _occurs check_.
 ### Special Relations
 
 # Hybrid Theories
-The prime example of a hybrid theory in Z3 is the theory of strings, regular expressions and sequences.
+The prime example of a hybrid theory in Z3 is the theory of strings, 
+regular expressions and sequences.
 
 The theory of strings and regular expressions has entered mainstream SMT solving
 thanks to community efforts around standardization and solvers. The SMTLIB2 format
 for unicode strings [@SMTLIB2]
+
+[@stanford2020symbolic]
 
 * Describe skolem function idea.
 * Describe normalization
@@ -623,18 +626,26 @@ creating conflicts in response to variable assignments.
 We will illustrate the user propagator by a simple example. The example
 illustrates as a Pseudo-Boolean constraint that when encoded directly would
 be quadratic in the number of variables. The user propagator, though, does not require
-quadratic space overhead. We encode the constraint that 
+quadratic space overhead. We encode the constraint that
 
-~Math 
-\sum \{ 1 \mid 
+~MathPre
+  & 3 |\{ (i,j) \mid i < j \wedge x_i + x_j = 42 \wedge (x_i > 30 \vee x_j > 30) \}| 
++ & |\{ (i,j) \mid i < j \wedge x_i + x_j = 42 \wedge x_i \leq 30 \wedge x_j \leq 30 \}| & \leq & 100
 ~
+and every subset $(i,j)$ that contributes to the sum and contains at least half of the variables
+must add up to at least 10. We first define the variables used in the problem:
 
 
 ```python
 from z3 import *
 
 xs = BitVecs(["x%d" % i for i in range(8)], 10)
+```
 
+Then a user-propagator can be initialized by subclassing to the `UserPropagateBase`{python}
+class that implements the main interface to Z3's user propagation functionality.
+
+```python
 
 class UserPropagate(UserPropagateBase):
     def __init__(self, s):
@@ -647,11 +658,16 @@ class UserPropagate(UserPropagateBase):
         self.trail = []
         self.lim = []
         self.sum = 0
+```
+The map `xvalues` tracks the values of assigned variables 
+and `id2x` and `x2id` maps tracks the identifiers that Z3 uses for variables with the original variables.
+The `sum` maintains the running sum of according to our unusual constraint.
 
-    def undo(self, s, x):
-        self.sum = s
-        del self.xvalues[x]
+The class must implement methods for pushing and popping backtrackable scopes.
+We use a `trail`{python} to record closures that are invoked to restore the previous state
+and `lim`{python} to maintain the the size of the trail for the current scope.
 
+```python
     def push(self):
         self.lim.append(len(self.trail))
 
@@ -662,6 +678,14 @@ class UserPropagate(UserPropagateBase):
             fn = self.trail.pop()
             fn()
         self.lim = self.lim[0:lim_sz]
+```
+
+We can then define the main callback used when a variable tracked by identifier `id` is fixed to a value `e`.
+The value is going to be a bit-vector constant, from which we can extract an unsigned integer into `v`.
+The trail is augmented with a restore point to the old state and the summation is then updated
+and the Pseudo-Boolean inequalities are then enforced.
+
+```python
 
     def myfix(self, id, e):
         x = self.id2x[id]
@@ -669,7 +693,6 @@ class UserPropagate(UserPropagateBase):
         old_sum = self.sum        
         self.trail.append(lambda : self.undo(old_sum, x))        
         for w in self.xvalues.values():
-            print(v, w)
             if v + w == 42:
                 if v > 30 or w > 30:
                     self.sum += 3
@@ -680,10 +703,19 @@ class UserPropagate(UserPropagateBase):
             self.conflict([self.x2id[x] for x in self.xvalues])
         elif self.sum < 10 and len(self.xvalues) > len(xs)/2:
             self.conflict([self.x2id[x] for x in self.xvalues])
+```
+
+It remains to define the last auxililary methods for backtracking and testing.
+
+```python
             
+    def undo(self, s, x):
+        self.sum = s
+        del self.xvalues[x]
+
 
     def myfinal(self):
-        print("test-final")
+        print(self.xvalues)
 
 
 s = SimpleSolver()
@@ -691,26 +723,20 @@ for x in xs:
     s.add(x % 2 == 1)
 p = UserPropagate(s)
 s.check()
-print(s.model())
-
-        
+print(s.model())        
 ```
 
-# Extensions
+In this example, it takes relatively few conflicts to establish a satisfying assignment, 
+one where 9 out of 10 variables are set to 1 and the last variable is set to 41.
+The solver is only as good as the propagation strength and the quality of the conflicts it can 
+generate. For instance, if we change the condition $v > 30 \vee w > 30$ to 
+$v < 30 \wedge w < 30$ the constraints are not solved with the same ease.
 
-* In-processing
-* Induction Solvers
-* Word-level bit-vectors
-* Combination of MBQI and Quantifier Projection. Model-based projection.
+# Conclusion
+We provided an overview of solver integration in Z3 with special emphasis on a newly revised
+arithmetic solver and a user propagator. While most applications use a small combination of
+mainstream theories, there is plenty of room for expanding theory solvers both in depth,
+in terms of capabilities and efficiency; and expand the repertoire of solvers to new theories.
 
-* Model counting
-
-* Interpolation
-
-# A modernized architecture { #sec-new-arch }
-
-* Where can benefits from one solver be imported into the main soup.
-* MCSAT promises and challenges
-* 
 
 [BIB]
