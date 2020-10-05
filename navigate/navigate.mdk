@@ -163,7 +163,25 @@ literal $\ell$ that has not already been assigned in $M$.
 ~
 
 ~Example
-TODO: add example derivation
+Consider the formula $(x > 0 \vee y > 0) \wedge x + y < 0$.
+The initial state of search is 
+~~Math
+\langle \epsilon, (x > 0 \vee y > 0), x + y < 0\rangle
+~~
+based on the empty partial assignment $\epsilon$ and the original formula.
+A possible next state is to propagate on the unit literal $x + y < 0$, producing
+~~Math
+\langle \Propagation{x + y < 0}{x + y < 0}, (x > 0 \vee y > 0) \wedge x + y < 0\rangle
+~~
+This step may be followed by a case split setting $x \leq 0$.
+~~Math
+\langle \Propagation{x + y < 0}{x + y < 0}\Decision{\neg(x > 0)}, (x > 0 \vee y > 0) \wedge x + y < 0\rangle
+~~
+which triggers a propagation
+~~Math
+\langle \Propagation{x + y < 0}{x + y < 0}\Decision{\neg(x > 0)}\Propagation{y > 0}{x > 0 \vee y > 0}, (x > 0 \vee y > 0) \wedge x + y < 0\rangle
+~~
+The resulting state is satisfiable in the theory of arithmetic.
 ~
 
 
@@ -182,13 +200,23 @@ That is, each conflict clause is a consequence of $F$ and each propagation is al
 
 
 # Boolean Theories
+Bit-vectors are in the current solver treated as tuples of Boolean variables and all bit-vector
+operations are translated to Boolean SAT. The approach is called bit-blasting.
+Only mild equational reasoning is performed over bit-vectors.
+The benefits of the CDCL SAT engine have been mostly enjoyed for applications in symbolic execution 
+of 32-bit arithmetic instructins. Bit-blasting has its limitations: applications that use quantifiers
+and applications around smart contracts that use 256 bits per word are stressing this approach. A
+revised bit-vector solver that integrates algebraic reasoning and lazy bit-blasting is therefore currently
+being developed.
 
-## Bit-vectors
-
-## Pseudo-Booleans
+Cardinality and Pseudo-Boolean inequalities can also be translated into CNF clauses. It is often an advantage
+when there are very few variables in the summations, but the overhead of translation can quickly become
+impractical. Z3 therfore contains dedicated solvers for cardinality and Pseudo-Boolean constraints.
 
 # Base Theories
-## Uninterpreted Functions 
+A first base theory is the theory of uninterpreted functions. 
+This theory captures a shared property of all theory: that equality is a congruence relation. 
+The theory is described many places, including in [@BjornerMNW18].
  
 ## Arithmetic 
 
@@ -588,22 +616,26 @@ these axioms are:
 The main functionality provided by the theory solver that cannot be reduced to EUF 
 is the _occurs check_.
 
-### Special Relations
+<!--- ### Special Relations --->
 
 # Hybrid Theories
-The prime example of a hybrid theory in Z3 is the theory of strings, 
+A prime example of a hybrid theory in Z3 is the theory of strings, 
 regular expressions and sequences.
 
 The theory of strings and regular expressions has entered mainstream SMT solving
 thanks to community efforts around standardization and solvers. The SMTLIB2 format
-for unicode strings [@SMTLIB2]
+for unicode strings [@SMTLIB2]. It integrates operations that mix equational solving
+over the free monoid with integer arithmetic (for string lengths and extracting sub-strings).
+Regular expression constraints furthermore effectively introduce constraints that require
+unfolding recursive relations. Z3 uses symbolic derivatives [@stanford2020symbolic] to 
+handle regular expressions, noteworthy, with complementation and intersection handled 
+by derivatives.
 
-[@stanford2020symbolic]
+A second prolific example of a hybrid theory is Z3's model-based quantifier instantiation engine (MBQI).
+Here, a theory is encoded using a quantifier. The MBQI engine supports extensions of
+Bradley-Manna-Sipma's array property fragment [@BradleyMS06] that effectively combines arithmetic with
+uninterpreted functions.
 
-* Describe skolem function idea.
-* Describe normalization
-* Describe waterfall
-* Regular expression solving
 
 # External Theories
 
