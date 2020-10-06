@@ -715,9 +715,11 @@ We use a `trail`{python} to record closures that are invoked to restore the prev
 and `lim`{python} to maintain the the size of the trail for the current scope.
 
 ```python
+    # overrides a base class method
     def push(self):
         self.lim.append(len(self.trail))
 
+    # overrides a base class method
     def pop(self, num_scopes):
         lim_sz = len(self.lim)-num_scopes
         trail_sz = self.lim[lim_sz]
@@ -728,7 +730,11 @@ and `lim`{python} to maintain the the size of the trail for the current scope.
 ```
 
 We can then define the main callback used when a variable tracked by identifier `id` is fixed to a value `e`.
-The value is going to be a bit-vector constant, from which we can extract an unsigned integer into `v`.
+The identifier is returned by the solver when calling the function `self.add(x)` on term `x`. It uses
+this identifier to communicate the state of the term `x`. When terms range over bit-vectors and Booleans
+(but not integers or other types), the a client can register a callback with `self.add_fixed` to pick up 
+a state where the variable is given a full assignment. 
+For our example, the value is going to be a bit-vector constant, from which we can extract an unsigned integer into `v`.
 The trail is augmented with a restore point to the old state and the summation is then updated
 and the Pseudo-Boolean inequalities are then enforced.
 
@@ -778,6 +784,10 @@ one where 9 out of 10 variables are set to 1 and the last variable is set to 41.
 The solver is only as good as the propagation strength and the quality of the conflicts it can 
 generate. For instance, if we change the condition $v > 30 \vee w > 30$ to 
 $v < 30 \wedge w < 30$ the constraints are not solved with the same ease.
+
+The user propagator also allows to register callbacks when two added terms are known to be equal
+to the solver, and when two variables are known to be distinct. Note again that the use-case for 
+the user propagator is for Bit-vector and Boolean variables.
 
 # Conclusion
 We provided an overview of solver integration in Z3 with special emphasis on a newly revised
