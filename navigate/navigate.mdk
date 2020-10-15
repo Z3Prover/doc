@@ -95,12 +95,12 @@ as explained in the context of Z3 in [@MouraB09].
   * Instance: an external propagator plugin.
 
 ## Present and Future
-Z3 has now in fact two CDCL(T) solvers. For main SMT workloads it offers a CDCL(T) core
+Z3 now has two CDCL(T) solvers. For main SMT workloads it offers a CDCL(T) core
 that integrates all the theories that we mention here. This core is a continuation
 of the main solver of Z3 since its inception. A core with near up-to-date advances in SAT
 solving has been used so far for workloads originating from bit-vector and Pseudo-Boolean constraints.
 This core is currently being updated to handle most if not all the SMT workloads of the legacy
-core with the intent of modernizing Z3's core and allow integrating new techniques around
+core with the intent of modernizing Z3's core and allowing integration of new techniques around
 in-processing, logging of clausal proofs, model repair, and other goodies.
 From the perspective of this paper, we do not distinguish these cores.
 Z3 exposes several other core solvers that either build on top of the SMT solver or entirely 
@@ -113,7 +113,7 @@ formulas for theories that admit quantifier-elimination it exposes self-containe
 
 # CDCL(T) - In the light of Theory Solvers
 
-We here recall the main mechanisms used in mainstream modern SAT solvers in the light of theory solving.
+In this section, we recall the main mechanisms used in mainstream modern SAT solvers in the light of theory solving.
 When SAT solving, as implemented using conflict driven clause learning, CDCL, is combined with theory solving
 it augments propositional satisfiability with theory reasoning. The CDCL solver maintains a set of 
 formulas $F$ and a partial assignment to literals in $F$ that we refer to as $M$.  
@@ -122,7 +122,7 @@ It then attempts to complete $M$ to a full model of $F$ to show that $F$ is sati
 and at the same time adds consequences
 to $F$ to establish that $F$ is unsatisfiable. The transition between the search for a satisfying
 solution and a consequence is handled by a _conflict resolution_ phase. 
-The state during conflict resolution is a triple $\langle M, F, C\rangle$, 
+The state during conflict resolution is a triple $\langle M; F; C\rangle$, 
 where, besides the partial model $M$ and formula $F$, there is also a conflict clause $C$
 false under $M$.
 The auxiliary function _Theory_ is used to advance decisions, propagations and identify conflicts.
@@ -132,7 +132,7 @@ or decision and finally, if it determines that $S$ is satisfiable under trail $M
 
 From the point of view of the CDCL(T) solver
 theory reasoning is a module that can take a state during search and produce verdicts on how search should progress.
-We use the following verdicts of a theory invocation $\Theory(M,F)$:
+We use the following verdicts of a theory invocation $\Theory(M;F)$:
 
 * $SAT$. The theory solver may determine that the assignment $M$ extends to a model of $F$.
 * Conflict $C$. The theory solver may determine that a subset $M$ is inconsistent relative to $F$. 
@@ -141,25 +141,29 @@ We use the following verdicts of a theory invocation $\Theory(M,F)$:
 * A propagation $\Propagation{\ell}{C}$. The theory solver propagates a literal $\ell$.
 * A decision $\Decision{\ell}$. 
 
-the partial model extends to a model of the theories, can identify a subset of $M$ as an unsatisfiable core, 
+Thus, the verdict determes whether the partial model extends to a model of the theories, 
+can identify a subset of $M$ as an unsatisfiable core, 
 propagate the truth assignment of a literal $\ell$, or create a new case split $\Decision{\ell}$ for a
 literal $\ell$ that has not already been assigned in $M$.
+We write $SAT = \Theory(M,F)$ when the verdict is that $M$ extends to a valid theory model of $F$, 
+we write $C = \Theory(M,F)$ when $C$ is a conflict clause, based on negated literals from $M$ and 
+$A = \Theory(M,F)$, when the verdict $A$ is either a propagation or decision.
 
 
 ~MathPre
-\langle M, {F} \rangle                      & \Rightarrow & SAT                                                    & SAT = \Theory(M, F)
+\langle M; {F} \rangle                      & \Rightarrow & SAT                                                    & SAT = \Theory(M, F)
 
-\langle M, F \rangle                        & \Rightarrow & \langle M, C, F \rangle                                & C = \Theory(M, F) 
+\langle M; F \rangle                        & \Rightarrow & \langle M; F; C \rangle                                & C = \Theory(M, F) 
 
-\langle M, {F} \rangle                      & \Rightarrow & \langle M A, F \rangle                                 & A = \Theory(M, F) 
+\langle M; {F} \rangle                      & \Rightarrow & \langle M, A; F \rangle                                 & A = \Theory(M, F) 
 
-\langle M, \emptyset, {F} \rangle           & \Rightarrow & UNSAT 
+\langle M; \emptyset, {F} \rangle           & \Rightarrow & UNSAT 
 
-\langle M \Decision{\overline{\ell}}, {F}, C \rangle & \Rightarrow & \langle M \Propagation{\ell}{C}, {F} \rangle         & \ell \in {C}
+\langle M, \Decision{\overline{\ell}}; {F}; C \rangle & \Rightarrow & \langle M, \Propagation{\ell}{C}; {F} \rangle         & \ell \in {C}
 
-\langle M, F \Propagation{\ell}{C'}, {C}\rangle     & \Rightarrow & \langle M, F, (C \setminus \{\overline{\ell}\}) \cup (C'\setminus\{{\ell}\}) \rangle & \overline{\ell} \in {C}
+\langle M, \Propagation{\ell}{C'}; F; {C}\rangle     & \Rightarrow & \langle M; F; (C \setminus \{\overline{\ell}\}) \cup (C'\setminus\{{\ell}\}) \rangle & \overline{\ell} \in {C}
 
-\langle M A, F, C \rangle               & \Rightarrow & \langle M, F, {C} \rangle                              & otherwise
+\langle M, A; F; C \rangle               & \Rightarrow & \langle M; F; {C} \rangle                              & otherwise
 
 ~
 
@@ -167,35 +171,44 @@ literal $\ell$ that has not already been assigned in $M$.
 Consider the formula $(x > 0 \vee y > 0) \wedge x + y < 0$.
 The initial state of search is 
 ~~Math
-\langle \epsilon, (x > 0 \vee y > 0), x + y < 0\rangle
+\langle \epsilon; (x > 0 \vee y > 0)\wedge x + y < 0\rangle
 ~~
 based on the empty partial assignment $\epsilon$ and the original formula.
 A possible next state is to propagate on the unit literal $x + y < 0$, producing
 ~~Math
-\langle \Propagation{x + y < 0}{x + y < 0}, (x > 0 \vee y > 0) \wedge x + y < 0\rangle
+\langle \Propagation{x + y < 0}{x + y < 0}; (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
 This step may be followed by a case split setting $x > 0$.
 ~~Math
-\langle \Propagation{x + y < 0}{x + y < 0}\Decision{\neg(x > 0)}, (x > 0 \vee y > 0) \wedge x + y < 0\rangle
+\langle \Propagation{x + y < 0}{x + y < 0},\Decision{\neg(x > 0)}; (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
 which triggers a propagation
 ~~Math
-\langle \Propagation{x + y < 0}{x + y < 0}\Decision{\neg(x > 0)}\Propagation{y > 0}{x > 0 \vee y > 0}, (x > 0 \vee y > 0) \wedge x + y < 0\rangle
+\langle \Propagation{x + y < 0}{x + y < 0},\Decision{\neg(x > 0)},\Propagation{y > 0}{x > 0 \vee y > 0}; (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
-The resulting state is satisfiable in the theory of arithmetic.
-On the other hand, if we had made the case split on $x > 0$ instead of $\neg(x > 0)$, and then $y > 0$, 
+The resulting state is satisfiable in the theory of arithmetic. 
+On the other hand, if we had made the case split on $x > 0$ instead of $\neg(x > 0)$, 
+and then guess the assignment $y > 0$, 
 we would have encountered a conflicting state with conflict clause 
 $\neg (x > 0) \vee \neg (y > 0)$[^unitremove]:
 ~~Math
-\langle \Propagation{x + y < 0}{x + y < 0}\Decision{x > 0}\Decision{y > 0},\
- (x > 0 \vee y > 0) \wedge x + y < 0, \ \neg (x > 0) \vee \neg (y > 0)\rangle
+\langle \Propagation{x + y < 0}{x + y < 0},\Decision{x > 0},\Decision{y > 0};\
+ (x > 0 \vee y > 0) \wedge x + y < 0; \ \neg (x > 0) \vee \neg (y > 0)\rangle
 ~~
 The last decision is then reverted to produce the satisfiable state
 ~~Math
-\langle \Propagation{x + y < 0}{x + y < 0}\Decision{x > 0}\Propagation{\neg(y > 0)}{\neg (x > 0) \vee \neg (y > 0)},\
+\langle \Propagation{x + y < 0}{x + y < 0},\Decision{x > 0},\Propagation{\neg(y > 0)}{\neg (x > 0) \vee \neg (y > 0)};\
  (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
-
+A third scenario uses theory propagation. In this scenario, the decision $x > 0$ is made, but
+instead of making a decision $y > 0$, the theory solver for arithmetic is given a chance to find
+opportunities for propagation. It deduces that $x + y < 0, x > 0$ implies $\neg(y > 0)$,
+and therefore establishes the theory propagation
+~~Math
+\langle \Propagation{x + y < 0}{x + y < 0},\Decision{x > 0},\Propagation{\neg(y > 0)}{\neg(y > 0) \vee \neg (x > 0)};\
+ (x > 0 \vee y > 0) \wedge x + y < 0\rangle
+~~
+We are again eliding the unit literal $x + y < 0$ from the explanation for $\neg(y > 0)$.
 ~
 [^unitremove]: To keep the formula short we have applied a shortcut and removed the literal $\neg(x + y < 0)$ from the conflict clause. In practice, solvers automatically remove unit literals that are false from conflict clauses. 
 
@@ -206,7 +219,7 @@ To be well-behaved we expect _Theory_ to produce propagations on literals that d
 enforce the main invariants:
 
 * The conflict clause $C$ is false in $M$ and a consequence of $F$. Thus, 
-  for state $\langle M, F, C \rangle$ we have $F \models_T \bigvee_{\ell \in C} \neg \ell$, as well as $\overline{C} \in M$.
+  for state $\langle M; F, C \rangle$ we have $F \models_T \bigvee_{\ell \in C} \neg \ell$, as well as $\overline{C} \in M$.
 * A propagated literal is justified by the current partial model $M$. Thus, 
   for state $\langle M \Propagation{\ell}{C}, F \rangle$ we have $F \models_T C$, $\ell \in C$, 
   and for each $\ell' \in C \setminus \{ \ell \}: \overline{\ell}' \in M$.
@@ -273,7 +286,7 @@ A starting point is a tableau with bounds $A\vec{x} = 0, lo_j \leq x_j \leq hi_j
 The tableau contains a sub-tableau of equalities where at most two variables are non-fixed
 in every equation, such that the coefficients of the non-fixed variables have the same
 absolute value. 
-That is, it contains a system $S$ be a system of linear equations of the form 
+That is, let $S$ be a system of linear equations of the form 
 $e_i:=a_{i} x_{i} + b_{i} y_{i}=c_i$, where $x_{i},y_{i}$ are variables and
  $c_i$ is a constant, and $a_i, b_i \in \{-1,1\}$ for $0 \le i < n$. 
 It is relatively cheap to detect whether a row in a tableau corresponds
@@ -446,7 +459,7 @@ solves constraints over polynomials using a waterfall model for non-linear
 constraints.
 At the basis it maintains for every monomial 
 term $x \cdot x \cdot y$ an equation
-$m := x \cdot x \cdot y$, where $m$ is a variable
+$m = x \cdot x \cdot y$, where $m$ is a variable
 that represents the monomial $x \cdot x \cdot y $.
 The module for non-linear arithmetic then attempts to 
 establish a valuation $V$ where $V(m) = V(x) \cdot V(x) \cdot V(y)$, 
@@ -456,7 +469,7 @@ The stages in the waterfall model are summarized as follows:
 
 #### Bounds propagation on monomials
 A relatively inexpensive step is to propagate and check bounds based on 
-on non-linear constraints. For example, for $y \geq 3$, then $m := x\cdot x\cdot y \geq 3$,
+on non-linear constraints. For example, for $y \geq 3$, then $m = x\cdot x\cdot y \geq 3$,
 if furthermore $x \leq -2$, we have the strengthened bound $m \geq 12$.
 Bounds propagation can also flow from bounds on $m$ to bounds on the 
 variables that make up the monomial, such that when $m \geq 8, 1 \leq y \leq 2, x \leq 0$, 
@@ -546,7 +559,7 @@ elements from $S$ into $S \mid p$. The properties of these functions are summari
   \restrictOp : S \rightarrow S \mid p
   \forall x : S \mid p \ . \ \restrictOp(\relaxOp(x)) = x
   \forall s : S \ . \ p(s)\ \rightarrow \ \relaxOp(\restrictOp(s)) = s
-  \forall x : S \mid p \ . \ p(\relaxOp(s))
+  \forall x : S \mid p \ . \ p(\relaxOp(x))
 ~
 
 Let us illustrate the sort of natural numbers as a refinement type of integers:
