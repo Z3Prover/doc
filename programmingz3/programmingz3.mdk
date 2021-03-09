@@ -1235,9 +1235,14 @@ the set of unit literals using `s.units()` and literals that are non-units using
 `s.non_units()`. The solver state can be printed to SMT-LIB2 format
 using `s.sexpr()`.
 
-### Cloning Solver State
+### Cloning Solver State and using Z3 from Multiple Threads
 The method `s.translate(ctx)` clones the solver state into a new solver based on the context
 that is passed in. It is useful for creating separate non-interferring states of a solver. 
+
+All methods for creating sorts, expressions, solvers and similar objects take an optional `Context` argument.
+By default, the `Context` is set to a default global container. Operations on objects created with the 
+same context are not thread safe, but two parallel threads can operate safely on objects created 
+by two different contexts.
 
 
 ### Loading formulas
@@ -2890,7 +2895,8 @@ The parameter `set_param("parallel.enable", True)`{language:python} enables Z3's
    You can control how the cube-and-conquer procedure
    spends time in simplification and cubing through other parameters under the `parallel` name-space.
 
-The main option to toggle is `parallel.threads.max`. It caps the maximal number of threads. By default, the maximal number of threads used by the parallel solver
+The main option to toggle is `parallel.threads.max`. It caps the maximal number of threads. 
+By default, the maximal number of threads used by the parallel solver
 is bound by the number of processes.
 
 
