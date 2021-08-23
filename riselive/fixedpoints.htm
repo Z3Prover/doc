@@ -1,0 +1,252 @@
+<html>
+<head>
+<title>Fixed-points in Z3</title>
+<link rel=StyleSheet href="style.css" type="text/css">
+</head>
+<body>
+
+
+<h1>Fixed-points in Z3</h1>
+<p style="clear:both;">
+Z3 contains an extension called muZ with fixed-point constraints. 
+This tutorial includes some examples that demonstrate features of this engine.
+The following papers
+<a href="http://research.microsoft.com/en-us/people/nbjorner/z3fix.pdf">
+&mu;Z - An Efficient Engine for Fixed-Points with Constraints.</a>
+(CAV 2011) and
+<a href="http://research.microsoft.com/en-us/people/nbjorner/z3pdr.pdf">
+Generalized Property Directed Reachability</a> (SAT 2012)
+describe some of the main features of the engine.
+Be sure to follow along with the examples by clicking the "edit" link in the
+corner. See what the tool says, try your own formulas, and experiment!
+Please send feedback, comments and/or corrections to 
+<a href="mailto:nbjorner@microsoft.com">nbjorner@microsoft.com</a>.
+</p>
+
+
+
+<h2>Introduction</h2>
+
+<p>
+This tutorial covers some of the fixedpoint utilities available with Z3.
+The main features are a basic Datalog engine, an engine with relational
+algebra and an engine based on a generalization of the Property
+Directed Reachability algorithm, as well as the 
+<a href="http://research.microsoft.com/en-us/projects/duality/default.aspx" target="_blank">
+Duality</a> engine.
+</p>
+
+
+<h2>Basic Datalog </h2>
+
+<p>The default fixed-point engine is a bottom-up Datalog engine. 
+It works with finite relations and uses finite table representations
+as hash tables as the default way to represent finite relations.
+</p>
+
+<h3>Relations, rules and queries</h3>
+
+The first example illustrates how to declare relations, rules and
+how to pose queries.
+
+<pre pref="fixedpoint.1" />
+
+The example illustrates some of the basic constructs.
+<pre>
+ (declare-rel a ())
+</pre>
+declares a 0-ary relation <tt>a</tt>.
+<pre>
+ (rule (=> b a))
+</pre>
+Create the rule that <tt>a</tt> follows from <tt>b</tt>. 
+In general you can create a rule with multiple premises and a name using 
+the format
+<pre>
+ (rule (=> (and b c) a) name)
+</pre>
+The <em>name</em> is optional. It is used for tracking the rule in derivation proofs.
+
+Continuing with the example, <tt>a</tt> is false unless <tt>b</tt> is established.
+<pre>
+ (query r)
+</pre>
+Asks if relation <tt>a</tt> can be derived. The rules so far say that <tt>a</tt> 
+follows if <tt>b</tt> is established and that <tt>b</tt> follows if <tt>c</tt> 
+is established. But nothing establishes <tt>c</tt> and <tt>b</tt> is also not
+established, so <tt>a</tt> cannot be derived.
+<pre>
+ (rule c)
+</pre>
+Now it is the case that <tt>a</tt> can be derived.
+
+<h3>Relations with arguments</h3>
+<p>
+Relations can take arguments. We illustrate relations with arguments
+using edges and paths in a graph.
+</p>
+<pre pref="fixedpoint.3" />
+
+
+
+The example uses the declaration
+<pre>
+ (declare-var a s)
+</pre>
+to instrument the fixed-point engine that <tt>a</tt> 
+should be treated as a variable
+appearing in rules. 
+
+
+<h2>Engine for Property Directed Reachability</h2>
+
+A different underlying engine for fixed-points is based on
+an algorithm for <i>Property Directed Reachability (PDR)</i>.
+The PDR engine is used by default for relations over integers, reals 
+and algebraic data-types.
+The version in Z3 applies to Horn clauses with arithmetic and
+Boolean domains. 
+The engine also works with domains using algebraic
+data-types and bit-vectors, although it is currently not
+overly tuned for either.
+The PDR engine is targeted at applications from symbolic model 
+checking of software. The systems may be infinite state. 
+The following examples also serve a purpose of showing 
+how software model checking problems (of safety properties)
+can be embedded into Horn clauses and solved using PDR.
+
+<h3>Procedure Calls</h3>
+<p>
+McCarthy's 91 function illustrates a procedure that calls itself recursively
+twice. The Horn clauses below encode the recursive function:
+
+<pre>
+  mc(x) = if x > 100 then x - 10 else mc(mc(x+11))
+</pre>
+
+The general scheme for encoding recursive procedures is by creating a predicate
+for each procedure and adding an additional output variable to the predicate.
+Nested calls to procedures within a body can be encoded as a conjunction
+of relations.
+</p>
+
+<pre pref="fixedpoint.8">
+(declare-rel mc (Int Int))
+(declare-var n Int)
+(declare-var m Int)
+(declare-var p Int)
+
+(rule (=> (> m 100) (mc m (- m 10))))
+(rule (=> (and (<= m 100) (mc (+ m 11) p) (mc p n)) (mc m n)))
+
+(declare-rel q1 (Int Int))
+(rule (=> (and (mc m n) (< n 91)) (q1 m n))) 
+(query q1 :print-certificate true)
+
+(declare-rel q2 (Int Int))
+(rule (=> (and (mc m n) (not (= n 91)) (<= m 101)) (q2 m n)))
+(query q2 :print-certificate true)
+
+(declare-rel q3 (Int Int))
+(rule (=> (and (mc m n) (< n 92)) (q3 m n)))
+(query q3 :print-certificate true)
+</pre>
+
+The first two queries are unsatisfiable. The PDR engine produces the same proof of unsatisfiability.
+The proof is an inductive invariant for each recursive predicate. 
+
+
+<h2>Traffic Jam</h2>
+<p>A self-contained example that exercises the .NET API over C# is provided as a 
+separate <a href="http://research.microsoft.com/projects/z3/MuZTraffic.zip">download</a>.
+</p>
+
+<h2>Syntax</h2>
+<p>Three different text-based input formats are accepted.</p>
+
+<h3>Basic datalog</a></h3>
+<p>Files with suffix <tt>.datalog</tt> are parsed using the BDDBDDB format. 
+The format can be used for comparing benchmarks with the BDDBDDB tool.
+</p>
+
+<p>We use an artificial program to illustrate the basic Datalog format that complies to the format used by BDDBDDB.</p>
+
+<pre>
+Z 64
+
+P0(x: Z) input
+Gt0(x : Z, y : Z) input
+R(x : Z) printtuples
+S(x : Z) printtuples
+Gt(x : Z, y : Z) printtuples
+Gt(x,y) :- Gt0(x,y).
+Gt(x,y) :- Gt(x,z), Gt(z,y).
+R(x) :- Gt(x,_).
+S(x) :- Gt(x,x0), Gt0(x,y), Gt0(y,z), P0(z).
+Gt0(<span class="stringliteral">&quot;a&quot;</span>,<span class="stringliteral">&quot;b&quot;</span>).
+Gt0(<span class="stringliteral">&quot;b&quot;</span>,<span class="stringliteral">&quot;c&quot;</span>).
+Gt0(<span class="stringliteral">&quot;c&quot;</span>,<span class="stringliteral">&quot;d&quot;</span>).
+Gt0(<span class="stringliteral">&quot;a1&quot;</span>,<span class="stringliteral">&quot;b&quot;</span>).
+Gt0(<span class="stringliteral">&quot;b&quot;</span>,<span class="stringliteral">&quot;a1&quot;</span>).
+Gt0(<span class="stringliteral">&quot;d&quot;</span>,<span class="stringliteral">&quot;d1&quot;</span>).
+Gt0(<span class="stringliteral">&quot;d1&quot;</span>,<span class="stringliteral">&quot;d&quot;</span>).
+P0(<span class="stringliteral">&quot;a1&quot;</span>).
+</pre>
+
+<h3>SMT-LIB2 extension</h3>
+ 
+The following commands are added to the SMT-LIB2 syntax:</p> 
+<ul> 
+<li><tt>(declare-var [var] [sort])</tt> Declare a variable that is universally quantified in Horn clauses.</li>
+<li><tt>(declare-rel [relation-name] ([sorts]))</tt> Declare relation signature. Relations are uninterpreted.
+<li><tt>(rule [universal-horn-formula])</tt> Assert a rule or a fact as a universally quantified Horn formula.</li> 
+<li><tt>(query [relation-name])</tt> Pose a query. Is the relation non-empty.</li> 
+<li><tt>(set-predicate-representation [function-name] [symbol]+)</tt> Specify the representation of a predicate.</li> 
+</ul>
+ 
+
+<h3>Pure SMT-LIB2</h3>
+Many problems about program safety can be reduced to pure 
+Horn clause satisfiability modulo theories (typically of arithmetic).
+These problems are expressible directly in SMT-LIB2.
+The repository <a href="https://svn.sosy-lab.org/software/sv-benchmarks/trunk/clauses/">Horn clause benchmarks in SMT-LIB2</a>
+contains more than 10,000 samples taken from different benchmarks and different encodings of the same benchmarks.
+
+An assertion is Horn if it is an implication; the head of the implication
+is either a formula using only interpreted functions, or it is an uninterpreted
+predicate; the body of the implication is a formula in negation normal form
+where the uninterpreted predicates occur positively.
+<pre pref="fixedpoint.11">
+(set-logic HORN)
+(declare-fun mc (Int Int) Bool)
+
+(assert (forall ((m Int)) (=> (> m 100) (mc m (- m 10)))))
+(assert (forall ((m Int) (n Int) (p Int)) 
+           (=> (and (<= m 100) (mc (+ m 11) p) (mc p n)) (mc m n))))
+
+(assert (forall ((m Int) (n Int))
+       (=> (and (mc m n) (<= m 101)) (= n 91))))
+(check-sat)
+(get-model)
+</pre>
+
+Note the following:
+<ul>
+<li>To ensure that the fixedpoint engine is used, specify <tt>(set-logic HORN)</tt> </li>
+<li>There is no separate query. Instead, queries correspond to Horn clause that have 
+    no positive occurrence of any uninterpreted relation.
+</ul>
+
+<h3>Programmatic API</h3> 
+
+<p>You can interact with muZ over the programmatic API from Python, C, OCaml, Java, and .NET. 
+The APIs support adding rules and posing queries.</p> 
+
+<ul> 
+<li>To add a rule, call: <a class="el" href="http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga5a103b212a663889a458a3b31efb91ed" title="Add a universal Horn clause as a named rule. The horn_rule should be of the form:..." onClick="stc(this, 6)">Z3_fixedpoint_add_rule</a>.</li> 
+<li>To query, use: <a class="el" href="http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#gac5d521e37bb0c8aa2843142c58c32749" title="Pose a query against the asserted rules." onClick="stc(this, 7)">Z3_fixedpoint_query</a>.</li> 
+</ul> 
+
+ 
+</body>
+</html>

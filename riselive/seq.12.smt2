@@ -1,0 +1,8 @@
+(declare-const a String)
+(declare-const b String)
+(declare-const c String)
+(assert (str.prefixof b a))
+(assert (str.suffixof c a))
+(assert (= (str.len a) (+ (str.len b) (str.len c))))
+(assert (not (= a (str.++ b c))))
+(check-sat)

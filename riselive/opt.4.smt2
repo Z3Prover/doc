@@ -1,0 +1,8 @@
+(declare-const x Int)
+(declare-const y Int)
+(assert (< x 4))
+(assert (< (- y x) 1))
+(assert (< y 1))
+(minimize (+ x y))
+(check-sat)
+(get-objectives)

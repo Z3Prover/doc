@@ -1,0 +1,7 @@
+(declare-const a String)
+(declare-const b String)
+(declare-const c String)
+(assert (= (str.++ a b) "abcd"))
+(assert (= (str.++ b c) "cdef"))
+(assert (not (= b "")))
+(check-sat)

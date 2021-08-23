@@ -1,0 +1,558 @@
+<html>
+<head>
+<title>Optimization</title>
+<link rel=StyleSheet href="style.css" type="text/css">
+</head>
+<body>
+
+
+<h1>Objective functions in Z3</h1>
+<p style="clear:both;">Be sure to follow along with the examples by clicking the "edit" link in the
+corner. See what the tool says, try your own formulas, and experiment!</p>
+
+<h2>Introduction</h2>
+
+<p>
+Z3's main functionality to checking the satisfiability of logical formulas 
+over one or more theories. Z3 can produce models for satisfiable formulas.
+Yet in many cases arbitrary models are insufficient and applications are really
+solving optimization problems: one or more values should be minimal or maximal.
+When there are multiple objectives, they should be combined
+using Pareto fronts, lexicographic priorities, or optimized independently.
+This section describes a feature exposed by Z3 that lets users formulate 
+objective functions directly with Z3. Under the hood is a portfolio
+of approaches for solving linear optimization problems over SMT 
+formulas, MaxSMT, and their combinations.
+</p>
+
+<h2>Optimization from the API</h2>
+
+Z3's programmatic 
+<a href="http://research.microsoft.com/en-us/um/redmond/projects/z3/documentation.html" 
+target="_blank">API</a>
+exposes all available optimization features.
+
+<il>
+<li>
+<a href="http://lonelypad.blogspot.dk/2014/08/f-and-linear-programming-introduction.html" target="_blank">
+Follow this link for a tutorial on using optimization features from F#</a>.
+</li>
+<li>
+The Solver Foundation OMP format offers several convenient features for expressing 
+optimization problems. We provide a backend to problems formulated in OMP from
+<a href="https://z3.codeplex.com/SourceControl/latest#examples/msf/README"
+target="_blank">Codeplex</a>
+</li>
+<li>
+The Python API is also convenient for prototyping. The <b>Optimize</b> Python object is used when solving constraints with optimization objectives.
+</li>
+
+
+<h2>Arithmetical Optimization</h2>
+
+<p>
+The 
+<a href="http://www.smt-lib.org" target="_blank">SMT-LIB 2.0 standard</a>
+is extended with three commands for expressing optimization
+objectives.
+
+The (<b>maximize</b> <i>t</i>) command instructs <b>check-sat</b> to produce a model
+that maximizes the value of term <i>t</i>.
+The type of <i>t</i> must be either <b>Int</b>, <b>Real</b>, or <b>BitVec</b>.
+</p>
+
+<pre pref="opt.1">
+(declare-const x Int)
+(declare-const y Int)
+(assert (< x 2))
+(assert (< (- y x) 1))
+(maximize (+ x y))
+(check-sat)
+(get-objectives)
+</pre>
+
+<p>
+The (<b>minimize</b> <i>t</i>) command instructs <b>check-sat</b> to produce a model
+that minimizes the value of term <i>t</i>.
+</p>
+
+<pre pref="opt.2">
+(declare-const x Int)
+(declare-const y Int)
+(assert (< x 4))
+(assert (< (- y x) 1))
+(assert (> y 1))
+(minimize (+ x y))
+(check-sat)
+(get-objectives)
+</pre>
+
+
+<h3>Unbounded Objectives</h3>
+
+Not all objective functions are bounded. 
+Z3 indicates that the maxima are at infinity, 
+and the minima are negative infinity.
+<pre pref="opt.3">
+(declare-const x Int)
+(declare-const y Int)
+(assert (< x 2))
+(assert (> (- y x) 1))
+(maximize (+ x y))
+(check-sat)
+</pre>
+
+<pre pref="opt.4">
+(declare-const x Int)
+(declare-const y Int)
+(assert (< x 4))
+(assert (< (- y x) 1))
+(assert (< y 1))
+(minimize (+ x y))
+(check-sat)
+(get-objectives)
+</pre>
+
+<h3>Tight Bounds</h3>
+Not all finite bounds can be expressed as real numbers.
+Bounds obtained around strict inequalities are expressed using
+infinitesimals.
+<pre pref="opt.5">
+(declare-const x Real)
+(declare-const y Real)
+(assert (< x 4))
+(assert (< y 5))
+(maximize (+ x y))
+(check-sat)
+(get-objectives)
+</pre>
+
+<h2>Soft Constraints</h2>
+
+<p>
+The (<b>assert-soft</b> <i>formula</i> <b>:weight</b> <i>numeral</i>) command asserts
+a weighted soft constraint. The weight must be a positive natural number, but is optional.
+If omitted, the weight is set to 1. 
+</p>
+
+<pre pref="opt.6">
+(declare-const x Int)
+(declare-const y Int)
+(define-fun a1 () Bool (> x 0))
+(define-fun a2 () Bool (< x y))
+(define-fun a3 () Bool (<= (+ y x) 0))
+(assert (= a3 a1))
+(assert (or a3 a2))
+(assert-soft a3         :weight 3)
+(assert-soft (not a3)   :weight 5) 
+(assert-soft (not a1)   :weight 10)
+(assert-soft (not a2)   :weight 3)
+(check-sat)
+(get-model)
+(get-objectives)
+(eval a1)
+(eval a2)
+(eval a3)
+</pre>
+
+<p>
+Floating point and integer weights can be mixed; internally weights are converted into
+rational numbers.
+</p>
+
+<pre pref="opt.7">
+(declare-const a1 Bool)
+(declare-const a2 Bool)
+(declare-const a3 Bool)
+(assert-soft a1 :weight 0.1)
+(assert-soft a2 :weight 1.0)
+(assert-soft a3 :weight  1)
+(assert-soft (or (not a1) (not a2)) :weight 3.2)
+(check-sat)
+(get-objectives)
+(get-model)
+</pre>
+
+<h2>Combining Objectives</h2>
+Many optimization problems require solving multiple objectives.
+<h3>Lexicographic Combination</h3>
+Z3 uses by default a lexicographic priority of objectives.
+It solves first for the objective that is declared first. 
+
+<pre pref="opt.lex.1">
+(declare-const x Int)
+(declare-const y Int)
+(declare-const z Int)
+(assert (< x z))
+(assert (< y z))
+(assert (< z 5))
+(assert (not (= x y)))
+(maximize x)
+(maximize y)
+(check-sat)
+(get-model)
+(get-objectives)
+</pre>
+It is also possible to declare multiple classes of soft assertions.
+To do this, use an optional tag to differentiate classes of
+soft assertions. 
+<pre pref="opt.lex.2">
+(declare-const a Bool)
+(declare-const b Bool)
+(declare-const c Bool)
+(assert-soft a :weight 1 :id A)
+(assert-soft b :weight 2 :id B)
+(assert-soft c :weight 3 :id A)
+(assert (= a c))
+(assert (not (and a b)))
+(check-sat)
+(get-model)
+(get-objectives)
+</pre>
+
+<h3>Pareto Fronts</h3>
+To override lexicographic priorities, 
+set the option <b>opt.priority</b> to <b>pareto</b>.
+<pre pref="opt.pareto.1">
+(declare-const x Int)
+(declare-const y Int)
+(assert (>= 5 x))
+(assert (>= x 0))
+(assert (>= 4 y))
+(assert (>= y 0))
+(minimize x)
+(maximize (+ x y))
+(minimize y)
+(set-option :opt.priority pareto)
+(check-sat)
+(get-objectives)
+(check-sat)
+(get-objectives)
+(check-sat)
+(get-objectives)
+(check-sat)
+(get-objectives)
+</pre>
+
+<h3>Independent Objectives</h3>
+If we just want to find the optimal value for each
+objective, set the option <b>opt.priority</b> to <b>box</b>.
+<pre pref="opt.box.1">
+(declare-const x Real)
+(declare-const y Real)
+(assert (>= 5 (- x y)))
+(assert (>= x 0))
+(assert (>= 4 y))
+(assert (> y 0))
+(minimize x)
+(maximize (+ x y))
+(minimize y)
+(maximize y)
+(set-option :opt.priority box)
+(check-sat)
+(get-objectives)
+</pre>
+
+<h2>A Small Case Study</h2>
+In collaboration with Anh-Dung Phan.
+
+<h3>Problem description</h3>
+Use the problem of virtual machine placement as an example.
+Assume that we have three virtual machines (VMs) which require 100, 50 and 15 GB hard disk respectively.
+There are three servers with capabilities 100, 75 and 200 GB in that order. 
+Find out a way to place VMs into servers in order to
+
+<il>
+<li> Minimize the number of servers used
+<li> Minimize the operation cost (the servers have fixed daily costs 10, 5 and 20 USD respectively.)
+</il>
+
+<h3>Boolean encoding</h3>
+We start with a boolean encoding.
+Let <i>x<sub>ij</sub></i> denote that VM <i>i</i> is put into server <i>j</i> and <i>y<sub>j</sub></i> 
+denote that server <i>j</i> is in use.
+
+<pre  pref="opt.vm.1">
+(declare-const x11 Bool)
+(declare-const x12 Bool)
+(declare-const x13 Bool)
+(declare-const x21 Bool)
+(declare-const x22 Bool)
+(declare-const x23 Bool)
+(declare-const x31 Bool)
+(declare-const x32 Bool)
+(declare-const x33 Bool)
+
+(declare-const y1 Bool)
+(declare-const y2 Bool)
+(declare-const y3 Bool)
+
+(define-fun bool_to_int ((b Bool)) Int
+  (ite b 1 0)
+)
+
+; We express that a virtual machine is on exactly one server by simply converting it to integer constraints.
+(assert (= (+ (bool_to_int x11) (bool_to_int x12) (bool_to_int x13)) 1))
+(assert (= (+ (bool_to_int x21) (bool_to_int x22) (bool_to_int x23)) 1))
+(assert (= (+ (bool_to_int x31) (bool_to_int x32) (bool_to_int x33)) 1))
+
+; And an used server is implied by having a VM on it.
+
+(assert (and (implies y1 x11) (implies y1 x21) (implies y1 x31)))
+(assert (and (implies y2 x12) (implies y2 x22) (implies y2 x32)))
+(assert (and (implies y3 x13) (implies y3 x23) (implies y3 x33)))
+
+; Capability constraints are quite natural to add.
+
+(assert (<= (+ (* 100 (bool_to_int x11)) 
+               (* 50 (bool_to_int x21)) 
+               (* 15 (bool_to_int x31))) 
+            (* 100 (bool_to_int y1))))
+(assert (<= (+ (* 100 (bool_to_int x12)) 
+               (* 50 (bool_to_int x22)) 
+               (* 15 (bool_to_int x32))) 
+            (* 75 (bool_to_int y2))))             
+(assert (<= (+ (* 100 (bool_to_int x13)) 
+               (* 50 (bool_to_int x23)) 
+               (* 15 (bool_to_int x33))) 
+            (* 200 (bool_to_int y3))))
+
+; Optimization goals are expressed implicitly via <i>assert-soft</i> command.
+(assert-soft (not y1) :id num_servers)
+(assert-soft (not y2) :id num_servers)
+(assert-soft (not y3) :id num_servers)
+
+(assert-soft (not y1) :id costs :weight 10)
+(assert-soft (not y2) :id costs :weight 5)
+(assert-soft (not y3) :id costs :weight 20)
+
+(check-sat)
+(get-model)
+(get-objectives)
+</pre>
+
+The <i>assert-soft</i> command represents MaxSMT which tries to maximize the weighted sum of boolean expressions belonged to the same id.
+Since we are doing minimization, negation is needed to take advantage of MaxSMT support.
+
+<h3>Integer encoding</h3>
+In this example, the boolean encoding is not really natural. 
+Most of the constraints is of arithmetic form, it makes more 
+sense to express them using integer arithmetic.
+
+Here is a similar encoding using integer arithmetic.
+<pre pref="opt.vm.2">
+(declare-const x11 Int)
+(declare-const x12 Int)
+(declare-const x13 Int)
+(declare-const x21 Int)
+(declare-const x22 Int)
+(declare-const x23 Int)
+(declare-const x31 Int)
+(declare-const x32 Int)
+(declare-const x33 Int)
+
+(declare-const y1 Int)
+(declare-const y2 Int)
+(declare-const y3 Int)
+
+(assert (and (>= x11 0) (>= x12 0) (>= x13 0) 
+             (>= x21 0) (>= x22 0) (>= x23 0)
+             (>= x31 0) (>= x32 0) (>= x33 0)))
+             
+(assert (and (<= y1 1) (<= y2 1) (<= y3 1)))
+
+(assert (= (+ x11 x12 x13) 1))
+(assert (= (+ x21 x22 x23) 1))
+(assert (= (+ x31 x32 x33) 1))
+
+(assert (and (>= y1 x11) (>= y1 x21) (>= y1 x31)))
+(assert (and (>= y2 x12) (>= y2 x22) (>= y2 x32)))
+(assert (and (>= y3 x13) (>= y3 x23) (>= y3 x33)))
+
+(assert (<= (+ (* 100 x11) (* 50 x21) (* 15 x31)) (* 100 y1)))
+(assert (<= (+ (* 100 x12) (* 50 x22) (* 15 x32)) (* 75 y2)))             
+(assert (<= (+ (* 100 x13) (* 50 x23) (* 15 x33)) (* 200 y3)))
+
+(minimize (+ y1 y2 y3))
+(minimize (+ (* 10 y1) (* 5 y2) (* 20 y3)))
+
+;(set-option :opt.priority pareto)
+(check-sat)
+(get-model)
+(get-objectives)
+</pre>
+
+The capability constraints and goals are easier to express than those of boolean encoding.
+However, we need to add extra constraints to ensure that only 0-1 integers are allowed in the model.
+It is also interesting to see different results by choosing various ways of combining objectives. 
+You can uncomment the <i>set-option</i> command and take a look at results.
+
+
+
+<h2>Advanced topics</h2>
+
+<h3>Difference Logic</h3>
+Z3 uses by default an implementation of dual Simplex to 
+solve feasibility and primal Simplex for optimality.
+For arithmetical constraints that only have differences
+between variables, known as <i>difference logic</i>, 
+Z3 furthermore contains alternative decision procedures
+tuned for this domain.
+These have to be configured explicitly.
+There is a choice between a solver tuned for sparse constraints
+(where the ratio of variables is high compared to number of inequalities)
+and a solver tuned for dense constraints.
+
+<pre pref="opt.dl.1">
+(set-option :smt.arith.solver 1) ; enables difference logic solver for sparse constraints
+(set-option :smt.arith.solver 3) ; enables difference logic solver for dense constraints
+(declare-const x Int)
+(declare-const y Int)
+(assert (>= 10 x))
+(assert (>= x (+ y 7)))
+(maximize (+ x y))
+(check-sat)
+(get-objectives)
+</pre>
+
+<h3>Weighted Max-SAT solvers, a portfolio</h3>
+The default solver for unweighted MaxSAT problems (when all weights 
+of the soft constraints are set to 1) is the Fu-Malik algorithm.
+The default solver used for weighted MaxSAT problems is 
+called <b>wmax</b>. It uses a simple decision procedure
+that bounds weights.
+Several alternatives are available and they may scale better
+for your application.
+For weighted MaxSAT problems you can select the following
+engines <i>wpm2</i> (use an implementation of the WPM2 algorithm by Ansótegui et.al.), 
+<i>bcd2</i> (use an implementation of the bincd algorithm by Heras et.al.), 
+<i>pbmax</i> (refine bounds iteratively based on Pseudo-Boolean inequalities), 
+<i>hsmax</i> (use separation into solving hitting sets by Davies et.al.).
+To select the <i>hsmax</i> engine, set the option
+<pre>
+  (set-option :opt.wmaxsat_engine hsmax)
+</pre>
+Note that our implementations of these engines do not 
+(yet) perform as well as the default on most
+benchmarks we have tried.
+
+The option 
+<pre>
+  (set-option :opt.enable_sat true)
+</pre>
+is made available for the <i>pbmax</i> solver. It causes Pseudo-Boolean constraints to be
+compiled into propositional logic. It uses a more efficient SAT solver if the input
+can be compiled directly to SAT. If not, <i>pbmax</i> uses a custom Pseudo-Boolean theory
+solver. 
+In fact, the default behavior of the optimization engine is to 
+detect 0-1 variables from bounds constraints and use a Pseudo-Boolean solver
+for these. Maximization objectives over 0-1 variables are also translated to
+MaxSAT form such that one of the MaxSAT engines can be used.
+To disable this translation use
+<pre>
+  (set-option :opt.elim_01 false)
+</pre>
+The Pseudo-Boolean solver is in some, often pathological, 
+cases more efficient than using a SAT solver. For example,
+it handles pidgeon hole problems well.
+Since cutting planes are expensive, they are applied infrequently.
+To set their frequency use:
+<pre>
+  (set-option :smt.pb.conflict_frequency 1)
+</pre>
+The Pseudo-Boolean solver contains a few tricks.
+It compiles cardinality constraints and other pseudo-Boolean
+inequalities with small coefficients into sorting circuits.
+It performs this compilation on-demand, after the inequalities
+have been used beyond a threshold.
+To disable compilation use:
+<pre>
+  (set-option :smt.pb.enable_compilation false)
+</pre>
+The Pseudo-Boolean theory solver also uses dual simplex to prune 
+infeasible branches. For constraints with many equalities and inequalities
+this option can be quite helpful. The option is off by default as it often
+incurs more overhead than benefit.
+To enable this option use:
+<pre>
+  (set-option :smt.pb.enable_simplex true)
+</pre>
+
+<!---
+   opt.enable_sls=true
+--->
+
+<!---
+<h3>Pseudo Boolean Constraints</h3>
+Many problems are naturally expressed using integers that can take the values 
+of either 0 or 1. 
+
+The Pseudo-Boolean solver is in some, often pathological, 
+cases more efficient than using a SAT solver. For example,
+it handles pidgeon hole problems well.
+<pre pref="opt.pb.1">
+(declare-const p_0_0 Int)
+(declare-const p_0_1 Int)
+(declare-const p_0_2 Int)
+(declare-const p_0_3 Int)
+(declare-const p_0_4 Int)
+(declare-const p_1_0 Int)
+(declare-const p_1_1 Int)
+(declare-const p_1_2 Int)
+(declare-const p_1_3 Int)
+(declare-const p_1_4 Int)
+(declare-const p_2_0 Int)
+(declare-const p_2_1 Int)
+(declare-const p_2_2 Int)
+(declare-const p_2_3 Int)
+(declare-const p_2_4 Int)
+(declare-const p_3_0 Int)
+(declare-const p_3_1 Int)
+(declare-const p_3_2 Int)
+(declare-const p_3_3 Int)
+(declare-const p_3_4 Int)
+(assert (and (<= 0 p_0_0) (<= p_0_0 1)))
+(assert (and (<= 0 p_0_1) (<= p_0_1 1)))
+(assert (and (<= 0 p_0_2) (<= p_0_2 1)))
+(assert (and (<= 0 p_0_3) (<= p_0_3 1)))
+(assert (and (<= 0 p_0_4) (<= p_0_4 1)))
+(assert (and (<= 0 p_1_0) (<= p_1_0 1)))
+(assert (and (<= 0 p_1_1) (<= p_1_1 1)))
+(assert (and (<= 0 p_1_2) (<= p_1_2 1)))
+(assert (and (<= 0 p_1_3) (<= p_1_3 1)))
+(assert (and (<= 0 p_1_4) (<= p_1_4 1)))
+(assert (and (<= 0 p_2_0) (<= p_2_0 1)))
+(assert (and (<= 0 p_2_1) (<= p_2_1 1)))
+(assert (and (<= 0 p_2_2) (<= p_2_2 1)))
+(assert (and (<= 0 p_2_3) (<= p_2_3 1)))
+(assert (and (<= 0 p_2_4) (<= p_2_4 1)))
+(assert (and (<= 0 p_3_0) (<= p_3_0 1)))
+(assert (and (<= 0 p_3_1) (<= p_3_1 1)))
+(assert (and (<= 0 p_3_2) (<= p_3_2 1)))
+(assert (and (<= 0 p_3_3) (<= p_3_3 1)))
+(assert (and (<= 0 p_3_4) (<= p_3_4 1)))
+(assert (>= 1 (+ p_0_0 p_0_1 p_0_2 p_0_3 p_0_4)))
+(assert (<= 1 (+ p_0_0 p_0_1 p_0_2 p_0_3 p_0_4)))
+(assert (>= 1 (+ p_1_0 p_1_1 p_1_2 p_1_3 p_1_4)))
+(assert (<= 1 (+ p_1_0 p_1_1 p_1_2 p_1_3 p_1_4)))
+(assert (>= 1 (+ p_2_0 p_2_1 p_2_2 p_2_3 p_2_4)))
+(assert (<= 1 (+ p_2_0 p_2_1 p_2_2 p_2_3 p_2_4)))
+(assert (>= 1 (+ p_3_0 p_3_1 p_3_2 p_3_3 p_3_4)))
+(assert (<= 1 (+ p_3_0 p_3_1 p_3_2 p_3_3 p_3_4)))
+(assert (>= 1 (+ p_0_0 p_1_0 p_2_0 p_3_0)))
+(assert (>= 1 (+ p_0_1 p_1_1 p_2_1 p_3_1)))
+(assert (>= 1 (+ p_0_2 p_1_2 p_2_2 p_3_2)))
+(assert (>= 1 (+ p_0_3 p_1_3 p_2_3 p_3_3)))
+(assert (>= 1 (+ p_0_4 p_1_4 p_2_4 p_3_4)))
+(minimize (+ p_0_0 p_1_1 p_2_2 p_3_3))
+(check-sat)
+(get-model)
+(get-objectives)
+</pre>
+
+
+--->
+
+
+</body>
+</html>

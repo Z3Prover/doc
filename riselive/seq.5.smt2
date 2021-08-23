@@ -1,0 +1,5 @@
+(declare-const a String)
+(declare-const b String)
+(assert (= (str.++ "abc" a) (str.++ b "cef")))
+(assert (<= (str.len a) 2))
+(check-sat)

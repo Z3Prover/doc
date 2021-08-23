@@ -1,0 +1,8 @@
+(declare-const a String)
+(declare-const b String)
+(declare-const c String)
+(assert (= (str.++ a "ab" b) (str.++ b "ba" c)))
+(assert (= c (str.++ a b)))
+(assert (not (= (str.++ a "a") (str.++ "a" a))))
+(check-sat)
+(get-model)

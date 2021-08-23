@@ -1,0 +1,5 @@
+(declare-const a Int)
+(declare-const b Int)
+(declare-const c Int)
+(declare-const d Real)
+(declare-const e Real)
