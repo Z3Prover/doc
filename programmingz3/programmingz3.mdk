@@ -1204,7 +1204,7 @@ produces the output 2, 0, 1.
 ## Other Methods
 
 ### Statistics
-You can gain a sneak peak at what the solver did by extracting statistics.
+You can gain a sneak peek at what the solver did by extracting statistics.
 The call 
 ```python
 print(s.statistics())     
