@@ -1413,11 +1413,9 @@ def all_smt(s, initial_terms):
                block_term(s, m, terms[i])
                for j in range(i):
                    fix_term(s, m, terms[j])
-               for m1 in all_smt_rec(terms[i+1:]):
-                   yield m1
+               yield all_smt_rec(terms[i+1:])
                s.pop()   
-    for m in all_smt_rec(list(initial_terms)):
-        yield m           
+    yield all_smt_rec(list(initial_terms))
 ```
 The `all_smt`{language:python} method splits the search space into 
 disjoint models. It does so by dividing
