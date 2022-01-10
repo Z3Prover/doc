@@ -1746,8 +1746,7 @@ def subterms(t):
                     continue
                 seen[ch] = True
                 yield ch
-                for sub in subterms_rec(ch):
-                    yield sub
+                yield subterms_rec(ch)
     return { s for s in subterms_rec(t) }
 ```
 
