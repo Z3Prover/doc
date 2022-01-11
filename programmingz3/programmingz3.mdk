@@ -1413,7 +1413,7 @@ def all_smt(s, initial_terms):
                block_term(s, m, terms[i])
                for j in range(i):
                    fix_term(s, m, terms[j])
-               yield from all_smt_rec(terms[i+1:])
+               yield from all_smt_rec(terms[i:])
                s.pop()   
     yield from all_smt_rec(list(initial_terms))
 ```
