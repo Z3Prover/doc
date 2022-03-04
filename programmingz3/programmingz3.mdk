@@ -110,11 +110,6 @@ The main point of reference for Z3 is the GitHub repository
 <https://github.com/z3prover/z3>
 ~
 
-There is an interactive tutorial using the SMT-LIB2 front-end on
-
-~ Center
-<https://rise4fun.com/Z3/tutorial/guide>
-~
 
 Examples from this tutorial that are executable can be found on
 
@@ -2573,8 +2568,6 @@ The solver also contains a Datalog engine that can be used to solve Datalog quer
 domains, but can be encoded succinctly using ternary bit-vectors. The `Fixedpoint`{language:python}
 context contains facilities for building Horn clauses, and generally a set of stratified Datalog rules, 
 and for querying the resulting set of rules and facts.
-Additional
-information on the Fixedpoint engine can be found on <https://rise4fun.com/z3/tutorial/fixedpoints>.
 
 We provide a very simple illustration of Horn clause usage here. McCarthy's 91 function illustrates
 nested recursion in a couple of lines, but otherwise makes no sense: It computes a function
@@ -2868,8 +2861,7 @@ print(t(g))
 ```
 
 
-Additional information on tactics is available from [@MouraP13], 
-<https://rise4fun.com/Z3/tutorial/strategies> 
+Additional information on tactics is available from [@MouraP13]
 and 
 <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py/strategies-examples.htm>.
 
