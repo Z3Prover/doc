@@ -207,7 +207,7 @@ Under the assumption that `x + 2 = y`, the right side of the implication simplif
 ```python
 f(Store(A, x, 3)[x]) == f(3)
 ```
-as we have replaced occurrences of `y` by `x - 2`. There are no restrictions on what `f` is, so
+as we have replaced occurrences of `y` by `x + 2`. There are no restrictions on what `f` is, so
 the equality with `f` on both sides will only follow if the arguments to `f` are the same. Thus, 
 we are left to establish
 ```python
