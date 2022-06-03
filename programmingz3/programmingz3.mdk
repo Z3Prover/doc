@@ -1417,6 +1417,56 @@ disjoint models. It does so by dividing
 it into portions according to the _first_ term in a list of terms evaluating
 differently in the next set of models.
 
+## All-SMT with user propagators
+
+The _user propagator_ plugin allows to track assignments to Boolean and Bit-vector expressions.
+In response, the solver can be constrained by callbacks that propagate consequences and block
+unsatisfiable combinations of assignments.
+We illustrate the most basic functionality of the propagator for all-SAT enumeration.
+Every complete assignment to a set of tracked expressions is blocked, forcing a new combination of assignments.
+
+```python
+class BlockTracked(UserPropagateBase):
+    def __init__(self, s):
+        UserPropagateBase.__init__(self, s)
+        self.trail = []
+        self.lim   = []
+        self.add_fixed(lambda x, v : self._fixed(x, v))
+        self.add_final(lambda : self._final())
+
+    def push(self):
+        self.lim += [len(self.trail)]
+
+    def pop(self, n):
+        self.trail = self.trail[0:self.lim[len(self.lim) - n]]
+        self.lim = self.lim[0:len(self.lim)-n]
+
+    def _fixed(self, x, v):
+        self.trail += [(x, v)]
+
+    def _final(self):
+        print(self.trail)
+        self.conflict([x for x, v in self.trail])
+```
+
+To illustrate the functionality, we use an example with four Booleans, three of which are tracked.
+
+~ Example
+```python
+s = SimpleSolver()
+b = BlockTracked(s)
+
+x, y, z, u = Bools('x y z u')
+b.add(x)
+b.add(y)
+b.add(z)
+
+s.add(Or(x, Not(y)), Or(z, u), Or(Not(z), x))
+
+print(s.check())
+```
+~
+
 ## Maximizing Satisfying Assignments
 Another use of models is to use them as a guide to a notion of optimal model.
 A _maximal satisfying solution_, in short _mss_, for a set of formulas `ps`

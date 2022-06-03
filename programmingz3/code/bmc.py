@@ -29,5 +29,6 @@ def bmc(init, trans, goal, fvs, xs, xns):
         xs, xns, fvs = xns, ys, nfvs
 
 
-x0, x1 = Consts('x0 x1', BitVecSort(4))
-bmc(x0 == 0, x1 == x0 + 3, x0 == 10, [], [x0], [x1])
+if __name__ == '__main__':
+    x0, x1 = Consts('x0 x1', BitVecSort(4))
+    bmc(x0 == 0, x1 == x0 + 3, x0 == 10, [], [x0], [x1])
