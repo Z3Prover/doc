@@ -29,7 +29,7 @@ jobs:
           branch: gh-pages
           folder: dist
           target-folder: 'tutorial'
-          force: false
+          force: true
           dry-run: false
 
           
