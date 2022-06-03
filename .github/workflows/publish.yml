@@ -22,9 +22,9 @@ jobs:
           GITHUB_REPO: ${{github.repository}}
           Z3_BUILD_TAG: "v1.0.1"
 
-      - name: Deploy Website
-        uses: JamesIves/github-pages-deploy-action@v4.3.0
-        with:
-          branch: master
-          folder: dist
+#      - name: Deploy Website
+#        uses: JamesIves/github-pages-deploy-action@v4.3.0
+#        with:
+#          branch: master
+#          folder: dist
           
