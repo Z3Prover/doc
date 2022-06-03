@@ -17,9 +17,9 @@
   "author": "ViRb3, Ayanamonr, NikolajBjorner",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/z3prover/doc/issues"
+    "url": "https://github.com/z3prover/z3/issues"
   },
-  "homepage": "https://github.com/z3prover/tutorial#readme",
+  "homepage": "https://github.com/z3prover/z3/readme.md",
   "devDependencies": {
     "buffer": "^6.0.3",
     "coi-serviceworker": "^0.1.6",
