@@ -1,0 +1,36 @@
+{
+  "name": "z3-wasm",
+  "version": "1.0.0",
+  "description": "Run Z3 in browser using WebAssembly",
+  "source": "src/guide.htm",
+  "scripts": {
+    "start": "rm -rf dist && mkdir dist && cp node_modules/z3-solver/build/z3-built.* dist && parcel",
+    "build": "rm -rf dist && mkdir dist && cp node_modules/z3-solver/build/z3-built.* dist && parcel build --public-url=/z3-wasm"
+  },
+  "prettier": {
+    "printWidth": 120
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ViRb3/z3-wasm.git"
+  },
+  "author": "ViRb3",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ViRb3/z3-wasm/issues"
+  },
+  "homepage": "https://github.com/ViRb3/z3-wasm#readme",
+  "devDependencies": {
+    "buffer": "^6.0.3",
+    "coi-serviceworker": "^0.1.6",
+    "crypto-browserify": "^3.12.0",
+    "events": "^3.3.0",
+    "parcel": "^2.5.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0"
+  },
+  "dependencies": {
+    "z3-solver": "^4.8.16"
+  }
+}
