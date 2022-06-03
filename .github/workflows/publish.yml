@@ -29,7 +29,9 @@ jobs:
           branch: gh-pages
           folder: dist
           target-folder: 'tutorial'
-          force: true
+          repository-name: z3prover/z3prover.github.io
+          clean: false
+          force: false
           dry-run: false
 
           
