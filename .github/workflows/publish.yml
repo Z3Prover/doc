@@ -20,7 +20,7 @@ jobs:
           npm i
           npm run build
         env:
-          GITHUB_REPO: ${{github.repository}}
+          GITHUB_REPO: z3prover.github.io
           Z3_BUILD_TAG: "v1.0.1"
 
 #      - name: Deploy Website
