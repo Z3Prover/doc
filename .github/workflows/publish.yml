@@ -30,6 +30,6 @@ jobs:
           folder: dist
           target-folder: 'tutorial'
           force: false
-          dry-run: true
+          dry-run: false
 
           
