@@ -22,7 +22,7 @@ jobs:
         env:
           GITHUB_REPO: z3prover.github.io
           Z3_BUILD_TAG: "v1.0.1"
- 	  
+	  
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
