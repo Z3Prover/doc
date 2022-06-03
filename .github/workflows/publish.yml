@@ -28,8 +28,8 @@ jobs:
         with:
           branch: gh-pages
           folder: dist
-	  target-folder: tutorial
-	  force: false
-          dry-run
+          target-folder: 'tutorial'
+          force: false
+          dry-run: true
 
           
