@@ -29,7 +29,8 @@ jobs:
           branch: gh-pages
           folder: dist
           target-folder: 'tutorial'
-          repository-name: z3prover/z3prover.github.io
+# need an access token for this          
+#          repository-name: z3prover/z3prover.github.io
           clean: false
           force: false
           dry-run: false
