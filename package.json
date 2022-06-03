@@ -2,7 +2,7 @@
   "name": "tutorial",
   "version": "1.0.0",
   "description": "Run Z3 in browser using WebAssembly",
-  "source": "src/guide.htm",
+  "source": "src/guide.html",
   "scripts": {
     "start": "rm -rf dist && mkdir dist && cp node_modules/z3-solver/build/z3-built.* dist && parcel",
     "build": "rm -rf dist && mkdir dist && cp node_modules/z3-solver/build/z3-built.* dist && parcel build --public-url=/tutorial"
