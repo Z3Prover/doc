@@ -47,10 +47,7 @@ import initZ3 from "../node_modules/z3-solver/build/z3-built";
 		    const cfg = Z3.mk_config();
 		    const ctx = Z3.mk_context(cfg);
 		    Z3.del_config(cfg);
-		    var output = "";
-		    for (const item of ta.value.split("\n")) {
-			output = output.concat(await Z3.eval_smtlib2_string(ctx, item));
-		    }
+		    var output = await Z3.eval_smtlib2_string(ctx, ta.value);
 		    elapsed = Math.round(window.performance.now() - verification_start);
 		    Z3.del_context(ctx);
 		    console.log(output)
