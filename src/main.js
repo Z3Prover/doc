@@ -38,6 +38,7 @@ import initZ3 from "../node_modules/z3-solver/build/z3-built";
 	    let br = document.createElement("br");
 	    
 	    ta.style.width = "100%";
+	    ta.style.height = "100%";
 	    ta.innerHTML = code.textContent.replace(/\r?\n/g, '\r\n');
 	    button.innerText = "Run"
 	    button.onclick = async () => {
