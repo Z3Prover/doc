@@ -23,7 +23,7 @@ class BlockTracked(UserPropagateBase):
         self.conflict([x for x, v in self.trail])
         
         
-s = SimpleSolver()
+s = Solver()
 b = BlockTracked(s)
 
 x, y, z, u = Bools('x y z u')
