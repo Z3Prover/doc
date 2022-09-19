@@ -138,12 +138,9 @@ examples using the Python front-end
   <https://docs.angr.io/>.
   ~
 
-* There was an online interactive Python tutorial. 
-  It is discontinued as it ended up being a target for
-  hacks. A snapshot of the web pages, including the non-interactive
-  examples can be found at
+* There is an online tutorial of z3
   ~ Center
-  <http://www.cs.tau.ac.il/~msagiv/courses/asv/z3py>.
+  <https://microsoft.github.io/z3guide>.
   ~
 
 ## Sources
