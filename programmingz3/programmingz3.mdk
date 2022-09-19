@@ -2623,7 +2623,7 @@ We provide a very simple illustration of Horn clause usage here. McCarthy's 91 f
 nested recursion in a couple of lines, but otherwise makes no sense: It computes a function
 that can be described directly as 
 ```python
-    If(x > 101, 91, x - 10).
+    If(x <= 101, 91, x - 10).
 ```
 We will pretend this is a partial and interesting 
 specification and prove this automatically using Horn clauses.
