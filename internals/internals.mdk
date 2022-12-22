@@ -54,6 +54,10 @@ Package       : bussproofs
 \newcommand{\basicvars}{{\mathcal B}}
 \newcommand{\nonbasicvars}{{\mathcal N}}
 \newcommand{\Nat}{\mathcal{N}}
+\newcommand{\Aconst}{\mathit{const}}
+\newcommand{\Amap}{\mathit{map}}
+\newcommand{\Aasarray}{\mathit{as{\-}array}}
+\newcommand{\Astore}{\mathit{store}}
 ~
 
 
@@ -194,7 +198,23 @@ as explained in the context of Z3 in [@MouraB09].
 
 ### Terms and formulas
 
+* term structure
+  * free/bound variable de-Bruijn index
+  * function and arguments
+  * quantifier
+* hash-cons
+* Lambdas as arrays
+
 ### Incrementality
+
+* External and internal scopes
+* Undo-trail
+* equi-satisfiability
+
+## Theory solver data-structures
+
+* Theory variables - access to subset of E-nodes relevant for theory
+
 
 ## Boolean Theories
 Bit-vectors are in the current solver treated as tuples of Boolean variables and all bit-vector
@@ -275,7 +295,7 @@ The E-Node data-structure is used to implement congruence closure efficiently. T
 
 When a term $f(ts)$ occurs in a formula used by the solver it is compiled into an E-node $n$.
 The E-node $n$ is initialized with
-$\langle f = f, ts = ts, \find = (n,n,1) P = null, cg = n, j = null \rangle$.
+$\langle f = f, ts = ts, \find = (n,n,1), P = null, cg = n, j = null \rangle$.
 The field $\find$ is used to implement union-find. The _root_ of a node is found by
 looking up the representative until it is the same node.
 Thus, let $(n_1, n_2, sz) = \find(n)$. Then $\rootNode(n) = n$ if $n_1 = n$, otherwise
@@ -296,7 +316,7 @@ root $n$ it maintains the invariant $n.cg = \mathit{etable}(n.f, \rootNode(n.ts)
 
 The main functionality of congruence closure is to ensure that all equivalene classes that follow
 from equalities are inferred. It exposes the main function merge($n_1, n_2, j$) to
-establish that two nodes $n_1, n_2$ are equal under justification $j$. We describe justificaitons later
+establish that two nodes $n_1, n_2$ are equal under justification $j$. We describe justifications later
 in more detail. The main steps of _merge_ are outlined below.
 
 
@@ -316,7 +336,9 @@ in more detail. The main steps of _merge_ are outlined below.
 
 * __Roots__: congruence closure always merges current roots of equivalence classes. If the roots are equal, there is nothing to merge.
 We assume that $r_2$ is chosen as root. The main mechanism for ensuring congruence closure has sub-quadratic running time
-is obtained by applying Hopcroft's method of merging the _lesser_ half.  
+is obtained by applying Hopcroft's method of merging the _lesser_ half. Z3 makes an exception to this rule if $r_1$ is labeled by a term
+that qualifies as a _value_. To quickly identify if a congruence class contains a value, such as $1, 2, cons(3, nil)$, it sets the root
+of a class to be the node representing the value. 
 
 * __Erase__: Entries of the _etable_ that are stale are removed. An entry is stale if it points to the old root as congruence closure representative.
 
@@ -598,9 +620,7 @@ Variables that satisfy these two criteria must be equal.
 
 ### Integer linear arithmetic
 
-The mixed integer linear solver comprises of several layers. It contains several substantial improvements
-over Z3's original arithmetic solver and currently outperforms the legacy solver on the main SMTLIB benchmark sets, and to our knowledge 
-mostly on user scenarios.
+The mixed integer linear solver comprises of several layers. 
 
 #### GCD consistency
 Each row is first normalized by multiplying it with the the least common multiple of the denominators of each coefficient.
@@ -663,8 +683,6 @@ The arithmetic solver produces Gomory cuts from rows where the basic variables a
 the non-basic variables have been pushed to the bounds. It also incorporates algorithms from [@DilligDA09;@ChristH15]
 to generate cuts after the linear systems have been transformed
 into Hermite matrices.
-
-
 
 
 
@@ -811,13 +829,19 @@ is bounded. We don't want the solver to create terms $\relaxOp(\restrictOp(\rela
 
 ## Arrays
 
-~ Framed
-Add some gentler introduction to what we understand by arrays?
+The theory of arrays in SMTLIB is formally based on two functions `select` and `store` and an axiomatization
+
+~MathPre
+  \mathit{select}(\Astore(A, i, v), j) = \mathbf{if}\ i = j\ \mathbf{then}\ v\ \mathbf{else}\ \mathit{select}(A, j) \\
+  \forall i . \mathit{select}(A, i) = \mathit{select}(B, i) \implies A = B
 ~
+for every array $A, B$, index $i, j$ and value $v$. Alluding to the intent that the theory of arrays
+is useful for modeling arrays in programming languages will henceforth use $A[i]$ when we mean $\mathit{select}(A, i)$.
+
 
 Z3 reduces the theory of arrays to reasoning about uninterpreted functions.
-It furthermore treats arrays as function spaces. The first-order theory
-of arrays enjoys compactness and so the following formula is satisfiable[^jazzman]
+It furthermore treats arrays as function spaces which assuming more axioms about arrays.
+he first-order theory of arrays axiomatized above enjoys compactness and so the following formula is satisfiable[^jazzman]
 
 [^jazzman]: thanks to Jasmin Blanchette for drawing attention to this distinction.
 
@@ -827,6 +851,9 @@ of arrays enjoys compactness and so the following formula is satisfiable[^jazzma
 
 The same formula is not satisfiable when arrays range over function spaces.
 The distinction is only relevant for formulas that contain quantifiers over arrays.
+In addition to functions $\Astore$ and $\mathit{select}$ z3 includes built-in
+functions $\Amap$, $\Aconst$ and the operator $\mathit{as{-}array}$ and lambdas.
+
 
 The central functionality of the decision procedure for arrays is to ensure
 that a satisfying model under the theory of EUF translates to a satisfying
@@ -835,10 +862,10 @@ solver is to saturate the search state with $\beta$ reduction axioms
 for array terms that admit beta-reduction. We call these terms $\lambda$ terms
 and they are defined by the beta-reduction axioms:
 ~MathPre
-\beta(\mathit{Store}(A,j,v)[i]) & = & \mathit{if}\ i = j\ \mathit{then} \ v \ \mathit{else}\ A[i]
-\beta(\mathit{Map}(f,A,B)[i]) & = & f(A[i],B[i])
-\beta(\mathit{AsArray}(f)[i]) & = & f(i)
-\beta(\mathit{Const}(v)[i]) & = & v
+\beta(\Astore(A,j,v)[i]) & = & \mathit{if}\ i = j\ \mathit{then} \ v \ \mathit{else}\ A[i]
+\beta(\Amap(f,A,B)[i]) & = & f(A[i],B[i])
+\beta(\Aasarray(f)[i]) & = & f(i)
+\beta(\Aconst(v)[i]) & = & v
 \beta((\lambda x \ . \ M)[i]) & = & M[i/x]
 ~
 
@@ -852,21 +879,30 @@ The reduction into EUF, is then in a nutshell an application of the following in
 \DisplayProof
 ~
 
+The decision procedure maintains for every array node $n$ the following fields
+
+~ MathPre
+  n : & \langle & \mathit{ParentSelects} & = & \{ A[i] \mid n \sim n \} 
+      &         & \mathit{ParentLambdas} & = & \{ \Astore(A,i,v) \mid A \sim n\} \cup \{ \Amap(f, \ldots, A, \ldots) \mid A \sim n \} 
+      &         & \mathit{Lambdas}       & = & \{ \Aconst(v) \mid \Aconst(v) \sim n \} \cup 
+      &         &                        &   & \{ \Amap(f,\ldots) \mid \Amap(f,\ldots) \sim n \} \cup 
+      &         &                        &   & \{ \Astore(\ldots) \mid \Astore(\ldots) \sim n \} \cup 
+      &         &                        &   & \{ \Aasarray(f) \mid \Aasarray(f) \sim n \} \cup 
+      &         &                        &   & \{ \lambda x \ . \ M \mid \lambda x \ . \ M \sim n \} 
+      & \rangle & 
+~
+
+The attributes are used for propagation.
+When $n_1$ is merged with $n_2$, and $n_1$ is the new root, the attributes from $n_2$ are added to $n_1$.
+The merge also looks for new redexes.
+
+~ Framed
+Introduce notation $\sim$ earlier
+~
+
 ~ Framed
 TODO: elaborate, handling lambads, beta calculus
 ```
- A node n has attribtes:
-
-    parent_selects:   { A[i] | A ~ n }
-    parent_lambdas:     { store(A,i,v) | A ~ n } u { map(f, .., A, ..) | A ~ n }
-    lambdas:            { const(v) | const(v) ~ n }
-                      u { map(f,..) | map(f,..) ~ n }
-                      u { store(A,i,v) | store(A,i,v) ~ n }
-                      u { as-array(f) | as-array(f) ~ n }
-
-The attributes are used for propagation.
-When n1 is merged with n2, and n1 is the new root, the attributes from n2 are added to n1.
-The merge also looks for new redexes.
 
 Let A[j] in parent_selects(n2) :
 
@@ -1106,6 +1142,9 @@ TODO: "peel the onion" further in the user-propagator section based on VMCAI mat
   * strengthening
   * splitting
 * pre/in-processing as specialized strategies
+
+# Interfacing with Z3
+
 
 
 # Directions
