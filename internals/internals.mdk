@@ -3,6 +3,10 @@ Author        : Nikolaj Bj&oslash;rner
 Affiliation   : Microsoft Research
 Author        : Clemens Eisenhofer
 Affiliation   : TU Wien
+Author        : Arie Gurfinkel
+Affiliation   : U Waterloo
+Author        : Nuno Lopes
+Affiliation   : U Lisbon
 Author        : Leonardo de Moura
 Affiliation   : Microsoft Research
 Author        : Lev Nachmanson
@@ -294,8 +298,12 @@ The E-Node data-structure is used to implement congruence closure efficiently. T
 ~
 
 When a term $f(ts)$ occurs in a formula used by the solver it is compiled into an E-node $n$.
-The E-node $n$ is initialized with
-$\langle f = f, ts = ts, \find = (n,n,1), P = null, cg = n, j = null \rangle$.
+The E-node $n$ is initialized to
+
+~ Math
+ n \leftarrow \langle f = f, ts = ts, \find = (n,n,1), P = null, cg = n, j = null \rangle.
+~
+
 The field $\find$ is used to implement union-find. The _root_ of a node is found by
 looking up the representative until it is the same node.
 Thus, let $(n_1, n_2, sz) = \find(n)$. Then $\rootNode(n) = n$ if $n_1 = n$, otherwise
@@ -324,14 +332,17 @@ in more detail. The main steps of _merge_ are outlined below.
 | Roots        | $r_1 \leftarrow \rootNode(n_1), r_2 \leftarrow \rootNode(n_2)$                            |
 |              | assume $r_1 \neq r_2$                                                                     |
 |              | assume $r_1.sz \leq r_2.sz$                                                               |
-| Erase        | for each $p \in r_1.P$ where $p.cg = p$ erase _etable_$[p.f, p.ts]$                       |
-| Update Root  | $r_1.\find \leftarrow r_2$                                                                 |
+| Erase        | __for each__ $p \in r_1.P$ __where__ $p.cg = p$:                                          |
+|              | \ \ \ \ erase _etable_$[p.f, p.ts]$                                                       |
+| Update Root  | $r_1.\find \leftarrow r_2$                                                                |
 | Justify      | justify($r_1, r_2, j$)                                                                    |
-| Insert       | for each $p \in r_1.P$:                                                                   |
-|              | \ \ $p.cg \leftarrow$ find or insert _etable_$[p.f, p.ts]$                                  |
-|              | \ \ if $p.cg = p$
+| Insert       | __for each__ $p \in r_1.P$:                                                               |
+|              | \ \ __if__ $\mathit{etable}[p.f,p.ts] = null$ __then__                                     |
+|              | \ \ \ \ \ $\mathit{etable}[p.f,p.ts] \leftarrow p$                                        |
+|              | \ \ $p.cg \leftarrow$ etable_$[p.f, p.ts]$                                                |
+|              | \ \ __if__ $p.cg = p$ __then__                                                            |
 |              | \ \ \ \ append $p$ to $r_2.P$                                                             |
-|              | \ \ else                                                                                  |
+|              | \ \ __else__                                                                              |
 |              | \ \ \ \ add $\langle p.cg, p, cc\rangle$ to _tomerge_                                     |
 
 * __Roots__: congruence closure always merges current roots of equivalence classes. If the roots are equal, there is nothing to merge.
@@ -882,19 +893,22 @@ The reduction into EUF, is then in a nutshell an application of the following in
 The decision procedure maintains for every array node $n$ the following fields
 
 ~ MathPre
-  n : & \langle & \mathit{ParentSelects} & = & \{ A[i] \mid n \sim n \} 
-      &         & \mathit{ParentLambdas} & = & \{ \Astore(A,i,v) \mid A \sim n\} \cup \{ \Amap(f, \ldots, A, \ldots) \mid A \sim n \} 
-      &         & \mathit{Lambdas}       & = & \{ \Aconst(v) \mid \Aconst(v) \sim n \} \cup 
-      &         &                        &   & \{ \Amap(f,\ldots) \mid \Amap(f,\ldots) \sim n \} \cup 
-      &         &                        &   & \{ \Astore(\ldots) \mid \Astore(\ldots) \sim n \} \cup 
-      &         &                        &   & \{ \Aasarray(f) \mid \Aasarray(f) \sim n \} \cup 
-      &         &                        &   & \{ \lambda x \ . \ M \mid \lambda x \ . \ M \sim n \} 
-      & \rangle & 
+\mathit{ParentSelects}(n) & = & \{ A[i] \mid n \sim n \} 
+\mathit{ParentLambdas}(n) & = & \{ \Astore(A,i,v) \mid A \sim n\} \cup \{ \Amap(f, \ldots, A, \ldots) \mid A \sim n \} 
+\mathit{Lambdas}(n)       & = & \{ \Aconst(v) \mid \Aconst(v) \sim n \} \cup 
+                          &   & \{ \Amap(f,\ldots) \mid \Amap(f,\ldots) \sim n \} \cup 
+                          &   & \{ \Astore(\ldots) \mid \Astore(\ldots) \sim n \} \cup 
+                          &   & \{ \Aasarray(f) \mid \Aasarray(f) \sim n \} \cup 
+                          &   & \{ \lambda x \ . \ M \mid \lambda x \ . \ M \sim n \} 
 ~
 
 The attributes are used for propagation.
 When $n_1$ is merged with $n_2$, and $n_1$ is the new root, the attributes from $n_2$ are added to $n_1$.
 The merge also looks for new redexes.
+
+* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n_2)$, $\lambda \in \mathit{ParentLambdas}(n_1)$
+* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j\ \in \mathit{ParentSelects}(n_2)$, $\lambda \in \mathit{Lambdas}(n_1)$
+
 
 ~ Framed
 Introduce notation $\sim$ earlier
@@ -903,23 +917,6 @@ Introduce notation $\sim$ earlier
 ~ Framed
 TODO: elaborate, handling lambads, beta calculus
 ```
-
-Let A[j] in parent_selects(n2) :
-
-        lambda in parent_lambdas(n1)
-    -------------------------------
-     lambda[j] = beta-reduce(lambda[j])
-
-            lambda in lambdas(n1)
-    -------------------------------
-     lambda[j] = beta-reduce(lambda[j])
-
-Beta reduction rules are:
-      beta-reduce(store(A,j,v)[i]) = if(i = j, v, A[j])
-      beta-reduce(map(f,A,B)[i]) = f(A[i],B[i])
-      beta-reduce(as-array(f)[i]) = f(i)
-      beta-reduce(const(v)[i]) = v
-      beta-reduce((lambda x M[x])[i]) = M[i]
 
 For enforcing
       store(A,j,v)[i] = beta-reduce(store(A,j,v)[i])
