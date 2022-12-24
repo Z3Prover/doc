@@ -333,13 +333,13 @@ in more detail. The main steps of _merge_ are outlined below.
 |              | assume $r_1 \neq r_2$                                                                     |
 |              | assume $r_1.sz \leq r_2.sz$                                                               |
 | Erase        | __for each__ $p \in r_1.P$ __where__ $p.cg = p$:                                          |
-|              | \ \ \ \ erase _etable_$[p.f, p.ts]$                                                       |
+|              | \ \ \ \ erase $\mathit{etable}[p.f, p.ts]$                                                       |
 | Update Root  | $r_1.\find \leftarrow r_2$                                                                |
 | Justify      | justify($r_1, r_2, j$)                                                                    |
 | Insert       | __for each__ $p \in r_1.P$:                                                               |
 |              | \ \ __if__ $\mathit{etable}[p.f,p.ts] = null$ __then__                                     |
 |              | \ \ \ \ \ $\mathit{etable}[p.f,p.ts] \leftarrow p$                                        |
-|              | \ \ $p.cg \leftarrow$ etable_$[p.f, p.ts]$                                                |
+|              | \ \ $p.cg \leftarrow$ _etable_$[p.f, p.ts]$                                                |
 |              | \ \ __if__ $p.cg = p$ __then__                                                            |
 |              | \ \ \ \ append $p$ to $r_2.P$                                                             |
 |              | \ \ __else__                                                                              |
@@ -863,7 +863,7 @@ he first-order theory of arrays axiomatized above enjoys compactness and so the 
 The same formula is not satisfiable when arrays range over function spaces.
 The distinction is only relevant for formulas that contain quantifiers over arrays.
 In addition to functions $\Astore$ and $\mathit{select}$ z3 includes built-in
-functions $\Amap$, $\Aconst$ and the operator $\mathit{as{-}array}$ and lambdas.
+functions $\Amap$, $\Aconst$ and the operator $\Aasarray$ and lambdas.
 
 
 The central functionality of the decision procedure for arrays is to ensure
@@ -907,7 +907,7 @@ When $n_1$ is merged with $n_2$, and $n_1$ is the new root, the attributes from 
 The merge also looks for new redexes.
 
 * Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n_2)$, $\lambda \in \mathit{ParentLambdas}(n_1)$
-* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j\ \in \mathit{ParentSelects}(n_2)$, $\lambda \in \mathit{Lambdas}(n_1)$
+* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n_2)$, $\lambda \in \mathit{Lambdas}(n_1)$
 
 
 ~ Framed
@@ -957,6 +957,52 @@ is the _occurs check_.
 ~ Framed
 TODO: go over decision procedure in detail on completeness through finite model building and assumptions about branching to solve non-recursive base cases first.
 ~
+
+
+### Model Based Projection for Algebraic Datatypes (hoisted from QSAT - TODO - adjust or remove)
+Let us for simplicity consider the case of LISP S-expressions. Generalization to other algebraic data-types is straight-forward.
+We assume we are given a conjunction of equalities, disequalities and constructor tests over data-type terms. 
+The constructors are $\mathit{cons}(u,v), \mathit{nil}$, there is a constructor test $\mathit{cons?}(u)$ 
+which holds when $u$ is a cons, 
+and the functions $\mathit{car}(u), \mathit{cdr}(u)$ are defined to take the first, respectively second argument, when $u$ is a cons.
+Furthermore, we can assume 
+that equalities are normalized, such that the right-hand side is a variable or expression using selectors 
+and that there are no equalities whose one side occurs properly in the other side.
+We also maintain the following property: whenever $L$ contains a subterm $\mathit{car}(u)$ or $\mathit{cdr}(u)$, then $L$ also contains a conjunct
+$\mathit{cons?}(u)$. So whenever $M \models L$, then $u$ evaluates to a cons under $M$.
+If $x$ occurs in the scope of a $\mathit{car}$ or $\mathit{cdr}$, then we apply the following transformation:
+
+~ MathPre
+\Mbp(M, x, L) & = & \Mbp(M[y \mapsto M(\mathit{car}(x)), z \mapsto M(\mathit{cdr}(x))], yz, L[\mathit{cons}(y,z)/x])
+~
+and simplify $L$ under the rewrites $\mathit{car}(\mathit{cons}(s,t)) = s, \mathit{cdr}(\mathit{cons}(s,t)) = t$.
+So in the following we assume that $x$ is not in the scope of an accessor.
+We can solve for $x$ (assume $x$ occurs in $t$ but not in $u$) by using the transformations corresponding to unification:
+~ MathPre
+\Mbp(M, x, \mathit{cons}(t,s) \simeq u \land L)   & = & \mathit{cons?}(u) \land \Mbp(M, x, t \simeq \mathit{car}(u) \land s \simeq \mathit{cdr}(u) \land  L) \\
+\Mbp(M, x, x \simeq x \land L)                    & = & \Mbp(M, x, L) \\
+\Mbp(M, x, u \simeq x \land L)                    & = & L[u/x] 
+~
+
+This leaves us with disequalities where the variable $x$ we would like to project occurs. Disequalities can be decomposed using the model $M$:
+
+~ MathPre
+\Mbp(M, x, \mathit{cons}(t, s) \not\simeq u \land L) & = & \mathit{cons?}(u) \land \Mbp(M, x, s \not\simeq \mathit{cdr}(u) \land L) \\
+				& & \quad\mbox{if}\quad M(s) \neq M(\mathit{cdr}(u)), M(\mathit{cons?}(u)) \\
+\Mbp(M, x, \mathit{cons}(t, s) \not\simeq u \land L) & = & \mathit{cons?}(u) \land \Mbp(M, x, t \not\simeq \mathit{car}(u) \land L) \\
+				& & \quad\mbox{if}\quad M(s) = M(\mathit{cdr}(u)), M(t) \neq M(\mathit{car}(u)), M(\mathit{cons?}(u)) \\
+\Mbp(M, x, \mathit{cons}(t, s) \not\simeq u \land L) & = & \neg \mathit{cons?}(u) \land \Mbp(M, x, L) \quad\mbox{if}\quad M(\neg\mathit{cons?}(u))
+~
+Thus, every occurrence of $x$ is isolated as $t_1 \not\simeq x \land t_2 \not\simeq x \land \ldots$. We can assume that $x$ does not occur in $t_i$, because
+otherwise the disequality is a tautology by the occurs check. At this point we can always solve for $x$ by constructing a suitably large term that is different
+from each of $t_1, t_2, \ldots$. Thus, 
+~ MathPre
+\Mbp(M, x, t_1 \not\simeq x \land \ldots \land t_n \not\simeq x) & = & \top
+~
+
+~ Lemma Requirement~\ref{req:cccc} holds for $\Mbp$ of Algebraic Datatypes.
+~
+
 
 ## Floating points
 Floating point semantics can be defined in terms of bit-vector operations. The solver for floating points
