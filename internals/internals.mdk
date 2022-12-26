@@ -108,6 +108,17 @@ Extends material from _Navigating_ by Bj&oslash;rner and Nachmanson, SBMF 2020. 
 * how can I determine which strategies apply to my formulas?
 * how do solvers interact with the core
 
+### Conceptual categories
+
+* Feeding formulas to z3
+* Controlling sesarch and output behavior
+* Extracting information
+
+
+* Internal workings
+  * Data structures
+  * Search algorithms
+
 ## Organization
 
 * data-structures
@@ -307,8 +318,11 @@ The E-node $n$ is initialized to
 The field $\find$ is used to implement union-find. The _root_ of a node is found by
 looking up the representative until it is the same node.
 Thus, let $(n_1, n_2, sz) = \find(n)$. Then $\rootNode(n) = n$ if $n_1 = n$, otherwise
-$\rootNode(n) = \rootNode(n_1)$. Z3 does not perform path compaction, instead it eagerly updates
-the representative of all siblings when nodes are merged. The second field $n_2$ is the sibling
+$\rootNode(n) = \rootNode(n_1)$. We extend $\rootNode$ to apply to a list of nodes by mapping it on each node in the list.
+Z3 does not perform path compaction, instead it eagerly updates
+the representative of all siblings when nodes are merged. In other words, if roots $n_1, n_2$ are merged
+and $n_2$ is made the root, then all siblings $n_s$ of $n_1$ are updated such that $n_s := n_2$.
+The second field $n_2$ is the sibling
 of $n$ in the same equivalence class. The set of siblings forms a singly linked cyclic list.
 The size field $sz$ is the size of the equivalence class. 
 
@@ -639,12 +653,20 @@ For each row it assembles a value from the fixed variables.
 A variable $x_j$ is fixed if the current values $lo_j$, $hi_j$ are equal. 
 Then it checks that the gcd of the coefficients to variables divide the fixed value. If they don't the row has no integer solution.
 
+~ Framed
+Add example
+~
+
 #### Patching
 Following [@MouraB08], the integer solver moves non-basic variables away from their bounds in order to ensure that
 basic, integer, variables are assigned integer values. The process examines each non-basic variable and checks every row where it occurs
 to estimate a safe zone where its value can be changed without breaking any bounds. If the safe zone is sufficiently large to patch
 a basic integer variable it performs an update. This heuristic is highly incomplete, but is able to locally patch several variables
 without resorting to more expensive analyses.
+
+~ Framed
+Add example
+~
 
 #### Cubes
 One of the deciding factors in leapfrogging the previous solver relied on 
@@ -688,6 +710,10 @@ Similar to traditional MIP branch-and-bound methods,
 the solver creates somewhat eagerly case splits on bounds 
 of integer variables if the dual simplex solver fails to assign them integer values.
 
+~ Framed
+Add example
+~
+
 
 #### Gomory and Hermite cuts
 The arithmetic solver produces Gomory cuts from rows where the basic variables are non-integers after
@@ -696,6 +722,9 @@ to generate cuts after the linear systems have been transformed
 into Hermite matrices.
 
 
+~ Framed
+Add example
+~
 
 
 ### Non-linear arithmetic
@@ -711,6 +740,10 @@ The module for non-linear arithmetic then attempts to
 establish a valuation $V$ where $V(m) = V(x) \cdot V(x) \cdot V(y)$, 
 or derive a consequence that no such valuation exists.
 The stages in the waterfall model are summarized as follows:
+
+~ Framed
+Add example
+~
 
 
 #### Bounds propagation on monomials
@@ -730,6 +763,11 @@ The solver therefore attempts different re-distribution of multiplication
 in an effort to find stronger bounds.
 
 #### Gr&ouml;bner reduction
+
+~ Framed
+Add examples of what inferences are obtained by the Gr&ouml;bner module
+~
+
 We use an adaptation of ZDD (Zero suppressed decision diagrams [@Minato93;@NishinoYMN16]) to represent polynomials.
 The representation has the advantage that polynomials are stored in a shared data-structure and operations
 over polynomials are memoized. A polynomial over the real is represented as an acyclic graph where 
@@ -785,6 +823,18 @@ and $x = 1 \rightarrow m = y$, for $m = x^2y$.
 #### NLSat
 As an end-game attempt, the solver attempts to solver the non-linear constraints using a complete solver
 for Tarski's fragment supported by the NLSat solver [@JovanovicM12].
+
+
+### Quantified Satisfaction
+
+#### Model-Based Quantifier Elimination
+
+~ Framed
+Define MBP for arithmetic
+~
+
+#### NLSat
+
 
 # Reducible Theories
 
@@ -942,7 +992,7 @@ You can declare algebraic data-types in SMTLIB2 using the `declare-datatypes` co
 )
 ```
 
-A legacy format that is less flexible, but a bit easier to formulate is also available.
+A legacy format that is less flexible, but a bit easier to formulate, is also available.
 
 ```
 (declare-datatypes (T) ((Tree leaf (node (value T) (children TreeList)))
@@ -974,7 +1024,7 @@ corresponding to the constructor `Assignment`. The predicate symbol $isC(t)$ is 
 is equal to term headed by the constructor $C$. The construct $\{ t \mbox{ with } \mathit{field} := s \}$
 assigns term $s$ to an accessor _field_ for the term $t$. Note that it is possible to apply an
 accessor to a data-type constructor that does not match. For example taking the head of an empty list,
-$\mahthit{head}(\mathit{nil})$. The interpretation of $\mahthit{head}(\mathit{nil})$ is not fixed by the
+$\mathit{head}(\mathit{nil})$. The interpretation of $\mathit{head}(\mathit{nil})$ is not fixed by the
 theory, instead $\mathit{head}$ is treated as an uninterpreted function.
 
 The theory solver for algebraic datatypes is implemented by adding theory axioms on demand. 
@@ -1141,6 +1191,16 @@ uninterpreted functions.
 
 ## Sequences/Strings/Regex
 
+
+# Model Construction
+
+~ Framed
+Describe models. The macro conventions for models. How models are constructed from a consistent set of theory solvers.
+What class of models can be expressed. How to control model construction. Large numbers (what was done for Pex), random models.
+Interaction of CDCL solver and theory solvers on model construction (Arithmetic simplex uses boundary values,
+SAT solver phase selection, restart and phase stickiness influences Boolean assignments).
+Optimization objectives.
+~
 
 # Quantifiers
 
