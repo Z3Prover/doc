@@ -403,7 +403,7 @@ In overview, the arithmetic solver uses a waterfall model for solving arithmetic
 * Finally, it establishes feasibility with respect to non-linear polynomial constraints.
 
 
-~ Figure { #fig-system; caption: "An overview of Arithmetical Decision Procedures in Z3"}
+~ Figure { #fig-arithmetic; caption: "An overview of Arithmetical Decision Procedures in Z3"}
 ![Arithmetic]
 ~
 
@@ -783,6 +783,8 @@ The same formula is not satisfiable when arrays range over function spaces.
 The distinction is only relevant when checking satisfiability of quantified formulas over arrays.
 In addition to functions $\Astore$ and $\mathit{select}$ z3 includes built-in
 functions $\Amap$, $\Aconst$ and the operator $\Aasarray$ and lambdas.
+It includes also the function $\Aext$ that provides a witness term for distinct arrays,
+and $\delta(A)$ for accessing a _default_ value.
 
 
 The central functionality of the decision procedure for arrays is to ensure
