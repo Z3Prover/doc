@@ -1,0 +1,1019 @@
+# Decision Procedures
+
+
+We will apply the following taxonomy when discussing the theory solvers.
+It extends the reduction approach to decision procedures [@KapurZarbaReduction]
+as explained in the context of Z3 in [@MouraB09].
+
+
+* Base theories - other theory solvers build on top of base theories
+  * The base theories in z3 are Boolean theories, the theory of uninterpreted functions and the theory of arithmetic.
+* Reducible theories 
+  * Theories that can be solved by reducing directly into base theories.
+  * Instances: Arrays, IEEE floating points, algebraic datatypes, recursive functions.
+* Hybrid theories 
+  * Theories that combine non-disjoint signatures from different theories.
+  * Instances: Sequences, Model-based quantifier instantiation.
+* External theories 
+  * Theories that may be developed externally by propagating consequences and identifying conflicts.
+  * Instance: an external propagator plugin.
+
+
+~ Figure { #fig-z3core; caption: "Architecture of Z3's SMT Core solver." }
+~~ Snippet
+
+\begin{picture}(270,210)(0,-10)
+
+\multiput(75,40)(0,77){3}{\oval(20,20)[tr]}
+\multiput(75,0)(0,77){3}{\oval(20,20)[br]}
+\multiput(10,40)(0,77){3}{\oval(20,20)[tl]}
+\multiput(0,0)(0,77){3}{\line(0,1){40}}
+\multiput(85,0)(0,77){3}{\line(0,1){40}}
+\multiput(10,50)(0,77){3}{\line(1,0){65}}
+\multiput(10,-10)(0,77){3}{\line(1,0){65}}
+\multiput(10,0)(0,77){3}{\oval(20,20)[bl]}
+
+\put(16,155){\shortstack{E-matching\\ based \\ Quantifier\\ Instantiation}}
+\put(16, 92){\shortstack{EUF + SAT}}
+\put(16,0){\shortstack{Model\\ based \\ Quantifier\\ Instantiation}}
+
+\put(267,195){\oval(20,20)[tr]}
+\put(267,0){\oval(20,20)[br]}
+\put(149,195){\oval(20,20)[tl]}
+\put(149,0){\oval(20,20)[bl]}
+\put(149,-10){\line(1,0){120}}
+\put(149,205){\line(1,0){120}}
+\put(139,0){\line(0,1){195}}
+\put(277,0){\line(0,1){195}}
+
+
+\multiput(255,20)(0,37){5}{\oval(20,20)[tr]}
+\multiput(255,10)(0,37){5}{\oval(20,20)[br]}
+\multiput(165,10)(0,37){5}{\oval(20,20)[bl]}
+\multiput(165,20)(0,37){5}{\oval(20,20)[tl]}
+\multiput(155,10)(0,37){5}{\line(0,1){10}}
+\multiput(265,10)(0,37){5}{\line(0,1){10}}
+\multiput(165,30)(0,37){5}{\line(1,0){90}}
+\multiput(165,0)(0,37){5}{\line(1,0){90}}
+\put(170,12){Strings/Sequences}
+\put(185,50){Datatypes}
+\put(185,86){Bit-vectors}
+\put(195,122){Arrays}
+\put(185,158){Arithmetic}
+\put(190,190){Theories}
+
+\put(42,50){\vector(0,1){17}}
+\put(42,67){\vector(0,-1){17}}
+\put(42,127){\vector(0,1){17}}
+\put(42,144){\vector(0,-1){17}}
+
+\put(85,95){\vector(1,0){54}}
+\put(139,95){\vector(-1,0){54}}
+
+\end{picture}
+~~
+~
+
+
+## Data-structures
+
+### Terms and formulas
+
+* term structure
+  * free/bound variable de-Bruijn index
+  * function and arguments
+  * quantifier
+* hash-cons
+* Lambdas as arrays
+
+### Incrementality
+
+* External and internal scopes
+* Undo-trail
+* equi-satisfiability
+
+## Theory solver data-structures
+
+* Theory variables - access to subset of E-nodes relevant for theory
+
+
+# Base Theories
+
+## Boolean Theories
+Bit-vectors are in the current solver treated as tuples of Boolean variables and all bit-vector
+operations are translated to Boolean SAT. The approach is called bit-blasting.
+Only mild equational reasoning is performed over bit-vectors.
+The benefits of the CDCL SAT engine have been mostly enjoyed for applications in symbolic execution 
+of 32-bit arithmetic instructions. Bit-blasting has its limitations: applications that use quantifiers
+and applications around smart contracts that use 256 bits per word are stressing this approach. A
+revised bit-vector solver that integrates algebraic reasoning and lazy bit-blasting is therefore currently
+being developed.
+
+Cardinality and Pseudo-Boolean inequalities can also be translated into CNF clauses. It is often an advantage
+when there are very few variables in the summations, but the overhead of translation can quickly become
+impractical. Z3 therefore contains dedicated solvers for cardinality and Pseudo-Boolean constraints.
+
+~ Framed
+Examples of cardinality, Bit-vectors
+~
+
+
+## Equality and Uninterpreted Functions
+
+This theory captures a shared property of all theory: that equality is a congruence relation. 
+The theory is described many places, including in [@BjornerMNW18].
+
+
+Let us use a simple example to illustrate the scope and main functionality of congruence closure
+based decision procedures for equality. We are given two equalities and one disequality
+
+~ Math
+  a \simeq f(f(a)), a \simeq f(f(f(a))), a \not\simeq f(a)
+~
+
+Their conjunction is unsatisfiable. Unsatisfiability is established by combining union-find [@UnionFind] data-structures
+to maintain equivalence classes and a data-structure of E-graphs to enforce congruences.
+In a first step the terms are represented by unique nodes in a DAG structure for every sub-term. We represent the DAG
+structure as a sequence of definitions. Then equalities and disequalities are between nodes in DAG.
+
+~ MathPre
+  n_1 \equiv f(a), n_2 \equiv f(n_1), n_3 \equiv f(n_2) \\
+  a \simeq n_2, a \simeq n_3, a \not\simeq n_1
+~
+
+Process equality atoms using union-find. It establishes the equivalence classes
+
+~ Math
+ \{  a, n_2, n_3 \}, \{ n_1 \}
+~
+
+Then congruence closure triggers whenever there are two nodes, $n_1, n_2$ from different equivalence classes,
+labeled by the same function $f$, with equal children. In our case $a, n_2$ belong to the same equivalence class
+so the nodes $n_1, n_3$ are merged.
+
+~ Math
+\{  a, n_2, n_3, n_1 \}
+~
+
+When the children of the equality term $a \simeq n_1$ are merged into the same equivalence class, the
+term $a \simeq n_1$ is set to true. This contradicts that $a \simeq n_1$ is already set to false.
+
+
+### E-Node
+
+~ Framed
+TODO add citations to main sources: DST, NO (Oliveras), Simplify Report
+~
+
+The E-Node data-structure is used to implement congruence closure efficiently. The main fields of an E-Node are
+
+~ MathPre
+    n : & \langle & f: & Func  & \mbox{function symbol}
+        &      & ts: & N^* & \mbox{arguments}
+        &      & find: & N \times N \times \Nat & \mbox{link to representative, sibling and class size}
+        &      & P:    & N^*   & \mbox{list of parents}            
+        &      & cg:   & N    & \mbox{congruence representative}
+        &      & j:    & null | Just \times N & \mbox{pointer to justification and node}
+        & \rangle
+~
+
+When a term $f(ts)$ occurs in a formula used by the solver it is compiled into an E-node $n$.
+The E-node $n$ is initialized to
+
+~ Math
+ n \leftarrow \langle f = f, ts = ts, \find = (n,n,1), P = null, cg = n, j = null \rangle.
+~
+
+The field $\find$ is used to implement union-find. The _root_ of a node is found by
+looking up the representative until it is the same node.
+Thus, let $(n_1, n_2, sz) = \find(n)$. Then $\rootNode(n) = n$ if $n_1 = n$, otherwise
+$\rootNode(n) = \rootNode(n_1)$. We extend $\rootNode$ to apply to a list of nodes by mapping it on each node in the list.
+Z3 does not perform path compaction, instead it eagerly updates
+the representative of all siblings when nodes are merged. In other words, if roots $n_1, n_2$ are merged
+and $n_2$ is made the root, then all siblings $n_s$ of $n_1$ are updated such that $n_s := n_2$.
+The second field $n_2$ is the sibling
+of $n$ in the same equivalence class. The set of siblings forms a singly linked cyclic list.
+The size field $sz$ is the size of the equivalence class. 
+
+
+Besides the E-nodes the solver maintains a hash-table, we call _etable_, that
+is used to find the congruence root of a function application. It maps a
+function symbol $f$ and list of arguments to $f$ that are represented by
+root E-nodes into a congruence closure root. For the congruence closure
+root $n$ it maintains the invariant $n.cg = \mathit{etable}(n.f, \rootNode(n.ts))$.
+
+
+### Merge
+
+The main functionality of congruence closure is to ensure that all equivalene classes that follow
+from equalities are inferred. It exposes the main function merge($n_1, n_2, j$) to
+establish that two nodes $n_1, n_2$ are equal under justification $j$. We describe justifications later
+in more detail. The main steps of _merge_ are outlined below.
+
+
+|:~~~~~~~~~~~~~|:~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+| Roots        | $r_1 \leftarrow \rootNode(n_1), r_2 \leftarrow \rootNode(n_2)$                            |
+|              | assume $r_1 \neq r_2$                                                                     |
+|              | assume $r_1.sz \leq r_2.sz$                                                               |
+| Erase        | __for each__ $p \in r_1.P$ __where__ $p.cg = p$:                                          |
+|              | \ \ \ \ erase $\mathit{etable}[p.f, p.ts]$                                                       |
+| Update Root  | $r_1.\find \leftarrow r_2$                                                                |
+| Justify      | justify($r_1, r_2, j$)                                                                    |
+| Insert       | __for each__ $p \in r_1.P$:                                                               |
+|              | \ \ __if__ $\mathit{etable}[p.f,p.ts] = null$ __then__                                     |
+|              | \ \ \ \ \ $\mathit{etable}[p.f,p.ts] \leftarrow p$                                        |
+|              | \ \ $p.cg \leftarrow$ _etable_$[p.f, p.ts]$                                                |
+|              | \ \ __if__ $p.cg = p$ __then__                                                            |
+|              | \ \ \ \ append $p$ to $r_2.P$                                                             |
+|              | \ \ __else__                                                                              |
+|              | \ \ \ \ add $\langle p.cg, p, cc\rangle$ to _tomerge_                                     |
+
+* __Roots__: congruence closure always merges current roots of equivalence classes. If the roots are equal, there is nothing to merge.
+We assume that $r_2$ is chosen as root. The main mechanism for ensuring congruence closure has sub-quadratic running time
+is obtained by applying Hopcroft's method of merging the _lesser_ half. Z3 makes an exception to this rule if $r_1$ is labeled by a term
+that qualifies as a _value_. To quickly identify if a congruence class contains a value, such as $1, 2, cons(3, nil)$, it sets the root
+of a class to be the node representing the value. 
+
+* __Erase__: Entries of the _etable_ that are stale are removed. An entry is stale if it points to the old root as congruence closure representative.
+
+* __Update Root__: The root is updated along with size of equivalence classes and links into the cyclic list of siblings.
+
+* __Justify__: The _justification_ for a merged equality is updated. We describe this functionality later.
+
+* __Insert__: Finally, the _etable_ is updated by updating the $cg$ field of parents from $r_1$. It maintains a list _tomerge_ of new nodes that are discovered congruent. An outer loop invokes _merge_ on the list of new nodes until it is empty.
+
+
+
+
+### Unmerge
+
+All operations on the E-Graph can be inverted. For this purpose, every merge is recorded in an _undo trail_.
+Other operations that update nodes are recorded in the same trail. For example when $p$ is appended to $r_2.P$
+the insertion into the cyclic list of parents is recorded so that it can be reverted. To reverting a merge
+requires updating the _etable_ and is sensitive to whether a node was a congruence root:
+
+unmerge($r_1, r_2$):
+
+```
+Erase:        for each p in r2.P added from r1.P:
+                 erase p from table 
+Unjustify:    ....
+Revert root:  r1.find := r1
+Insert:       for each p in r1.P:
+                 insert p if n was cc root before merge
+
+condition for being cc root before merge:
+  p.cg == p or !congruent(p, p.cg)
+
+congruent(p,q) := roots of p.ts = roots of q.ts
+```
+
+### Justifications 
+
+A justification is a reason for merging two nodes.
+There are two possible reasons for merging nodes:
+
+1. A literal $\ell: s \simeq t$ is asserted. The justification is the literal $\ell$.
+2. Nodes are merged due to congruence closure.
+
+~ MathPre
+   Just ::= \ell: s \simeq t | cc: f(ts) \simeq f(ts')
+~
+
+__NB__: $cc: f(ts) \simeq f(ts')$ is justified _recursively_ by justifying $ts \simeq ts'$.
+
+
+__Invariant:__ Every non-root node points to a linked list of justifications leading to the root
+
+__NB__ The linked list does not follow direction of union-find.
+
+~ MathPre
+    r_1 \leftarrow \rootNode(n_1)
+    r_2 \leftarrow \rootNode(n_2)
+    r_1.\find \leftarrow r_2
+    old justification: n_1 \stackrel{j_1}{\rightarrow} n^1_1 \stackrel{j_2}{\rightarrow} n^2_1 \cdots \stackrel{j_m}{\rightarrow} r_1
+    new justification: n_1 \stackrel{j_1}{\leftarrow} n^1_1 \stackrel{j_2}{\leftarrow} n^2_1 \cdots \stackrel{j_m}{\leftarrow} r_1
+    add justification: n_1 \stackrel{j}{\rightarrow} n_2
+~
+
+
+![justificationunionfind]
+[justificationunionfind]: images/justifiedunionfind.jpg "justificationunionfind" { width:auto; max-width:80% }
+
+
+Note that not all possible justifications are tracked, if
+merge($n_1, n_2, j$) is invoked but already $\rootNode(n_1) = \rootNode(n_2)$, then
+the justification $j$ for the equality of $n_1, n_2$ is dropped.
+In contrast __egg__ [@EggProofs] keeps track of potential extra paths to find _short_ proofs.
+Use cases within CDCL(T), that leverages amortized effect of backtracking search typically
+hedge on that the cost finding a strongest conflict up front is outweighed by multiple attempts that converge on
+sufficiently strong conflicts.
+
+### From justifications to proofs
+
+We can create proofs from first-principles by using justifications.
+Suppose $\rootNode(s) = \rootNode(t)$ follows from a sequence
+merge($s_1, t_1, \ell_1$), merge($s_2, t_2, \ell_2$),$\ldots$, merge($s_k, t_k, \ell_k$).
+
+
+Then a proof of $s \simeq t$ can be extracted using overloaded functions $\pi$:
+
+
+~ Math
+\begin{array}{ll}
+   \proof(s \simeq t) & =
+   \begin{array}{c}
+   \AxiomC{$\proof(s \stackrel{j}{\rightarrow} \cdots a)$}
+   \AxiomC{$\proof(t \stackrel{j'}{\rightarrow} \cdots a)$}
+   \RightLabel{symm}
+   \UnaryInfC{$a \simeq t$}
+   \RightLabel{trans}
+   \BinaryInfC{$s \simeq t$}
+   \DisplayProof\\[2em]
+   \mbox{$a$ is a least common $\rightarrow$ ancestor of $s, t$}
+   \end{array}
+\end{array}
+~
+
+~Math
+\begin{array}{ll}
+   \proof(s \stackrel{j}{\rightarrow} t \stackrel{j'}{\rightarrow} \cdots u) & =
+   \begin{array}{c}
+   \AxiomC{$\proof(j, s \simeq t)$}
+   \AxiomC{$\proof(t \stackrel{j'}{\rightarrow} \cdots u)$}
+   \RightLabel{trans}
+   \BinaryInfC{$s \simeq u$}
+   \DisplayProof
+   \end{array}
+   \\[1.5em]
+   \proof(s) & =
+   \begin{array}{c}
+   \AxiomC{\mbox{}}
+   \RightLabel{refl}
+   \UnaryInfC{$s \simeq s$}
+   \DisplayProof
+   \end{array}
+   \\[1.5em]
+   \proof(\ell : s \simeq t, s \simeq t) & = \ell
+   \\[1.5em]
+   \proof(\ell : t \simeq s, s \simeq t) & = 
+   \begin{array}{c}
+   \AxiomC{$\ell$}
+   \RightLabel{symm}
+   \UnaryInfC{$s \simeq t$}
+   \DisplayProof    
+   \end{array}
+   \\[1.5em]
+   \proof(cc: f(ts) \simeq f(ts'), f..) & =
+   \begin{array}{c}
+   \AxiomC{$\proof(ts_1 \simeq ts'_1), \ldots, \proof(ts_k \simeq ts'_k)$}   
+   \RightLabel{cong}
+   \UnaryInfC{$f(ts) \simeq f(ts')$}
+   \DisplayProof
+   \end{array}
+\end{array}
+~
+
+
+
+### Control
+
+* Congruence closure and Boolean reasoning
+  * Do enough CC to speed up search (unit propagation)
+  * Don't do too much CC when Boolean search takes care of it.
+
+### A note on complexity
+
+
+## Arithmetic 
+
+There are several alternate engines for arithmetical constraints in Z3. 
+Some of the engines are engineered for fragments of arithmetic, such
+as difference arithmetic, where all inequalities are of the form $x - y \leq k$, 
+for $k$ a constant, and unit-two-variable-per-inequality (UTVPI), where
+all inequalities are of the form $\pm x \pm y \leq k$. A new main solver
+for general arithmetic formulas has emerged recently, with the longer term
+objective of entirely replacing Z3's legacy arithmetic solver. We will here
+describe internals of the newer solver in more detail.
+
+In overview, the arithmetic solver uses a waterfall model for solving arithmetic constraints.
+
+* First it establishes feasibility with respect to linear inequalities. Variables are solved over the rationals.
+* Second, it establishes feasibility with respect to mixed integer linear constraints. Integer variables are solved if they are assigned integer values.
+* Finally, it establishes feasibility with respect to non-linear polynomial constraints.
+
+
+~ Figure { #fig-system; caption: "An overview of Arithmetical Decision Procedures in Z3"}
+![Arithmetic]
+~
+
+[Arithmetic]: images/Arithmetic.[pdf,jpg] "Arithmetic" { width:35em }
+
+
+
+
+### Rational linear arithmetic
+
+The solver for rational linear inequalities uses a dual simplex solver as explained in [@DutertreM06].
+It maintains a global set of equalities of the form $A\vec{x} = 0$, and
+each variable $x_j$ is assigned lower and upper bounds during search.
+The solver then checks for feasibility of the resulting system
+$A\vec{x} = 0, lo_j \leq x_j \leq hi_j, \forall j$ for dynamically
+changing bounds $lo_j, hi_j$.
+The bounds are _justified_ by assignments in $M$. 
+
+~ Begin Example
+
+For the following formula
+
+```python
+  x, y = Reals('x y')
+  solve([x >= 0, Or(x + y <= 2, x + 2*y >= 6), 
+                 Or(x + y >= 2, x + 2*y > 4)])
+```
+
+Z3 introduces auxiliary variables $s_1, s_2$ and represents the formula as
+
+~ MathPre
+  s_1 \equiv x + y, s_2 \equiv x + 2y,
+  x \geq 0, (s_1 \leq 2 \vee s_2 \geq 6), (s_1 \geq 2 \vee s_2 > 4)
+~ 
+
+Only bounds (e.g., $s_1 \leq 2$) are asserted during search.
+
+The first two equalities form the tableau. Thus, the definitions
+${s_1} \equiv x + y, {s_2} \equiv x + 2y$
+produce the equalities
+
+~ Math 
+{s_1} = x + y, \ {s_2} = x + 2y
+~
+
+They are equivalent to the normal form:
+
+~ Math
+{s_1} - x - y = 0, \   
+{s_2} - x - 2y = 0
+~  
+
+where ${s_1, s_2}$ are basic (dependent) and $x, y$ are non-basic.
+In dual Simplex tableaux, values of a non-basic variable
+$x_j$ can be chosen between $lo_j$ and $hi_j$.
+The value of a basic variable is a function of non-basic variable values.
+It is the unique value that satisfies the unique row where the 
+basic variable occurs. Pivoting swaps basic and non-basic variables 
+and is used to get values of basic variables within bounds.
+For example, assume we start with a set of initial values
+$x = y = s_1 = s_2 = 0$
+and bounds $x \geq 0, s_1 \leq 2, s_1 \geq 2$. 
+Then $s_1$ has to be 2 and it is made non-basic. 
+Instead $y$ becomes basic:
+
+~ Math
+{y} + x - s_1 = 0, \ {s_2} + x - 2s_1 = 0
+~
+
+The new tableau updates the assignment of variables to
+$x = 0, s_1 = 2, s_2 = 4, y = 2$. The resulting assignment
+is a model for the original formula.
+
+~ End Example
+
+#### Finding equal variables - cheaply
+
+
+~ Begin Example
+
+From equalities $x + 1 = y, y - 1 = z$ infer that $x = z$. Based on the tableau form, the solver is presented with the original equality atoms via slack variables
+  ~~ MathPre
+    s_1 = x + u - y, s_2 = y - u - z, 1 \leq u \leq 1
+  ~~
+The tableau can be solved by setting $x = 0, y = 0, z = 0, s_1 = 1, s_2 = -1, u = 1$.
+The slack variables are bounded when the equalities are asserted
+  ~~ MathPre
+    s_1 = x + u - y, s_2 = y - u - z, 1 \leq u \leq 1, 0 \leq s_1 \leq 0, 0 \leq s_2 \leq 0
+  ~~
+The original solution is no longer valid, the values for $s_1, s_2$ are out of bounds.
+Pivoting re-establishes feasibility using a different solution, for example
+  ~~ Math
+    x = z - u - s_1, y = z - u - s_2, 1 \leq u \leq 1, 0 \leq s_1 \leq 0, 0 \leq s_2 \leq 0
+  ~~
+with assignment $z = 0, x = y = -1$. The variables $y, y$ have the same value,
+but must they be equal under all assignments? We an establish this directly by subtracting the
+right hand sides $z - u - s_1$ and $z - u - s_2$ from another and by factoring in the constant bounds obtain
+the result 0. But subtraction is generally expensive if there are many bounded constants in the rows.
+The arithmetical operations are not required to infer that $x = y$. Z3 uses two facts to infer the equality
+
+* The variables $x, y$ have the same value in the current assignment.
+* They are connected through a set of _binary_ rows. That is rows, that have two unfixed variables with coefficients 1 and -1, other variables in the rows are fixed.
+
+Variables that satisfy these two criteria must be equal.
+~ End Example
+
+
+
+### Integer linear arithmetic
+
+The mixed integer linear solver comprises of several layers. 
+
+#### GCD consistency
+Each row is first normalized by multiplying it with the the least common multiple of the denominators of each coefficient.
+For each row it assembles a value from the fixed variables. 
+A variable $x_j$ is fixed if the current values $lo_j$, $hi_j$ are equal. 
+Then it checks that the gcd of the coefficients to variables divide the fixed value. If they don't the row has no integer solution.
+
+~ Framed
+Add example
+~
+
+#### Patching
+Following [@MouraB08], the integer solver moves non-basic variables away from their bounds in order to ensure that
+basic, integer, variables are assigned integer values. The process examines each non-basic variable and checks every row where it occurs
+to estimate a safe zone where its value can be changed without breaking any bounds. If the safe zone is sufficiently large to patch
+a basic integer variable it performs an update. This heuristic is highly incomplete, but is able to locally patch several variables
+without resorting to more expensive analyses.
+
+~ Framed
+Add example
+~
+
+#### Cubes
+One of the deciding factors in leapfrogging the previous solver relied on 
+a method by Bromberger and Weidenbach [@BrombergerW16;@BrombergerW17].
+It allows to detect feasible inequalities over integer variables 
+by solving a stronger linear system.
+In addition, we observed that the default strengthening proposed by Bromberger and Weidenbach
+can often be avoided: integer solutions can be guaranteed from weaker systems.
+
+We will here recall the main method and our twist.
+In the following we let $A, A'$ range over integer matrices 
+and $a$, $b$, $c$ over integer vectors. The 1-norm $\onenorm{A}$ of a matrix
+is a column vector, such that each entry $i$ is the sum of the absolute
+values of the elements in the corresponding row $A_i$. We write
+$\onenorm{A_i}$ to directly access the 1-norm of a row.
+
+A (unit) _cube_ is a polyhedron that is a Cartesian 
+product of intervals of length one for each variable.
+Since each variable therefore contains an integer point, the interior of the polyhedron
+contains an integer point. The condition for a convex polyhedron to contain a cube can be
+recast as follows:
+
+
+~Example
+Suppose we have $3x + y \leq 9 \wedge - 3y \leq -2$ and wish to find an integer solution. 
+By solving $3x + y \leq 9 - \frac{1}{2}(3 + 1) = 7, -3y \leq -2 - \frac{1}{2}3 = -3.5$ we find
+a model where $y = \frac{7}{6}, x = 0$. After rounding $y$ to $1$ and maintaining $x$ at $0$ we obtain an
+integer solution to the original inequalities.
+~
+
+Our twist on Bromberger and Weidenbach's method is to avoid strengthening on selected inequalities.
+First we note that _difference_ inequalities of the form $x - y \leq k$, where $x, y$ are integer variables
+and $k$ is an integer offset need not be strengthened. For octagon constraints $\pm x \pm y \leq k$
+there is a boundary condition: they need only require strengthening if $x, y$ are assigned at mid-points
+between integral solutions. For example, if $V(x) = \frac{1}{2}$ and $V(y) = \frac{3}{2}$, for $x + y \leq 2$.
+Our approach is described in detail in [@Vampire17Theorem].
+
+
+#### Branching
+Similar to traditional MIP branch-and-bound methods, 
+the solver creates somewhat eagerly case splits on bounds 
+of integer variables if the dual simplex solver fails to assign them integer values.
+
+~ Framed
+Add example
+~
+
+
+#### Gomory and Hermite cuts
+The arithmetic solver produces Gomory cuts from rows where the basic variables are non-integers after
+the non-basic variables have been pushed to the bounds. It also incorporates algorithms from [@DilligDA09;@ChristH15]
+to generate cuts after the linear systems have been transformed
+into Hermite matrices.
+
+
+~ Framed
+Add example
+~
+
+
+### Non-linear arithmetic
+
+Similar to solving for integer feasibility, the arithmetic solver
+solves constraints over polynomials using a waterfall model for non-linear
+constraints.
+At the basis it maintains for every monomial 
+term $x \cdot x \cdot y$ an equation
+$m = x \cdot x \cdot y$, where $m$ is a variable
+that represents the monomial $x \cdot x \cdot y $.
+The module for non-linear arithmetic then attempts to 
+establish a valuation $V$ where $V(m) = V(x) \cdot V(x) \cdot V(y)$, 
+or derive a consequence that no such valuation exists.
+The stages in the waterfall model are summarized as follows:
+
+~ Framed
+Add example
+~
+
+
+#### Bounds propagation on monomials
+A relatively inexpensive step is to propagate and check bounds based on 
+on non-linear constraints. For example, for $y \geq 3$, then $m = x\cdot x\cdot y \geq 3$,
+if furthermore $x \leq -2$, we have the strengthened bound $m \geq 12$.
+Bounds propagation can also flow from bounds on $m$ to bounds on the 
+variables that make up the monomial, such that when $m \geq 8, 1 \leq y \leq 2, x \leq 0$, 
+then we learn the stronger bound $x \leq -2$ on $x$.
+
+#### Bounds propagation with Horner expansions
+If $x \geq 2, y \geq -1, z \geq 2$, then $y + z \geq 1$ 
+and therefore $x\cdot (y + z) \geq 2$, but we would not be
+able to deduce this fact if combining bounds individually for $x\cdot y$ 
+and $x \cdot z$ because no bounds can be inferred for $x \cdot y$ in isolation.
+The solver therefore attempts different re-distribution of multiplication
+in an effort to find stronger bounds.
+
+#### Gr&ouml;bner reduction
+
+~ Framed
+Add examples of what inferences are obtained by the Gr&ouml;bner module
+~
+
+We use an adaptation of ZDD (Zero suppressed decision diagrams [@Minato93;@NishinoYMN16]) to represent polynomials.
+The representation has the advantage that polynomials are stored in a shared data-structure and operations
+over polynomials are memoized. A polynomial over the real is represented as an acyclic graph where 
+nodes are labeled by variables and edges are labeled by coefficients. For example, the polynomial $5x^2y + xy + y + x + 1$
+is represented by the acyclic graph shown below.
+
+~ Snippet
+
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+
+\tikzstyle{block} = [rectangle, draw, text centered, rounded corners, minimum height=2em]
+\tikzstyle{line} = [draw, -latex']
+
+\begin{tikzpicture}[node distance = 3em, scale = 0.2]
+  \node [circle, draw] (xroot) {$x$};
+  \node [circle, below of = xroot, left of= xroot, draw] (xnext) {$x$};
+  \node [circle, below of = xnext, left of= xnext, draw] (y1) {$y$};
+  \node [circle, below of = xnext, right of= xnext, draw] (y2) {$y$};
+  \node [circle, below of = y1, left of = y1] (t1) {$5$};
+  \node [circle, below of = y1, right of = y1] (t2) {$0$};
+  \node [circle, right of = t2] (t3) {$1$};
+  \node [circle, below of = y2, right of = y2] (t4) {$1$};
+  \path [line] (xroot.west) -- (xnext.north);
+  \path [line] (xroot.east) -- (y2.north);
+  \path [line] (xnext.west) -- (y1.north);
+  \path [line] (xnext.east) -- (y2.north);
+  \path [line] (y1.west) -- (t1.north);
+  \path [line] (y1.east) -- (t2.north);
+  \path [line] (y2.west) -- (t3.north);
+  \path [line] (y2.east) -- (t4.north);
+
+\end{tikzpicture}
+~
+
+The root node labeled by $x$ represents the polynomial $x\cdot l + r$, 
+where $l$ is the polynomial of the left sub-graph and $r$ the polynomial
+of the right sub-graph. The left sub-graph is allowed to be labeled again by $x$, 
+but the right sub-graph may only have nodes labeled by variables that are smaller
+in a fixed ordering. The fixed ordering used in this example sets $x$ above $y$.
+Then the polynomial for the right sub-graph is $y + 1$, and the polynomial with the
+left sub-graph is $5xy + (y + 1)$.
+
+The Gr&ouml;bner module performs a set of partial completion steps, preferring
+to eliminate variables that can be isolated, and expanding a bounded number of super-position
+steps.
+
+#### Incremental linearization
+Following [@CimattiGIRS18] we incrementally linearize monomial constraints. 
+For example, we include lemmas of the form $x = 0 \rightarrow m = 0$
+and $x = 1 \rightarrow m = y$, for $m = x^2y$. 
+
+#### NLSat
+As an end-game attempt, the solver attempts to solver the non-linear constraints using a complete solver
+for Tarski's fragment supported by the NLSat solver [@JovanovicM12].
+
+
+### Quantified Satisfaction
+
+#### Model-Based Quantifier Elimination
+
+~ Framed
+Define MBP for arithmetic
+~
+
+#### NLSat
+
+
+# Reducible Theories
+
+## Refinement Types
+Let us illustrate a use of _reduction_ from richer theories to base theories based on 
+a simple example based on refinement types. 
+It encodes refinement types using auxiliary functions as explained
+in [@JacobsCategorical]. Refinement types are not part of Z3 so the decision procedure we outline
+here is not available out of the box. One way to realize this theory is externally through the UserPropagator
+facility.
+
+Abstractly, a refinement
+type of sort $S$ uses a predicate $p$ over $S$. At least one element of $S$ must satisfy $p$ for the
+construction to make sense. The refinement type $S \mid p$ represents the elements of $S$ that satisfy
+$p$. The properties we need to know about elements of $S\mid p$ can be encoded using two auxiliary
+functions that form a surjection $\restrictOp$ from $S \mid p$ into $S$ with a partial inverse $\restrictOp$ that maps
+elements from $S$ into $S \mid p$. The properties of these functions are summarized as follows:
+
+~MathPre
+  p : S \rightarrow Bool
+  \relaxOp : S \mid p \rightarrow S
+  \restrictOp : S \rightarrow S \mid p
+  \forall x : S \mid p \ . \ \restrictOp(\relaxOp(x)) = x
+  \forall s : S \ . \ p(s)\ \rightarrow \ \relaxOp(\restrictOp(s)) = s
+  \forall x : S \mid p \ . \ p(\relaxOp(x))
+~
+
+Let us illustrate the sort of natural numbers as a refinement type of integers:
+
+~Example
+
+~~MathPre
+  sort Nat = Int \mid \lambda x \ . \ x \geq 0
+  \forall n : Nat \ . \ \restrictOp(\relaxOp(n)) = n \wedge \relaxOp(n) \geq 0
+  \forall i : Int \ . \ i \geq 0 \rightarrow \relaxOp(\restrictOp(i)) = i
+~~
+
+~
+
+We obtain a theory solver for formulas with refinement types by instantiating these axioms whenever there is a term $t$ introduced
+of sort $S \mid p$ introduced as part of the input or during search (from instantiating quantifiers).
+The main challenge with supporting this theory is to ensure that the new terms introduced from axiom instantiation 
+is bounded. We don't want the solver to create terms $\relaxOp(\restrictOp(\relaxOp(\restrictOp(\ldots))))$.
+
+
+* For every sub-term of the form $\restrictOp(t)$, where $t$ is not $\relaxOp(t')$ instantiate the axiom:
+  * $p(t) \Rightarrow \relaxOp(\restrictOp(t)) = t$
+
+* For every term $t$ of sort $S \mid p$ instantiate the axioms:
+    * $\restrictOp(\relaxOp(t)) = t$
+    * $p(\relaxOp(t))$ 
+
+
+## Arrays
+
+The theory of arrays in SMTLIB is formally based on two functions `select` and `store` and an axiomatization
+
+~MathPre
+  \mathit{select}(\Astore(A, i, v), j) = \mathbf{if}\ i \simeq j\ \mathbf{then}\ v\ \mathbf{else}\ \mathit{select}(A, j) \\
+  \forall i . \mathit{select}(A, i) \simeq \mathit{select}(B, i) \implies A \simeq B
+~
+for every array $A, B$, index $i, j$ and value $v$. Alluding to the intent that the theory of arrays
+is useful for modeling arrays in programming languages will henceforth use $A[i]$ when we mean $\mathit{select}(A, i)$.
+
+
+Z3 reduces the theory of arrays to reasoning about uninterpreted functions.
+It furthermore treats arrays as function spaces which assuming more axioms about arrays.
+he first-order theory of arrays axiomatized above enjoys compactness and so the following formula is satisfiable[^jazzman]
+
+[^jazzman]: thanks to Jasmin Blanchette for drawing attention to this distinction.
+
+~Math
+\forall a : Array(Int, Int) \ . \ \exists k \ . \ \forall i \geq k \ . \ a[i] \simeq 0.
+~
+
+The same formula is not satisfiable when arrays range over function spaces.
+The distinction is only relevant when checking satisfiability of quantified formulas over arrays.
+In addition to functions $\Astore$ and $\mathit{select}$ z3 includes built-in
+functions $\Amap$, $\Aconst$ and the operator $\Aasarray$ and lambdas.
+
+
+The central functionality of the decision procedure for arrays is to ensure
+that a satisfying model under the theory of EUF translates to a satisfying
+model in the theory of arrays. To this end, the main service of the theory
+solver is to saturate the search state with $\beta$ reduction axioms
+for array terms that admit beta-reduction. We call these terms $\lambda$ terms
+and they are defined by the beta-reduction axioms:
+~MathPre
+\beta(\Astore(A,j,v)[i]) & = & \mathit{if}\ i \simeq j\ \mathit{then} \ v \ \mathit{else}\ A[i]
+\beta(\Amap(f,A,B)[i]) & = & f(A[i],B[i])
+\beta(\Aasarray(f)[i]) & = & f(i)
+\beta(\Aconst(v)[i]) & = & v
+\beta((\lambda x \ . \ M)[i]) & = & M[i/x]
+~
+
+The reduction into EUF, is then in a nutshell an application of the following inference rule:
+
+~Math
+\AxiomC{$b$ is a lambda term}
+\AxiomC{$a[j]$ is a term}
+\AxiomC{$b \sim a$ ($a, b$ are equal under EUF)}
+\TrinaryInfC{$b[j] = \beta(b[j])$}
+\DisplayProof
+~
+
+together with an infernce rule to enforce extensionality
+
+~Math
+A[\Aext(A,B)] \simeq B[\Aext(A, B)] \implies A \simeq B
+~
+
+The decision procedure enforces several throttles [@ArrayFMCAD09] to avoid instantiating axioms when they are redundant.
+We here describe the main data-structures used by the instantiation engine. 
+
+The decision procedure maintains for every array node $n$ the following sets
+
+~ MathPre
+\mathit{ParentSelects}(n) & = & \{ A[i] \mid A \sim n \} 
+\mathit{ParentLambdas}(n) & = & \{ \Astore(A,i,v) \mid A \sim n\} \cup \{ \Amap(f, \ldots, A, \ldots) \mid A \sim n \} 
+\mathit{Lambdas}(n)       & = & \{ \Aconst(v) \mid \Aconst(v) \sim n \} \cup 
+                          &   & \{ \Amap(f,\ldots) \mid \Amap(f,\ldots) \sim n \} \cup 
+                          &   & \{ \Astore(\ldots) \mid \Astore(\ldots) \sim n \} \cup 
+                          &   & \{ \Aasarray(f) \mid \Aasarray(f) \sim n \} \cup 
+                          &   & \{ \lambda x \ . \ M \mid \lambda x \ . \ M \sim n \} 
+~
+
+When $n_1$ is merged with $n_2$, and $n_1$ is the new root, the sets from $n_2$ are added to $n_1$.
+The merge also looks for new redexes when $n$ and $n'$ are merged:
+
+* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n)$, $\lambda \in \mathit{ParentLambdas}(n')$
+* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n)$, $\lambda \in \mathit{Lambdas}(n')$
+
+For enforcing $\Astore(A, i, v)[j] = \beta(\Astore(A, i, v)[j])$ the solver only instantiates the axiom $i \simeq j \lor \Astore(A, i, v)[j] \simeq A[j]$
+because the axiom $\Astore(A,i,v)[i] \simeq v$ is instantiated eagerly when the term $\Astore(A, i, v)$ is created.
+
+Extensionality is enforced on pairs of array terms $A, B$, that are in _shared_ positions. An array term is in a shared position when it occurs on side of an equality or under a function that is not part of the theory of arrays. Furthermore, to ensure that semantics of lambdas, if $A \equiv \lambda x \ . \ M$ is a lambda term in a shared position
+and $B$ is in a shared position, the axiom $A \simeq B \implies \forall i \ . \ M[x/i] \simeq B[i]$ is instantiated. Thus, lambda equality is at this point
+enforced by straight-forward instantiation.
+
+
+
+## Algebraic Datatypes
+
+The theory of algebraic datatypes is an SMTLIB2 standard [@SMTLIB2]. The theory
+allows to declare a `datatype` sort, or set of mutually recursive `datatypes` sorts.
+The elements of an algebraic datatypes is the least set generated by the constructors in the type declaration.
+You can declare algebraic data-types in SMTLIB2 using the `declare-datatypes` command
+
+```
+(declare-datatypes ((Tree 1) (TreeList 1))
+     (
+      (par (T)  (Tree leaf (node (value T) (children (TreeList T)))))
+      (par (T) (TreeList nil (cons (car (Tree T)) (cdr (TreeList T)))))
+     )
+)
+```
+
+A legacy format that is less flexible, but a bit easier to formulate, is also available.
+
+```
+(declare-datatypes (T) ((Tree leaf (node (value T) (children TreeList)))
+                        (TreeList nil (cons (car Tree) (cdr TreeList)))))
+```
+
+
+Z3 supports datatypes nested with sequences and arrays. 
+The example below uses `Stmt' nested in a sequence.
+
+```
+(declare-sort Expr)
+(declare-sort Var)
+(declare-datatypes ((Stmt 0)) 
+  (((Assignment (lval Var) (rval Expr)) 
+    (If (cond Expr) (th Stmt) (el Stmt)) 
+    (Seq (stmts (Seq Stmt))))))
+```
+
+For arrays, the datatype are allowed only in the range of arrays.
+
+~ Framed
+Provide example with nested arrays
+~
+
+We will in the following use the notation $C$ for a constructor, for example `Assignment` is a constructor;
+$acc_1, \ldots, acc_n$ for accessors corresponding to $C$, for example `lval` and `rval` are accessors
+corresponding to the constructor `Assignment`. The predicate symbol $isC(t)$ is true if the term $t$
+is equal to term headed by the constructor $C$. The construct $\{ t \mbox{ with } \mathit{field} := s \}$
+assigns term $s$ to an accessor _field_ for the term $t$. Note that it is possible to apply an
+accessor to a data-type constructor that does not match. For example taking the head of an empty list,
+$\mathit{head}(\mathit{nil})$. The interpretation of $\mathit{head}(\mathit{nil})$ is not fixed by the
+theory, instead $\mathit{head}$ is treated as an uninterpreted function.
+
+The theory solver for algebraic datatypes is implemented by adding theory axioms on demand. 
+The theory axioms rely on the theory of uninterpreted functions.
+It builds a finite interpretation for every node of sort data-type and adds theory axioms
+on demand.
+Every E-node $n$ of data-type sort is assigned a constructor representation, initially _null_. 
+If $n$ is equated to a node $n'$ whose function is labeled by a constructor $C$, 
+the representative for $n$ is labeled
+by $n'$. 
+
+### Saturation Rules
+
+The saturation rules add theory axioms on demand to enforce that the
+theory of algebraic datatypes axioms are satisfied in a consistent state.
+Accessor axioms, update-field axioms are added as soon as terms are created.
+Recognizer axioms are added when the truth value of a recognizer is asserted.
+If a datatype has a single constructor the recognizer is asserted as a unit.
+Occurs check is applied lazily. It ensures that the partially constructed
+model corresponds to acyclic algebraic datatypes.
+
+#### Accessor axioms:
+If $n$ is a constructor node $C(a_1, \ldots, a_m)$ assert the axioms
+
+~ MathPre
+  n \simeq C(a_1, \ldots, a_m) \implies acc_1(n) \simeq a_1 \land \ldots \land acc_m(n) \simeq a_m
+~
+
+#### Update field axioms:
+If $n$ is of the form $n := \{ r \ \mathbf{with}\ field := v \}$, where $\mathit{field}$ is an accessor for constructor $C$, 
+then assert the axioms
+
+~ MathPre
+  isC(r)      & \implies  &  acc_j(n) \simeq acc_j(r) & \mbox{for} & acc_j \neq \mathit{field} 
+  isC(r)      & \implies  &  \mathit{field}(n) \simeq v 
+  \neg isC(r) & \implies  &  n \simeq r
+  isC(r)      & \implies  &  isC(n)
+~
+
+#### Recognizers
+For recognizer atom we have to ensure that a node is assigned to a constructor that is consistent
+with the assignment to the recognizer atom. Thus, if $isC(n)$ is asserted to true, then $n$ must be 
+equated to a term with constructor $C$. Conversely, if $n$ is assigned with a constructor $C' \neq C$, 
+then $isC(n)$ is false. The decision procedure ensures this correspondence lazily. If $isC(n)$ is asserted
+to true, then it ensures the axiom
+~ MathPre
+  isC(n) \implies n \simeq C(acc_1(n), \ldots, acc_m(n))  
+~
+where $acc_1, \ldots, acc_m$ are the accessors for $C$.
+
+If $isC(n)$ is asserted to false, but $n$ equal to a node $n'$ that is headed by $C$, then it creates the conflict clause:
+
+~ MathPre
+   n \simeq n' \implies isC(n) & \mbox{if} & n' \mbox{ is of the form $C(\ldots)$}
+~
+
+~ Framed
+Something about covering constructors so all possible constructors are tested.
+~
+
+#### Occurs check
+
+An occurs check violation is detected when there is a state satisfying the properties
+$n_1 \simeq n_1', n_2 \simeq n_2', \ldots, n_k \simeq n_1$
+where each $n_i'$ is of the form $C_i(\ldots, n_{i+1}, \ldots)$.
+Occurs checks are performed lazily in a _final_ check.
+
+### Model construction rules
+
+Dually to saturation rules, the theory solver builds a finite model for algebraic datatypes.
+Model construction is interlaved with the CDCL(T) engine in a way that has subtle consequences.
+Model construction drives the constraints to a goal state where all terms ranging over an algebraic datatype have been assigned a constructor 
+and all saturation rules have been applied. If there is a term that has not been assigned a constructor, the solver attempts to first guess
+an assignment to the term based on a non-recursive base case for the data-type (for mutually recursive data-types some types don't have 
+non-recursive base cases, it is possible to drive towards a nested sub-term that has).
+The fact that the solver can guess a fixed base case constructor during model construction relies on the assumptions for theory combinations:
+other theories need only distinguish whether data-type terms are equal or distinct. The shape of terms is opaque to other theories.
+If a term $t$ cannot be assigned a non-recursive base case (say _nil_), it is assigned a non-recursive constructor (say, _cons_), that eventually
+allows assigning $t$ to a term that is arbirarily deep and therefore can be distinct from any set of other terms $t_2, t_3, \ldots$.
+
+The approach for model construction does not work if we introduce a sub-term predicate $t \preceq s$.
+The theory of algebraic data-types can be extended to the subterm relation while remaining decidable.
+If $t, s$ range over an algebraic data-type with two base case constructors $\mathit{nil}_1$ and $\mathit{nil}_2$, 
+and $s = \mathit{nil}_2$. Then _unfairly_ guessing only $\mathit{nil}_1$ before guessing _cons_, but neglegting $\mathit{nil}_2$
+leads to non-termination of a model constructing decision procedure with the sub-term relation. 
+
+
+
+### Quantifier Elimination and Algebraic Datatypes
+
+The theory of algebraic data-types admits partial quantifier elimination.
+
+~ Framed
+Present MBP for ADT here specifically?
+~
+
+
+## Floating points
+Floating point semantics can be defined in terms of bit-vector operations. The solver for floating points
+uses this connection to reduce the theory of floating points to bit-vectors.
+
+<!--- ### Special Relations --->
+
+# Hybrid Theories
+A prime example of a hybrid theory in Z3 is the theory of strings, 
+regular expressions and sequences.
+
+The theory of strings and regular expressions has entered mainstream SMT solving
+thanks to community efforts around standardization and solvers. The SMTLIB2 format
+for unicode strings [@SMTLIB2]. It integrates operations that mix equational solving
+over the free monoid with integer arithmetic (for string lengths and extracting sub-strings).
+Regular expression constraints furthermore effectively introduce constraints that require
+unfolding recursive relations. Z3 uses symbolic derivatives [@stanford2020symbolic] to 
+handle regular expressions, noteworthy, with complementation and intersection handled 
+by derivatives.
+
+A second prolific example of a hybrid theory is Z3's model-based quantifier instantiation engine (MBQI).
+Here, a theory is encoded using a quantifier. The MBQI engine supports extensions of
+Bradley-Manna-Sipma's array property fragment [@BradleyMS06] that effectively combines arithmetic with
+uninterpreted functions.
+
+
+## Sequences/Strings/Regex

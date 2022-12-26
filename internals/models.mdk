@@ -1,0 +1,80 @@
+# Model Construction
+
+The verdicts of satisfiability or unsatisfiability do not reveal by themselves any information about the _reason_ for the outcome.
+Model object represent certificates for satisfiability, and proof objects or unsatisfiable subsets certificates for unsatisfiability.
+Furthermore, retrieving and using models is integral to many applications. For example, symbolic execution uses satisfying assignments
+to input variables of a path condition to produce new inputs to a program that explore a so-far uncovered execution branch.
+Propositional models are simply assignments of true/false to propositional variables. Similar, models of linear arithmetical formulas are
+assignments of integers or rationals to arithmetical variables. Model construction is more involved when considering a combination of theories,
+non-linear arithmetic formulas and quantified formulas.
+
+## Extracting models from satisfiable states
+
+This section describes how models are constructed from a satisfiable state. A starting point for model construction in Z3 is a T-consistent
+assignment to atomic formulas such that all ground clauses are satisfied and the conjunction of assignments to atomic formulas are consistent
+with respect to all theories. Model construction then works by layers
+
+* For each E-node $n$ it collects _dependencies_ of E-nodes $n_1, \ldots, n_k$ that must be assigned a value before $n$ can be assigned a value.
+  Dependencies are specific to theories. There are no dependencies when $n$ ranges over Bool, Int, or Real.
+  * When $n$ is an array, the value of $n$ depends on the values of all nodes $n'[i]$ or $\delta(n')$ where $n \sim n'$.
+    That is, the value of $n$ as a n array depends on the values of select and default terms where it occurs.
+  * When $n$ is an algebraic data-type headed by constructor $C(n_1, \ldots, n_k)$, then the value of $n$ depends on $n_1, \ldots, n_k$.
+  * When $n$ is a finite sequence $[n_1, \ldots, n_k]$, then the value of $n$ depends on $n_1, \ldots, n_k$.
+
+  Dependency collection is well-founded: for arrays, the dependencies come from the range of the array sort; for algebraic datatypes dependencies are sub-terms;
+  for sequences dependencies are characters.
+  
+* Dependencies are then topologically sorted such that nodes without dependencies are processed first and assigned _values_.
+
+  * Boolean nodes are evaluated by the SAT solver. They are assigned $\true$ or $\false$. Nodes ranging over an uninterpreted sort are assigned to an abstract value
+    that is distinct from values from other equivalence classes. Values of nodes with associated theory solvers are are assigned by the solvers.
+  
+  * Int and Real nodes are assigned values assigned by the arithmetic solver. For non-linear arithmetic formulas,
+    the values of a Real can be an algebraic numeral. Algebraic numerals are represented as a $k$'th root to polynomials
+    (whose coefficients can be algebraic numerals). They can be evaluated to decimal representations using an arbitrary degree of precision.
+
+  * An array node $n$ is assigned the value $[\valueOf{i} \mapsto \valueOf{n'[i]} \mid n'[i] \in \Nodes, n \simeq n' ] \cup [\mathit{else} \mapsto \delta(n') \mid n' \sim n]$. 
+  * The algebraic data-type $n \sim C(n_1, \ldots, n_k)$ is assigned $C(\valueOf{n_1}, \ldots, \valueOf{n_k})$.
+
+* After all nodes have been assigned a value, model construction assigns interpretations to uninterpreted functions.
+  Uninterpreted functions are assigned to lookup tables. $f$ is assigned the value $[\valueOf{n} \mapsto \valueOf{f(n)} \mid f(n) \in \Nodes ] \cup [\mathit{else} \mapsto e]$,
+  where $e$ is one of the values from $\valueOf{f(n)}$. Z3 synthesizes interpretations of uninterpreted functions that go beyond finite lookup tables. In these cases it mines
+  quantified formulas for macros. For example, asserting $\forall x \ . \ x \geq 0 \implies f(x) \simeq x + 1$ creates the function interpretation $f(x) = \mathit{if}\ x < 0\ \mathit{then}\ f'(x) \ \mathit{else} \ x + q$ for $f$, where $f'$ is a fresh function. The function $f$ is replaced everywhere by the macro definition.
+
+This completes the description of model extraction in Z3.
+
+
+## Characteristics of Models
+
+We make the following observations
+
+### Models are explicit
+
+Models provide explicit interpretations of terms and functions using values. We call such models _constructive symbolic models_.
+There are cases where first-order saturation theorem provers can determine that a set of first-order clauses are satisfiable,
+without presenting a symbolic model. Z3 does not include such saturation criteria. Model construction for the Horn clause solver SPACER
+also produces symbolic models.
+
+
+### Models are mainly based on values
+
+Models produced by the solver map terms to values. Given a solution to $x \simeq y + 1$, the solver will assign $x$ to a numeral
+that is one greater than the numeral assigned to $y$. Pre-processing, on the other hand, may choose to _solve_ for $x$ and record the
+solution $x \mapsto y + 1$. In this case the model for $x$ can be retrieved as $y + 1$. Z3 supports a setting to
+force $y + 1$ to be evaluated to a numeral if the user wants this. 
+
+### There are no deep knobs to control model values
+
+Values to base types, such as Int, Real are dictated by the solvers. Values to terms of type Bool are controlled mainly by the SAT solver.
+Ensuring _diverse_ model values for Booleans is partially possible by controlling options on the SAT solver [@SoosUniSAT].
+There are no corresponding knobs for values from theories. For instance, for linear arithmetic based on dual simplex, values are determined by
+an algorithm that seeks to find solutions along vertices in a polytope, which in layman's terms means finding values to bounded variables at their bounds.
+Thus, configurations such as `smt.arith.random_initial_value`, provide no strong assurances.
+
+A main knob for controlling model values are over optimization, $\nu{Z}$ [@NuZ]. By specifying one or more optimization objectives you can control model
+values of selected terms to be minimum or maximum. 
+  
+### Models includes auxiliary definitions
+
+Z3 includes auxiliary definitions in models. For example, if you define a recursive function, the recursive function definition is part of the model
+that is displayed in SMTLIB2 mode.
