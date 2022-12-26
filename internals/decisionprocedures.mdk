@@ -96,6 +96,9 @@ as explained in the context of Z3 in [@MouraB09].
 
 * Theory variables - access to subset of E-nodes relevant for theory
 
+* The power of propagation
+
+* The power of filtering
 
 # Base Theories
 
