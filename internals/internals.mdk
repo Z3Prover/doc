@@ -92,6 +92,10 @@ the main interest among users is more likely about _how to best use an SMT solve
 By introducing the internals of Z3 from the point of view of foundations, data-structures, algorithm design, and
 heuristics we introduce the reader to the development process. But, in this process, we also indirectly
 aim to address readers whose aim is to understand the how and why of using Z3.
+Many of the principles underlying the implementation in Z3 have been described in papers over several years
+and this document is not a substitute for these papers. We therefore often resort to references when material
+is covered elsewhere and instead attempt to reflect updated systems aspects.
+
 
 Figure [#fig-system] shows a bird's eye view of the main components of Z3.
 

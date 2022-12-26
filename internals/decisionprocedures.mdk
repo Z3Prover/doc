@@ -524,7 +524,17 @@ Then it checks that the gcd of the coefficients to variables divide the fixed va
 
 ~ Framed
 Add example
+```
+    gcd test
+    5*x + 3*y + 6*z = 5
+    suppose x is fixed at 2.
+    so we have 10 + 3(y + 2z) = 5
+                 5 = -3(y + 2z)
+    this is unsolvable because 5/3 is not an integer.
+    so we create a lemma that rules out this condition.
+```
 ~
+
 
 #### Patching
 Following [@MouraB08], the integer solver moves non-basic variables away from their bounds in order to ensure that
