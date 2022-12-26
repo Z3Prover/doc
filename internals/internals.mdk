@@ -77,9 +77,10 @@ in Z3. The overarching aim is to help users gain more insight into
 _formula encodings that have a better chance of being solved_,
 _what controls a user has over search behavior_,
 and _what information a user can extract from the solver_.
-While it is impossible to provide comprehensive answers to these questions the document
-the hope is that the document can shed more light into internal workings of Z3 at a
-conceptual level.
+While we will try to address these main questions in places,
+it is impossible to provide comprehensive answers. The hope is
+that sheding light into internal workings of Z3 at a
+conceptual level offers a bridge towards developing an understanding of how to operate Z3 as well.
 ~
 
 [TOC]
