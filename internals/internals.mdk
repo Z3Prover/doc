@@ -62,6 +62,7 @@ Package       : bussproofs
 \newcommand{\Amap}{\mathit{map}}
 \newcommand{\Aasarray}{\mathit{as{\-}array}}
 \newcommand{\Astore}{\mathit{store}}
+\newcommand{\Aext}{\mathit{ext}}
 ~
 
 
@@ -125,14 +126,10 @@ It extends the reduction approach to decision procedures [@KapurZarbaReduction]
 as explained in the context of Z3 in [@MouraB09].
 
 
-* Boolean theories 
-  * Domains that are inherently finite domain and can be solved by reducing to an underlying CDCL engine.
-  * Instances: Bit-vectors, Cardinality and Pseudo-Boolean constraints.
-* Base theories 
-  * Theories that form a basis for all other theories.
-  * Instances: the theory of uninterpreted functions and the theory of arithmetic.
+* Base theories - other theory solvers build on top of base theories
+  * The base theories in z3 are Boolean theories, the theory of uninterpreted functions and the theory of arithmetic.
 * Reducible theories 
-  * Theories that can be solved by reducing into base theories.
+  * Theories that can be solved by reducing directly into base theories.
   * Instances: Arrays, IEEE floating points, algebraic datatypes, recursive functions.
 * Hybrid theories 
   * Theories that combine non-disjoint signatures from different theories.
@@ -220,6 +217,8 @@ as explained in the context of Z3 in [@MouraB09].
 * Theory variables - access to subset of E-nodes relevant for theory
 
 
+# Base Theories
+
 ## Boolean Theories
 Bit-vectors are in the current solver treated as tuples of Boolean variables and all bit-vector
 operations are translated to Boolean SAT. The approach is called bit-blasting.
@@ -234,14 +233,15 @@ Cardinality and Pseudo-Boolean inequalities can also be translated into CNF clau
 when there are very few variables in the summations, but the overhead of translation can quickly become
 impractical. Z3 therefore contains dedicated solvers for cardinality and Pseudo-Boolean constraints.
 
-# Base Theories
-A first base theory is the theory of uninterpreted functions. 
-This theory captures a shared property of all theory: that equality is a congruence relation. 
-The theory is described many places, including in [@BjornerMNW18].
+~ Framed
+Examples of cardinality, Bit-vectors
+~
 
 
 ## Equality and Uninterpreted Functions
 
+This theory captures a shared property of all theory: that equality is a congruence relation. 
+The theory is described many places, including in [@BjornerMNW18].
 
 
 Let us use a simple example to illustrate the scope and main functionality of congruence closure
@@ -843,8 +843,8 @@ is bounded. We don't want the solver to create terms $\relaxOp(\restrictOp(\rela
 The theory of arrays in SMTLIB is formally based on two functions `select` and `store` and an axiomatization
 
 ~MathPre
-  \mathit{select}(\Astore(A, i, v), j) = \mathbf{if}\ i = j\ \mathbf{then}\ v\ \mathbf{else}\ \mathit{select}(A, j) \\
-  \forall i . \mathit{select}(A, i) = \mathit{select}(B, i) \implies A = B
+  \mathit{select}(\Astore(A, i, v), j) = \mathbf{if}\ i \simeq j\ \mathbf{then}\ v\ \mathbf{else}\ \mathit{select}(A, j) \\
+  \forall i . \mathit{select}(A, i) \simeq \mathit{select}(B, i) \implies A \simeq B
 ~
 for every array $A, B$, index $i, j$ and value $v$. Alluding to the intent that the theory of arrays
 is useful for modeling arrays in programming languages will henceforth use $A[i]$ when we mean $\mathit{select}(A, i)$.
@@ -857,7 +857,7 @@ he first-order theory of arrays axiomatized above enjoys compactness and so the 
 [^jazzman]: thanks to Jasmin Blanchette for drawing attention to this distinction.
 
 ~Math
-\forall a : Array(Int, Int) \ . \ \exists k \ . \ \forall i \geq k \ . \ a[i] = 0.
+\forall a : Array(Int, Int) \ . \ \exists k \ . \ \forall i \geq k \ . \ a[i] \simeq 0.
 ~
 
 The same formula is not satisfiable when arrays range over function spaces.
@@ -873,7 +873,7 @@ solver is to saturate the search state with $\beta$ reduction axioms
 for array terms that admit beta-reduction. We call these terms $\lambda$ terms
 and they are defined by the beta-reduction axioms:
 ~MathPre
-\beta(\Astore(A,j,v)[i]) & = & \mathit{if}\ i = j\ \mathit{then} \ v \ \mathit{else}\ A[i]
+\beta(\Astore(A,j,v)[i]) & = & \mathit{if}\ i \simeq j\ \mathit{then} \ v \ \mathit{else}\ A[i]
 \beta(\Amap(f,A,B)[i]) & = & f(A[i],B[i])
 \beta(\Aasarray(f)[i]) & = & f(i)
 \beta(\Aconst(v)[i]) & = & v
@@ -890,10 +890,19 @@ The reduction into EUF, is then in a nutshell an application of the following in
 \DisplayProof
 ~
 
-The decision procedure maintains for every array node $n$ the following fields
+together with an infernce rule to enforce extensionality
+
+~Math
+A[\Aext(A,B)] \simeq B[\Aext(A, B)] \implies A \simeq B
+~
+
+The decision procedure enforces several throttles [@ArrayFMCAD09] to avoid instantiating axioms when they are redundant.
+We here describe the main data-structures used by the instantiation engine. 
+
+The decision procedure maintains for every array node $n$ the following sets
 
 ~ MathPre
-\mathit{ParentSelects}(n) & = & \{ A[i] \mid n \sim n \} 
+\mathit{ParentSelects}(n) & = & \{ A[i] \mid A \sim n \} 
 \mathit{ParentLambdas}(n) & = & \{ \Astore(A,i,v) \mid A \sim n\} \cup \{ \Amap(f, \ldots, A, \ldots) \mid A \sim n \} 
 \mathit{Lambdas}(n)       & = & \{ \Aconst(v) \mid \Aconst(v) \sim n \} \cup 
                           &   & \{ \Amap(f,\ldots) \mid \Amap(f,\ldots) \sim n \} \cup 
@@ -902,44 +911,18 @@ The decision procedure maintains for every array node $n$ the following fields
                           &   & \{ \lambda x \ . \ M \mid \lambda x \ . \ M \sim n \} 
 ~
 
-The attributes are used for propagation.
-When $n_1$ is merged with $n_2$, and $n_1$ is the new root, the attributes from $n_2$ are added to $n_1$.
-The merge also looks for new redexes.
+When $n_1$ is merged with $n_2$, and $n_1$ is the new root, the sets from $n_2$ are added to $n_1$.
+The merge also looks for new redexes when $n$ and $n'$ are merged:
 
-* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n_2)$, $\lambda \in \mathit{ParentLambdas}(n_1)$
-* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n_2)$, $\lambda \in \mathit{Lambdas}(n_1)$
+* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n)$, $\lambda \in \mathit{ParentLambdas}(n')$
+* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n)$, $\lambda \in \mathit{Lambdas}(n')$
 
+For enforcing $\Astore(A, i, v)[j] = \beta(\Astore(A, i, v)[j])$ the solver only instantiates the axiom $i \simeq j \lor \Astore(A, i, v)[j] \simeq A[j]$
+because the axiom $\Astore(A,i,v)[i] \simeq v$ is instantiated eagerly when the term $\Astore(A, i, v)$ is created.
 
-~ Framed
-Introduce notation $\sim$ earlier
-~
-
-~ Framed
-TODO: elaborate, handling lambads, beta calculus
-```
-
-For enforcing
-      store(A,j,v)[i] = beta-reduce(store(A,j,v)[i])
-
-      only the following axiom is instantiated:
-      - i = j or store(A,j,v)[i] = A[i]
-
-The other required axiom, store(A,j,v)[j] = v
-is added eagerly whenever store(A,j,v) is created.
-
-Current setup: to enforce extensionality on lambdas, 
-also currently, as a base-line it is eager:
-
-        A ~ B, A = lambda x. M[x]
-    -------------------------------
-    A = B => forall i . M[i] = B[i]
-
-A hypothetical refinement could use some limited HO pattern unification steps.
-For example
-    lambda x y z . Y z y x = lambda x y z . X x z y
--> Y = lambda x y z . X ....
-```
-~
+Extensionality is enforced on pairs of array terms $A, B$, that are in _shared_ positions. An array term is in a shared position when it occurs on side of an equality or under a function that is not part of the theory of arrays. Furthermore, to ensure that semantics of lambdas, if $A \equiv \lambda x \ . \ M$ is a lambda term in a shared position
+and $B$ is in a shared position, the axiom $A \simeq B \implies \forall i \ . \ M[x/i] \simeq B[i]$ is instantiated. Thus, lambda equality is at this point
+enforced by straight-forward instantiation.
 
 
 
@@ -989,7 +972,10 @@ We will in the following use the notation $C$ for a constructor, for example `As
 $acc_1, \ldots, acc_n$ for accessors corresponding to $C$, for example `lval` and `rval` are accessors
 corresponding to the constructor `Assignment`. The predicate symbol $isC(t)$ is true if the term $t$
 is equal to term headed by the constructor $C$. The construct $\{ t \mbox{ with } \mathit{field} := s \}$
-assigns term $s$ to an accessor _field_ for the term $t$.
+assigns term $s$ to an accessor _field_ for the term $t$. Note that it is possible to apply an
+accessor to a data-type constructor that does not match. For example taking the head of an empty list,
+$\mahthit{head}(\mathit{nil})$. The interpretation of $\mahthit{head}(\mathit{nil})$ is not fixed by the
+theory, instead $\mathit{head}$ is treated as an uninterpreted function.
 
 The theory solver for algebraic datatypes is implemented by adding theory axioms on demand. 
 The theory axioms rely on the theory of uninterpreted functions.
@@ -1069,13 +1055,18 @@ other theories need only distinguish whether data-type terms are equal or distin
 If a term $t$ cannot be assigned a non-recursive base case (say _nil_), it is assigned a non-recursive constructor (say, _cons_), that eventually
 allows assigning $t$ to a term that is arbirarily deep and therefore can be distinct from any set of other terms $t_2, t_3, \ldots$.
 
-The approach for model construction does not work if we introduce a sub-term predicate $t \preceq s$, 
-if $t, s$ range over an algebraic data-type with two base case constructors $\mathit{nil}_1$ and $\mathit{nil}_2$, 
-and $s = \mathit{nil}_2$. Then _unfairly_ guessing only $\mathit{nil}_1$ before guessing _cons_ leads to non-termination.
+The approach for model construction does not work if we introduce a sub-term predicate $t \preceq s$.
+The theory of algebraic data-types can be extended to the subterm relation while remaining decidable.
+If $t, s$ range over an algebraic data-type with two base case constructors $\mathit{nil}_1$ and $\mathit{nil}_2$, 
+and $s = \mathit{nil}_2$. Then _unfairly_ guessing only $\mathit{nil}_1$ before guessing _cons_, but neglegting $\mathit{nil}_2$
+leads to non-termination of a model constructing decision procedure with the sub-term relation. 
 
 
 
-### Model Based Projection for Algebraic Datatypes (hoisted from QSAT - TODO - adjust or remove)
+### Quantifier Elimination and Algebraic Datatypes
+
+The theory of algebraic data-types admits partial quantifier elimination. 
+
 Let us for simplicity consider the case of LISP S-expressions. Generalization to other algebraic data-types is straight-forward.
 We assume we are given a conjunction of equalities, disequalities and constructor tests over data-type terms. 
 The constructors are $\mathit{cons}(u,v), \mathit{nil}$, there is a constructor test $\mathit{cons?}(u)$ 
