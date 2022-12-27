@@ -74,7 +74,7 @@ is a further distinction between the model converters associated with tactics. W
 | rigid constrained       |   $x = t$                               | $\true$                  |   $x = t$               |
 | under-constrained       |   $(x = t \land \varphi) \lor \psi$     | $\varphi[t/x] \lor \psi$ | $x = t$                 |
 |                         | $x \not \in \psi$                       |                          |                         |
-| under-constrained       | $x \leq y, x \leq z, y \leq u, \varphi$ | $\varphi$                | $z = x, u = y$          |
+| under-constrained       | $x \leq y, x \leq z, y \leq u, \varphi$ | $\varphi$                | $u = y, z = x, y = x$   |
 |                         | $x, y \not\in \varphi$                  |                          |                         |
 | over-constrained        | $p(x), p(y), p(z)$                      | $x \leq y \leq z$        | n/a                     |
 |                         |                                         | $p(x),p(y),p(z)$         |                         |
