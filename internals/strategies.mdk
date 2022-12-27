@@ -1,0 +1,11 @@
+# Strategies 
+
+* their interface
+* implementations
+* ontology of strategies
+  * equivalent
+  * equi-satisfiable
+  * weakening
+  * strengthening
+  * splitting
+* pre/in-processing as specialized strategies

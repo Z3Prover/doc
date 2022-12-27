@@ -75,34 +75,10 @@ as explained in the context of Z3 in [@MouraB09].
 ~
 
 
-## Data-structures
 
-### Terms and formulas
+## Base Theories
 
-* term structure
-  * free/bound variable de-Bruijn index
-  * function and arguments
-  * quantifier
-* hash-cons
-* Lambdas as arrays
-
-### Incrementality
-
-* External and internal scopes
-* Undo-trail
-* equi-satisfiability
-
-## Theory solver data-structures
-
-* Theory variables - access to subset of E-nodes relevant for theory
-
-* The power of propagation
-
-* The power of filtering
-
-# Base Theories
-
-## Boolean Theories
+### Boolean Theories
 Bit-vectors are in the current solver treated as tuples of Boolean variables and all bit-vector
 operations are translated to Boolean SAT. The approach is called bit-blasting.
 Only mild equational reasoning is performed over bit-vectors.
@@ -121,7 +97,7 @@ Examples of cardinality, Bit-vectors
 ~
 
 
-## Equality and Uninterpreted Functions
+### Equality and Uninterpreted Functions
 
 This theory captures a shared property of all theory: that equality is a congruence relation. 
 The theory is described many places, including in [@BjornerMNW18].
@@ -162,7 +138,7 @@ When the children of the equality term $a \simeq n_1$ are merged into the same e
 term $a \simeq n_1$ is set to true. This contradicts that $a \simeq n_1$ is already set to false.
 
 
-### E-Node
+#### E-Node
 
 ~ Framed
 TODO add citations to main sources: DST, NO (Oliveras), Simplify Report
@@ -206,7 +182,7 @@ root E-nodes into a congruence closure root. For the congruence closure
 root $n$ it maintains the invariant $n.cg = \mathit{etable}(n.f, \rootNode(n.ts))$.
 
 
-### Merge
+#### Merge
 
 The main functionality of congruence closure is to ensure that all equivalene classes that follow
 from equalities are inferred. It exposes the main function merge($n_1, n_2, j$) to
@@ -248,7 +224,7 @@ of a class to be the node representing the value.
 
 
 
-### Unmerge
+#### Unmerge
 
 All operations on the E-Graph can be inverted. For this purpose, every merge is recorded in an _undo trail_.
 Other operations that update nodes are recorded in the same trail. For example when $p$ is appended to $r_2.P$
@@ -271,7 +247,7 @@ condition for being cc root before merge:
 congruent(p,q) := roots of p.ts = roots of q.ts
 ```
 
-### Justifications 
+#### Justifications 
 
 A justification is a reason for merging two nodes.
 There are two possible reasons for merging nodes:
@@ -312,7 +288,7 @@ Use cases within CDCL(T), that leverages amortized effect of backtracking search
 hedge on that the cost finding a strongest conflict up front is outweighed by multiple attempts that converge on
 sufficiently strong conflicts.
 
-### From justifications to proofs
+#### From justifications to proofs
 
 We can create proofs from first-principles by using justifications.
 Suppose $\rootNode(s) = \rootNode(t)$ follows from a sequence
@@ -379,21 +355,21 @@ Then a proof of $s \simeq t$ can be extracted using overloaded functions $\pi$:
 
 
 
-### Control
+#### Control
 
 * Congruence closure and Boolean reasoning
   * Do enough CC to speed up search (unit propagation)
   * Don't do too much CC when Boolean search takes care of it.
 
-### A note on complexity
+#### A note on complexity
 
 
 
 [INCLUDE="arithmetic.mdk"]
 
-# Reducible Theories
+## Reducible Theories
 
-## Refinement Types
+### Refinement Types
 Let us illustrate a use of _reduction_ from richer theories to base theories based on 
 a simple example based on refinement types. 
 It encodes refinement types using auxiliary functions as explained
@@ -443,7 +419,7 @@ is bounded. We don't want the solver to create terms $\relaxOp(\restrictOp(\rela
     * $p(\relaxOp(t))$ 
 
 
-## Arrays
+### Arrays
 
 The theory of arrays in SMTLIB is formally based on two functions `select` and `store` and an axiomatization
 
@@ -533,7 +509,7 @@ enforced by straight-forward instantiation.
 
 
 
-## Algebraic Datatypes
+### Algebraic Datatypes
 
 The theory of algebraic datatypes is an SMTLIB2 standard [@SMTLIB2]. The theory
 allows to declare a `datatype` sort, or set of mutually recursive `datatypes` sorts.
@@ -593,7 +569,7 @@ If $n$ is equated to a node $n'$ whose function is labeled by a constructor $C$,
 the representative for $n$ is labeled
 by $n'$. 
 
-### Saturation Rules
+#### Saturation Rules
 
 The saturation rules add theory axioms on demand to enforce that the
 theory of algebraic datatypes axioms are satisfied in a consistent state.
@@ -621,7 +597,7 @@ then assert the axioms
   isC(r)      & \implies  &  isC(n)
 ~
 
-#### Recognizers
+##### Recognizers
 For recognizer atom we have to ensure that a node is assigned to a constructor that is consistent
 with the assignment to the recognizer atom. Thus, if $isC(n)$ is asserted to true, then $n$ must be 
 equated to a term with constructor $C$. Conversely, if $n$ is assigned with a constructor $C' \neq C$, 
@@ -642,21 +618,21 @@ If $isC(n)$ is asserted to false, but $n$ equal to a node $n'$ that is headed by
 Something about covering constructors so all possible constructors are tested.
 ~
 
-#### Occurs check
+##### Occurs check
 
 An occurs check violation is detected when there is a state satisfying the properties
 $n_1 \simeq n_1', n_2 \simeq n_2', \ldots, n_k \simeq n_1$
 where each $n_i'$ is of the form $C_i(\ldots, n_{i+1}, \ldots)$.
 Occurs checks are performed lazily in a _final_ check.
 
-### Model construction rules
+#### Model construction rules
 
 Dually to saturation rules, the theory solver builds a finite model for algebraic datatypes.
 Model construction is interlaved with the CDCL(T) engine in a way that has subtle consequences.
 Model construction drives the constraints to a goal state where all terms ranging over an algebraic datatype have been assigned a constructor 
 and all saturation rules have been applied. If there is a term that has not been assigned a constructor, the solver attempts to first guess
 an assignment to the term based on a non-recursive base case for the data-type (for mutually recursive data-types some types don't have 
-non-recursive base cases, it is possible to drive towards a nested sub-term that has).
+xnon-recursive base cases, it is possible to drive towards a nested sub-term that has).
 The fact that the solver can guess a fixed base case constructor during model construction relies on the assumptions for theory combinations:
 other theories need only distinguish whether data-type terms are equal or distinct. The shape of terms is opaque to other theories.
 If a term $t$ cannot be assigned a non-recursive base case (say _nil_), it is assigned a non-recursive constructor (say, _cons_), that eventually
@@ -670,7 +646,7 @@ leads to non-termination of a model constructing decision procedure with the sub
 
 
 
-### Quantifier Elimination and Algebraic Datatypes
+#### Quantifier Elimination and Algebraic Datatypes
 
 The theory of algebraic data-types admits partial quantifier elimination.
 
@@ -685,7 +661,7 @@ uses this connection to reduce the theory of floating points to bit-vectors.
 
 <!--- ### Special Relations --->
 
-# Hybrid Theories
+## Hybrid Theories
 A prime example of a hybrid theory in Z3 is the theory of strings, 
 regular expressions and sequences.
 
@@ -704,4 +680,4 @@ Bradley-Manna-Sipma's array property fragment [@BradleyMS06] that effectively co
 uninterpreted functions.
 
 
-## Sequences/Strings/Regex
+### Sequences/Strings/Regex

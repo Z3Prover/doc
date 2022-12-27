@@ -1,9 +1,11 @@
 # Solver Engines
 
+Z3 contains a collection of core engines for solving formulas.
+The engine used by default is based on the CDCL(T) architecture, but other engines
+are available and invoked for special classes of formulas where they are more suitable.
 
 ## CDCL(T) - In the light of Theory Solvers
 
-In this section, we recall the main mechanisms used in mainstream modern SAT solvers in the light of theory solving.
 When SAT solving, as implemented using conflict driven clause learning, CDCL, is combined with theory solving
 it augments propositional satisfiability with theory reasoning. The CDCL solver maintains a set of 
 formulas $F$ and a partial assignment to literals in $F$ that we refer to as $M$.  
@@ -121,13 +123,21 @@ That is, each conflict clause is a consequence of $F$ and each propagation is al
 TODO: "peel the onion" further in the user-propagator section based on VMCAI material? In other words, expose more information about internal control.
 ~
 
-### Model-based theory combination
-
-### Relevancy
-
-### Iterative Deepening
-
 ## NLSAT (MC-SAT)
+
+Z3 contains a dedicated engine for non-linear arithmetic over polynomials (Tarski's fragment [@Tarski]) [@JovanovicMoura].
+The theory is decidable using cylindric algebraic decomposition (CAD) [@Collins]. The NLSAT engine implements the decision
+procedure for polynomial arithmetic. It uses a _model constructing satisfiabiltiy engine_ (MC-SAT) to guide uses of CAD to
+a focused set of conflict clauses. Thus, the CAD algorithm is used on fragments of the entire formula for determining
+satisfiability as opposed to globally on an entire formula.
+
+~ Framed
+Say something about the various data-structures used by NLSAT?
+~
+
+The NLSAT engine is available as a one-shot engine for non-linear arithmetic formulas. It is also integrated with decision procedures
+in the CDCL(T) engine as an _end-game_ solver. 
+
 
 ## SPACER
 

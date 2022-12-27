@@ -151,29 +151,24 @@ Extends material from _Navigating_ by Bj&oslash;rner and Nachmanson, SBMF 2020. 
   * architecture
 
 
+[INCLUDE="solverengines.mdk"]
+
 [INCLUDE="decisionprocedures.mdk"]
+
+[INCLUDE="datastructures.mdk"]
 
 [INCLUDE="models.mdk"]
 
+[INCLUDE="certificates.mdk"]
+
 [INCLUDE="quantifiers.mdk"]
 
-[INCLUDE="solverengines.mdk"]
+[INCLUDE="strategies.mdk"]
 
 
-# Strategies 
 
-* their interface
-* implementations
-* ontology of strategies
-  * equivalent
-  * equi-satisfiable
-  * weakening
-  * strengthening
-  * splitting
-* pre/in-processing as specialized strategies
 
 # Interfacing with Z3
-
 
 
 # Directions
