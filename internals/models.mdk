@@ -16,7 +16,7 @@ with respect to all theories. Model construction then works by layers
 
 * For each E-node $n$ it collects _dependencies_ of E-nodes $n_1, \ldots, n_k$ that must be assigned a value before $n$ can be assigned a value.
   Dependencies are specific to theories. There are no dependencies when $n$ ranges over Bool, Int, or Real.
-  * When $n$ is an array, the value of $n$ depends on the values of all nodes $n'[i]$ or $\delta(n')$ where $n \sim n'$.
+  * When $n$ is an array, the value of $n$ depends on the values of all nodes $n'[n'']$ or $\delta(n')$ where $n \sim n'$.
     That is, the value of $n$ as a n array depends on the values of select and default terms where it occurs.
   * When $n$ is an algebraic data-type headed by constructor $C(n_1, \ldots, n_k)$, then the value of $n$ depends on $n_1, \ldots, n_k$.
   * When $n$ is a finite sequence $[n_1, \ldots, n_k]$, then the value of $n$ depends on $n_1, \ldots, n_k$.
@@ -33,7 +33,7 @@ with respect to all theories. Model construction then works by layers
     the values of a Real can be an algebraic numeral. Algebraic numerals are represented as a $k$'th root to polynomials
     (whose coefficients can be algebraic numerals). They can be evaluated to decimal representations using an arbitrary degree of precision.
 
-  * An array node $n$ is assigned the value $[\valueOf{i} \mapsto \valueOf{n'[i]} \mid n'[i] \in \Nodes, n \simeq n' ] \cup [\mathit{else} \mapsto \delta(n') \mid n' \sim n]$. 
+  * An array node $n$ is assigned the value $[\valueOf{i} \mapsto \valueOf{n'[n'']} \mid n'[n''] \in \Nodes, n \simeq n' ] \cup [\mathit{else} \mapsto \delta(n') \mid n' \sim n]$. 
   * The algebraic data-type $n \sim C(n_1, \ldots, n_k)$ is assigned $C(\valueOf{n_1}, \ldots, \valueOf{n_k})$.
 
 * After all nodes have been assigned a value, model construction assigns interpretations to uninterpreted functions.

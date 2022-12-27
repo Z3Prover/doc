@@ -1,11 +1,167 @@
 # Strategies 
 
-* their interface
-* implementations
-* ontology of strategies
-  * equivalent
-  * equi-satisfiable
-  * weakening
-  * strengthening
-  * splitting
-* pre/in-processing as specialized strategies
+~ Framed
+Terminology "Strategies" is based on z3guide, but we don't define it below.
+~
+
+Z3 exposes more than 100 _tactics_ for solving or decomposing goals into one or more sub-goals.
+Tactics can be composed to form new more powerful tactics that meet needs of custom solving tasks.
+Tactics, in the context of Z3, were introduced in [@PassmoreMoura], there is a set of samples
+for using tactics on [@Z3GuideTacticSMTLIB], and many tactis are
+[summarized with examples](https://microsoft.github.io/z3guide/docs/strategies/summary).
+While we have to refer to the online sources for what various tactics accomplish and how to configure them
+we will here summarize an ontology of tactics and provide a high-level guide towards using main tactics.
+
+The first aim of a user is likely well captured by an aim to gian
+_insights into selection of suitable tactics for specific problems_.
+We will not here attempt to catelogue a mapping from problem classes to tactic combinations,
+the space is too open ended and a partial categorization requires signfiicant effort.
+The reality is that selecting suitable tactics remains an experimental craft: for a given class of
+problems a user can try available tactics on small instances to measure their effects to deduce overall effects.
+Tactic selection has even been the focus of integration with machine learning tools [@ETHZPaper].
+In this guide we will try to give the reader tools to understand tactics in context to guide experimentation.
+
+
+
+## A classification of tactics
+
+All tactics create at least one sub-goal. If a tactic is able to determine satisfiability of a goal, the subgoal contains
+no assertions. If it determines unsatisfiability, the subgoal contains the assertion $\false$. Otherwise, the subgoal
+is a set of assertions. Several subgoals can be viewed as a subgoal comntaining the disjunction of assertions from each subgoal.
+The relationship between the original goal and subgoals is determined by what the tactic accomplishes. The tactic may produce a subgoal
+that either
+
+|  relationship                |    description                                              |  example                                  |
+|:-----------------------------+:------------------------------------------------------------+------------------------------------------:|
+| preserves equivalence        |   the subgoal is equivalent to the original goal            | `simplify`                                | 
+| preserves satisfiability     |   the subgoal is equi-satisfiable, but not equivalent       | `solve-eqs`                               |
+| weakening                    |   if the subgoal is unsatisfiable, the original goal is too | `sat`                                     |
+| strengthening                |   if the subgoal is satisfiable, the original goal is too   | `nla2bv`                                  |
+
+The `simplify` tactic performs rewriting simplification steps. The rewrites implemented within `simplify`
+are equivalence preserving. The `solve-eqs` tactic eliminates uninterpreted constants when they can be
+written as solutions to equations. For example $x + 1 = 2 y$ allows solving $x$ as $2y - 1$. It removes
+$x$ from the subgoal which is therefore not equivalent to the original goal. The `sat` tactic
+solves satisfiability of a propositional abstraction of the original goal. The `nla2bv` tactic approximates
+reals and integers by bit-vectors and therefore constrains the values of possible solutions to a small
+space that can be expressed using the bit-vectors.
+
+
+
+## Model Converters
+
+Tactics that preserve satisfiability, but not equivalence, produce as a side-effect a _model converter_.
+The model converter is maintained internally. It can be accessed on the subgoal to convert a model
+of the subgoal to a model of an original goal. Within the satisfiability preserving tactics there
+is a further distinction between the model converters associated with tactics. We classify them next.
+
+
+|  effect on models       |    example input                        |      example output      |  model converter        |
++:-----------------------:+:---------------------------------------:+:------------------------:+:-----------------------:+
+| rigid constrained       |   $x = t$                               | $\true$                  |   $x = t$               |
+| under-constrained       |   $(x = t \land \varphi) \lor \psi$     | $\varphi[t/x] \lor \psi$ | $x = t$                 |
+|                         | $x \not \in \psi$                       |                          |                         |
+| under-constrained       | $x \leq y, x \leq z, y \leq u, \varphi$ | $\varphi$                | $y = x, z = x, u = y$   |
+|                         | $x, y \not\in \varphi$                  |                          |                         |
+| over-constrained        | $p(x), p(y), p(z)$                      | $x \leq y \leq z$        | n/a                     |
+|                         |                                         | $p(x),p(y),p(z)$         |                         |
+
+The base functionality of `solve-eqs` tactic is an example of a rigid constrained tactic. It includes the substitution $x = t$ in the model converter.
+Rigid constrained tactics have the property that the model converter can be applied as a substitution to new formulas while
+preserving satisfiability. In other words, rigid constrained tactics can be applied incrementally without undoing the effect
+of a transformation. The `solve-eqs` tactic has an option, which is enabled by default, to solve equations within disjunctive context.
+If $x$ is a variable that occurs within a single disjunction and nowhere else, it can be solved for as well. The resulting formula
+is weaker than the original formula because it allows solutions to $x$ and $\varphi[t/x]$ where $x \neq t$.
+To apply under-constrained tactics incrementally it is necessary to replay formulas that were modified by the transformations.
+Another example of an under-constrained tactic is `elim-unconstr`. It solves for variables that occur uniquely in a goal.
+For example, if the only occurrence of $u$ is in the inequality $y \leq u$ we can solve for $u$ by setting $u = y$. At this point,
+both $y$ and $z$ are unique and we can solve for $y, z$ by setting them to $x$. The `elim-uncstr` tactic is more general than our simplified example suggests,
+it can eliminate unique variables in arbitrary contexts.
+It replaces $y \leq u$ by a fresh predicate $p_y$, and sets the model substitution $y = \mathit{if}\ p_y \ \mathit{then}\ u\ \mathit{else}\ u - 1$.
+Conversely, tactics can strengthen formulas. The tactic `symmetry-reduce` applies symmetry reduction for formulas over uninterpreted functions.
+For illustrative purposes we use a tactic that applies symmetry reduction for arithmetical variables $x, y, z$ that occur symmetric in the formula.
+Z3 does not contain symmetry reduction tactics with arithmetic so users that produce formulas with symmetries should apply their own symmetry breaking
+methods.
+Over-constrained tactics cannot be applied incrementally if the strengthening formulas are added to the set of assertions of the goal.
+
+
+## Pre-processing tactics
+
+Tactics are used internally to provide best-effort pre-processing for a set of known benchmark classes.
+For example, the `qfufbv` tactic applies a pre-amble comprising of several steps, some generic, others that are specific to bit-vector formulas.
+
+```
+    (and-then simplify propagate-values bv-bound-checks solve-eqs
+              elim-uncnstr bv-size-reduction max-bv-sharing ackermannize_bv)
+```
+
+We have to refer to [the online guide](https://microsoft.github.io/z3guide/docs/strategies/summary)
+for an updated description of these tactics and what they accomplish.
+
+As a rule of thumb there is a set of core pre-processing tactics that apply well across formula types.
+These are
+
+* `simplify` - applies algebraic simplification
+* `propagate-values` - detects equations of the form $t \simeq 5$ and replaces $t$ by the value $5$ for other occurrences of $t$.
+* `elim-uncnstr` - removes sub-terms that occur only once and can be solved for.
+* `solve-eqs` - eliminates uninterpreted variables by solving equalities.
+
+
+There are also several general purpose tactics that apply only well in selected settings as they may carry more overhead.
+
+* `ctx-simplify` - eliminates sub-formulas based on a contextual analysis. For example $a \land (a \implies b)$ can be reduced to $a \land b$
+becaues the second occurrence of $a$ is true in the conjunctive context.
+* `demodulator` - extracts rewrite rules from quantified equalities and applies them.
+
+Then there are tactics developed to handle specific kinds of formulas. They allow targeting features of a backend that are better amenable
+to solving classes of formulas. For example, pure bit-vector formulas can often be solved most efficiently by a dedicated SAT solver.
+The pre-processing steps for the `QF_UFBV` formulas is designed to convert a goal whenever possible into a format where it does not
+contain uninterpreted functions and where it uses bit-vectors of smallest length.
+
+The main categories of specialized pre-processing tactics are:
+
+* Bit-vectors - compile formulas into the bit-vector fragment.
+* Arithmetic - eliminate non-linear operators and transcendental functions. Compile arithmetic formulas into bit-vectors or cardinality constraints.
+  * `fm`
+  * `factor`
+  * `purify-arith`
+* Quantifiers  detect macros, eliminate quantifiers.
+  * `qe-light`
+  * `qe`
+* Arrays - eliminate or compile occurrences of arrays into uninterpreted functions
+  * `bvarray2uf`
+
+
+
+## Proof and unsatisfiable core converters
+
+Some tactics also support proofs and extraction of unsatisfiable cores.
+To support proof generation, a tactic has to map a proof of the subgoal(s) into a proof of the original goal.
+
+A goal assertion can be tracked for the purpose of extracting unsatisfiable cores.
+Tactics that support unsatisfiable core extraction have to track dependencies of the original goal.
+Thus, if two assertions $\varphi_1$ and $\varphi_2$ are used to infer an assertion $\psi$, then the dependencies
+for $\varphi_1$ and $\varphi_2$ are combined into the dependencies for $\psi$.
+
+## Incremental tactics - a sneak peek
+
+The classification of model converters allow us to understand when tactics can be applied incrementally.
+Tactics that produce a single subgoal are equivalence preserving are directly incremental.
+Tactics that are rigid constrained can be applied incrementally by substituting in the effect of the model converter on new formulas.
+Tactics that are under-constrained can be applied incrementally by re-adding formulas that were modified, and retracting the effect of the model converter.
+
+A common user issue is around inconsistent behavior of the solver whether it is used in incremental or non-incremental mode. Under the hood,
+the difference in behaviors is caused by non-incremental mode using a combination of default tactics to pre-process the (only) formula being solved.
+Once the solver is used in incremental mode (after a context `push` or after the first `check-sat`) Z3 switches to a solver mode that does not use
+the pre-processing tactics. Specifically, the `solve-eqs` and `elim-uncnstr` tactics can have drammatic effect on solvability over many user scenarios
+and they are not incremntal.
+
+As a sneak peek into functionality in the works,
+configuring z3 with `sat.smt=true` from the command-line switches to a new CDCL(T) core where a set of pre-set tactics,
+including `solve-eqs` and `elim-uncnstr` are applied incrementally.
+~
+
+~ Framed
+Add use case of tactics from Alive2?
+~
+
