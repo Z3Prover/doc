@@ -22,6 +22,19 @@ Tactic selection has even been the focus of integration with machine learning to
 In this guide we will try to give the reader tools to understand tactics in context to guide experimentation.
 
 
+## A use case of tactics from Alive2
+
+~ Framed
+Add use case of tactics from Alive2
+~
+
+* what formulas does Alive2 produce for z3?
+* what tactics were found to be useful?
+* why are tactics applied multiple times (qe-light)?
+* what tactics are out of scope of Alive2 and why
+* Backends enabled for selected Alive2 use cases:
+  - when formulas integrate the memory model
+  - use / non-use of $\lambda$ and recursive functions
 
 ## A classification of tactics
 
@@ -159,9 +172,5 @@ and they are not incremntal.
 As a sneak peek into functionality in the works,
 configuring z3 with `sat.smt=true` from the command-line switches to a new CDCL(T) core where a set of pre-set tactics,
 including `solve-eqs` and `elim-uncnstr` are applied incrementally.
-~
 
-~ Framed
-Add use case of tactics from Alive2?
-~
 
