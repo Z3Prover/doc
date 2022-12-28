@@ -7,14 +7,14 @@ Terminology "Strategies" is based on z3guide, but we don't define it below.
 Z3 exposes more than 100 _tactics_ for solving or decomposing goals into one or more sub-goals.
 Tactics can be composed to form new more powerful tactics that meet needs of custom solving tasks.
 Tactics, in the context of Z3, were introduced in [@PassmoreMoura], there is a set of samples
-for using tactics on [online](https://microsoft.github.io/z3guide/docs/), and many tactis are
+for using tactics [online](https://microsoft.github.io/z3guide/docs/strategies/tactics), and many tactis are
 [summarized with examples](https://microsoft.github.io/z3guide/docs/strategies/summary).
 While we have to refer to the online sources for what various tactics accomplish and how to configure them
 we will here summarize an ontology of tactics and provide a high-level guide towards using main tactics.
 
-The first aim of a user is likely well captured by an aim to gian
+The first aim of a user is likely well captured by an aim to gain
 _insights into selection of suitable tactics for specific problems_.
-We will not here attempt to catelogue a mapping from problem classes to tactic combinations,
+We will not here attempt to catalogue a mapping from problem classes to tactic combinations,
 the space is too open ended and a partial categorization requires signfiicant effort.
 The reality is that selecting suitable tactics remains an experimental craft: for a given class of
 problems a user can try available tactics on small instances to measure their effects to deduce overall effects.
@@ -24,11 +24,22 @@ In this guide we will try to give the reader tools to understand tactics in cont
 
 ## A use case of tactics from Alive2
 
-~ Framed
-Add use case of tactics from Alive2
-~
+Alive2 [@alive2] is a translation validation tool for the LLVM compiler.
+It works by snapshoting the code before and after optimizations and proving that
+the optimized code refines the original code.
+Alive2 uses Z3 to solve all the logic formulas it generates.
 
-* what formulas does Alive2 produce for z3?
+Alive2 uses a combination of features and logics of Z3: bit-vectors, arrays, lambdas,
+floating-point numbers, UFs, and quantifiers. Sometimes it uses all of these in a same
+query.
+This is an unusual mix of theories, that is not observed in the SMT-LIB benchmarks.
+Since Z3's tactics were mostly tuned for the SMT-LIB benchmarks, it is natural that
+Z3's standard tactic pipelines are not suitable for Alive2.
+
+TODO: can we give some perf numbers here?
+
+
+
 * what tactics were found to be useful?
 * why are tactics applied multiple times (qe-light)?
 * what tactics are out of scope of Alive2 and why
