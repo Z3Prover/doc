@@ -655,9 +655,6 @@ Present MBP for ADT here specifically?
 ~
 
 
-## Floating points
-Floating point semantics can be defined in terms of bit-vector operations. The solver for floating points
-uses this connection to reduce the theory of floating points to bit-vectors.
 
 <!--- ### Special Relations --->
 
@@ -681,3 +678,9 @@ uninterpreted functions.
 
 
 ### Sequences/Strings/Regex
+
+### Floating points
+Floating point semantics can mainly be defined in terms of bit-vector operations. The solver for floating points
+uses this connection to reduce the theory of floating points to bit-vectors.
+There are also operations on floating points that connect with the theory of Reals. For formulas combining
+floating points and reals, the theory solver bridges bit-vector values with bounds over the Reals.
