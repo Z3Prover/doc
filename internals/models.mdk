@@ -61,20 +61,47 @@ also produces symbolic models.
 Models produced by the solver map terms to values. Given a solution to $x \simeq y + 1$, the solver will assign $x$ to a numeral
 that is one greater than the numeral assigned to $y$. Pre-processing, on the other hand, may choose to _solve_ for $x$ and record the
 solution $x \mapsto y + 1$. In this case the model for $x$ can be retrieved as $y + 1$. Z3 supports a setting to
-force $y + 1$ to be evaluated to a numeral if the user wants this. 
+force $y + 1$ to be evaluated to a numeral if the user wants this.
+
+~ Framed
+add example
+~
 
 ### There are no deep knobs to control model values
 
 Values to base types, such as Int, Real are dictated by the solvers. Values to terms of type Bool are controlled mainly by the SAT solver.
 Ensuring _diverse_ model values for Booleans is partially possible by controlling options on the SAT solver [@SoosUniSAT].
 There are no corresponding knobs for values from theories. For instance, for linear arithmetic based on dual simplex, values are determined by
-an algorithm that seeks to find solutions along vertices in a polytope, which in layman's terms means finding values to bounded variables at their bounds.
-Thus, configurations such as `smt.arith.random_initial_value`, provide no strong assurances.
+an algorithm that seeks to find solutions along vertices in a polytope, which in layman's terms means
+finding values to bounded variables at their bounds.
+Thus, configurations such as `smt.arith.random_initial_value=true`, provide no strong assurances
+(furthermore, only the solver configured by setting `smt.arith.solver=2`
+for arithmetic responds to this configuration).
 
-A main knob for controlling model values are over optimization, $\nu{Z}$ [@NuZ]. By specifying one or more optimization objectives you can control model
+~ Framed
+```
+(set-option :smt.arith.solver 2)
+(set-option :smt.random_seed 5)
+(set-option :smt.arith.random_initial_value true)
+(declare-const x Int)
+(declare-const y Int)
+(push)
+(assert (> x y))
+(check-sat)
+(get-model)
+```
+~
+
+A main knob for controlling model values are over optimization, $\nu{Z}$ [@NuZ].
+By specifying one or more optimization objectives you can control model
 values of selected terms to be minimum or maximum. 
-  
-### Models includes auxiliary definitions
 
-Z3 includes auxiliary definitions in models. For example, if you define a recursive function, the recursive function definition is part of the model
+~ Framed
+add optimization example
+~
+
+### Models include auxiliary definitions
+
+Z3 includes auxiliary definitions in models. For example, if you define a recursive function,
+the recursive function definition is part of the model
 that is displayed in SMTLIB2 mode.

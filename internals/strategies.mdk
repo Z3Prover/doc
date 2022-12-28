@@ -7,7 +7,7 @@ Terminology "Strategies" is based on z3guide, but we don't define it below.
 Z3 exposes more than 100 _tactics_ for solving or decomposing goals into one or more sub-goals.
 Tactics can be composed to form new more powerful tactics that meet needs of custom solving tasks.
 Tactics, in the context of Z3, were introduced in [@PassmoreMoura], there is a set of samples
-for using tactics on [@Z3GuideTacticSMTLIB], and many tactis are
+for using tactics on [online](https://microsoft.github.io/z3guide/docs/), and many tactis are
 [summarized with examples](https://microsoft.github.io/z3guide/docs/strategies/summary).
 While we have to refer to the online sources for what various tactics accomplish and how to configure them
 we will here summarize an ontology of tactics and provide a high-level guide towards using main tactics.

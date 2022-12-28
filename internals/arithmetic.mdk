@@ -155,7 +155,7 @@ Add example
 ~
 
 #### Cubes
-One of the deciding factors in leapfrogging the previous solver relied on 
+An important factor in solving more satisfiable integer arithmetic instances is
 a method by Bromberger and Weidenbach [@BrombergerW16;@BrombergerW17].
 It allows to detect feasible inequalities over integer variables 
 by solving a stronger linear system.
@@ -212,6 +212,10 @@ into Hermite matrices.
 Add example
 ~
 
+~ Framed
+Configuring branch vs. cut frequency
+~
+
 
 ### Non-linear arithmetic
 
@@ -250,9 +254,6 @@ in an effort to find stronger bounds.
 
 #### Gr&ouml;bner reduction
 
-~ Framed
-Add examples of what inferences are obtained by the Gr&ouml;bner module
-~
 
 We use an adaptation of ZDD (Zero suppressed decision diagrams [@Minato93;@NishinoYMN16]) to represent polynomials.
 The representation has the advantage that polynomials are stored in a shared data-structure and operations
@@ -301,6 +302,10 @@ The Gr&ouml;bner module performs a set of partial completion steps, preferring
 to eliminate variables that can be isolated, and expanding a bounded number of super-position
 steps.
 
+~ Framed
+Go over simplifications that can be derived from GB module
+~
+
 #### Incremental linearization
 Following [@CimattiGIRS18] we incrementally linearize monomial constraints. 
 For example, we include lemmas of the form $x = 0 \rightarrow m = 0$
@@ -321,3 +326,15 @@ Define MBP for arithmetic
 
 #### NLSat
 
+
+### Data-structures
+
+* Infinite precision integers and rationals
+
+* LRU decomposition and floating point solver discontinued based on skew of SMTLIB benchmarks
+
+* Dual simplex over a sparse tableau representation
+
+* Dynamic axioms by front-end
+  * bounds propagation
+  * reduction of div/mod (and rem)

@@ -1,0 +1,34 @@
+# Fundamental data-strutures, algorithms and heuristics
+
+## Terms and Formulas
+
+* term structure
+  * free/bound variable de-Bruijn index
+  * function and arguments
+  * quantifier
+* hash-cons
+* Lambdas as arrays
+
+## Model-based theory combination
+
+## Relevancy filtering
+
+## The power of propagation
+
+## Iterative deepening for finite models
+
+
+
+### Incrementality
+
+* External and internal scopes
+* Undo-trail
+* equi-satisfiability
+
+## Theory solver data-structures
+
+* Theory variables - access to subset of E-nodes relevant for theory
+
+* The power of propagation
+
+* The power of filtering
