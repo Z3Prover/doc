@@ -7,7 +7,7 @@ as explained in the context of Z3 in [@MouraB09].
 
 
 * Base theories - other theory solvers build on top of base theories
-  * The base theories in z3 are Boolean theories, the theory of uninterpreted functions and the theory of arithmetic.
+  * The base theories in Z3 are Boolean theories, the theory of uninterpreted functions and the theory of arithmetic.
 * Reducible theories 
   * Theories that can be solved by reducing directly into base theories.
   * Instances: Arrays, IEEE floating points, algebraic datatypes, recursive functions.
@@ -433,7 +433,7 @@ is useful for modeling arrays in programming languages will henceforth use $A[i]
 
 Z3 reduces the theory of arrays to reasoning about uninterpreted functions.
 It furthermore treats arrays as function spaces which assuming more axioms about arrays.
-he first-order theory of arrays axiomatized above enjoys compactness and so the following formula is satisfiable[^jazzman]
+The first-order theory of arrays axiomatized above enjoys compactness and so the following formula is satisfiable[^jazzman]
 
 [^jazzman]: thanks to Jasmin Blanchette for drawing attention to this distinction.
 
@@ -443,7 +443,7 @@ he first-order theory of arrays axiomatized above enjoys compactness and so the 
 
 The same formula is not satisfiable when arrays range over function spaces.
 The distinction is only relevant when checking satisfiability of quantified formulas over arrays.
-In addition to functions $\Astore$ and $\mathit{select}$ z3 includes built-in
+In addition to functions $\Astore$ and $\mathit{select}$ Z3 includes built-in
 functions $\Amap$, $\Aconst$ and the operator $\Aasarray$ and lambdas.
 It includes also the function $\Aext$ that provides a witness term for distinct arrays,
 and $\delta(A)$ for accessing a _default_ value.
@@ -479,7 +479,7 @@ together with an infernce rule to enforce extensionality
 A[\Aext(A,B)] \simeq B[\Aext(A, B)] \implies A \simeq B
 ~
 
-The decision procedure enforces several throttles [@ArrayFMCAD09] to avoid instantiating axioms when they are redundant.
+The decision procedure enforces several throttles [@MouraB09] to avoid instantiating axioms when they are redundant.
 We here describe the main data-structures used by the instantiation engine. 
 
 The decision procedure maintains for every array node $n$ the following sets
