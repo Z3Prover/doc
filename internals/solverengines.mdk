@@ -125,8 +125,8 @@ TODO: "peel the onion" further in the user-propagator section based on VMCAI mat
 
 ## NLSAT (MC-SAT)
 
-Z3 contains a dedicated engine for non-linear arithmetic over polynomials (Tarski's fragment [@Tarski]) [@JovanovicMoura].
-The theory is decidable using cylindric algebraic decomposition (CAD) [@Collins]. The NLSAT engine implements the decision
+Z3 contains a dedicated engine for non-linear arithmetic over polynomials (Tarski's fragment [@Tarski]) [@JovanovicM12].
+The theory is decidable using cylindric algebraic decomposition (CAD) [@Collins74]. The NLSAT engine implements the decision
 procedure for polynomial arithmetic. It uses a _model constructing satisfiabiltiy engine_ (MC-SAT) to guide uses of CAD to
 a focused set of conflict clauses. Thus, the CAD algorithm is used on fragments of the entire formula for determining
 satisfiability as opposed to globally on an entire formula.

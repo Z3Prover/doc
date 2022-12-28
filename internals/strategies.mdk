@@ -82,7 +82,11 @@ is a further distinction between the model converters associated with tactics. W
 The base functionality of `solve-eqs` tactic is an example of a rigid constrained tactic. It includes the substitution $x = t$ in the model converter.
 Rigid constrained tactics have the property that the model converter can be applied as a substitution to new formulas while
 preserving satisfiability. In other words, rigid constrained tactics can be applied incrementally without undoing the effect
-of a transformation. The `solve-eqs` tactic has an option, which is enabled by default, to solve equations within disjunctive context.
+of a transformation. The `tseitin` tactic is also rigid constrained. It introduces fresh variables to encode Boolean connectives, 
+but the evaluation of those variables are hidden from the model of the original formula. Thus, there is another category
+of model conversions (removing interpretations of variables from the model for the original formula) that
+can be applied incrementally.
+The `solve-eqs` tactic has an option, which is enabled by default, to solve equations within disjunctive context.
 If $x$ is a variable that occurs within a single disjunction and nowhere else, it can be solved for as well. The resulting formula
 is weaker than the original formula because it allows solutions to $x$ and $\varphi[t/x]$ where $x \neq t$.
 To apply under-constrained tactics incrementally it is necessary to replay formulas that were modified by the transformations.
@@ -159,9 +163,12 @@ for $\varphi_1$ and $\varphi_2$ are combined into the dependencies for $\psi$.
 ## Incremental tactics - a sneak peek
 
 The classification of model converters allow us to understand when tactics can be applied incrementally.
-Tactics that produce a single subgoal are equivalence preserving are directly incremental.
-Tactics that are rigid constrained can be applied incrementally by substituting in the effect of the model converter on new formulas.
-Tactics that are under-constrained can be applied incrementally by re-adding formulas that were modified, and retracting the effect of the model converter.
+We will consider tactics that just produce a single subgoal.
+Tactics that are equivalence preserving are directly incremental.
+Tactics that are rigid constrained can be applied incrementally 
+by substituting in the effect of the model converter on new formulas.
+Tactics that are under-constrained can be applied incrementally by 
+re-adding formulas that were modified, and retracting the effect of the model converter.
 
 A common user issue is around inconsistent behavior of the solver whether it is used in incremental or non-incremental mode. Under the hood,
 the difference in behaviors is caused by non-incremental mode using a combination of default tactics to pre-process the (only) formula being solved.
