@@ -25,7 +25,7 @@ In this guide we will try to give the reader tools to understand tactics in cont
 ## A use case of tactics from Alive2
 
 Alive2 [@alive2] is a translation validation tool for the LLVM compiler.
-It works by snapshoting the code before and after optimizations and proving that
+It works by snapshotting the code before and after optimizations and proving that
 the optimized code refines the original code.
 Alive2 uses Z3 to solve all the logic formulas it generates.
 
@@ -33,19 +33,84 @@ Alive2 uses a combination of features and logics of Z3: bit-vectors, arrays, lam
 floating-point numbers, UFs, and quantifiers. Sometimes it uses all of these in a same
 query.
 This is an unusual mix of theories, that is not observed in the SMT-LIB benchmarks.
-Since Z3's tactics were mostly tuned for the SMT-LIB benchmarks, it is natural that
+Since Z3's tactics are mostly tuned for the SMT-LIB benchmarks, it is natural that
 Z3's standard tactic pipelines are not suitable for Alive2.
 
-TODO: can we give some perf numbers here?
+Using tactics in Alive2 was really necessary!
+For some of the larger benchmarks, using its custom tactic is an order of magnitude
+faster than using Z3's standard tactic pipelines.
+Another thing to keep in mind is that not all of Z3's tactic are hardened to be used
+from the API.
+For example, some tactics may not respect resource limits (e.g., time, memory)
+or have a super-linear cost for certain formulas.
+Hence, using a small set of hardened tactics is advisable for production
+applications.
 
+For example, Alive2 queries have a lot of UFs.
+However, many of those UFs have constant arguments or they become constant
+after using the `simplify` tactic.
+It is then very useful to run the `reduce-args` tactic to remove arguments of UFs
+that are constant, or even to transform UF applications into variables (e.g.,
+`f(#x1)` is replaced with `f!1`).
 
+After removing UFs, other tactics that don't work with UFs can be used now.
+For example, Alive2 runs `elim-uncnstr` to remove single uses of variables,
+either boolean, or BV variables used in a single constraint.
 
-* what tactics were found to be useful?
-* why are tactics applied multiple times (qe-light)?
-* what tactics are out of scope of Alive2 and why
-* Backends enabled for selected Alive2 use cases:
-  - when formulas integrate the memory model
-  - use / non-use of $\lambda$ and recursive functions
+Alive2 also produces a lot of quantifiers. Many of these formulas are not too
+complicated and can be solved through Z3's simple quantifier elimination
+tactic (`qe-light`).
+Z3 also has a more advanced quantifier elimination tactic (`qe`), but it is too
+slow for our large formulas and often doesn't pay off.
+
+In the compiler world, the phase ordering problem is well known: finding the best order
+of optimizations for each program is a very hard problem.
+The problem space is huge given that the number of optimizations is large, and it's
+often beneficial to run some optimizations more than once.
+The same issue arises with SMT solvers: the right sequence of tactics depends on the
+problem instance. Similarly, some tactics should be run multiple times.
+
+For example, Alive2 runs qe-light twice. The first run exposes several
+opportunities for other tactics (like removing unconstrained expressions).
+Running these tactics, then allows qe-light to eliminate a few more quantifiers.
+
+Most of Z3's tactics are not useful for Alive2, which emphasizes the need to
+customize the tactic pipeline.
+First, some tactics target theories that Alive2 doesn't use.
+Second, some tactics are only useful when formulas are written in a way that
+Alive2 will never generate.
+For example, the `demodulator` tactic essentially instantiates axioms (a particular kind
+of forall quantified formulas) present in the formula.
+Alive2's vcgen algorithm already instantiates all the relevant axioms, as it
+has more domain information, so it can do a better job.
+Therefore, Alive2 doesn't benefit from Z3's `demodulator` tactic.
+
+Finally, some of Z3's tactics are expansive: they increase the size of the formula,
+hoping the rewritten formula will simplify further later on.
+For example, the `blast-term-ite` tactic will rewrite `a + ite(c, b, d)`
+into `ite(c, a + b, a + d)`.
+This can open opportunities for further simplification, but it can also
+increase the size of the formula exponentially.
+Alive2, in particular, often generates formulas with deeply nested `ite`
+expressions, hence it's not possible to use such a tactic.
+Eager bit-blasting, as mentioned before, doesn't yield good results
+as variables tend to have large bit-widths.
+
+Besides tactics, there are also the SMT solver (and tactics) parameters.
+For example, Z3 has two algorithms for quantifier instantiation: E-matching
+and MBQI [@mbqi].
+These algorithms have different characteristics and each will perform best with
+certain formulas and queries. It's left to the user to pick the best algorithm
+(through the `smt.ematching` config option).
+
+Another thing to consider is theories' options. Some theories have options
+to do small changes to their semantics to improve performance.
+For example, when converting a float number to a bit-vector, Z3 internally uses a UF
+to represent an arbitrary NaN payload. However, if this behavior is irrelevant to
+the application (e.g., because NaNs are irrelevant or because NaNs are already
+handled properly), it can be disabled by setting `rewriter.hi_fp_unspecified` to true.
+Other cases include, for example, bit-vector division by zero.
+
 
 ## A classification of tactics
 
