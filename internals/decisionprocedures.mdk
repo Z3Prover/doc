@@ -179,7 +179,11 @@ Besides the E-nodes the solver maintains a hash-table, we call _etable_, that
 is used to find the congruence root of a function application. It maps a
 function symbol $f$ and list of arguments to $f$ that are represented by
 root E-nodes into a congruence closure root. For the congruence closure
-root $n$ it maintains the invariant $n.cg = \mathit{etable}(n.f, \rootNode(n.ts))$.
+root $n$ it maintains the invariant $n.cg = \mathit{etable}[n.f, \rootNode(n.ts)]$.
+We write $\mathit{etable}[n.f, \rootNode(n.ts)]$ to indicate that the _etable_
+tracks function applications to root nodes. In reality the _etable_ just stores
+the node $n$ and uses the $\rootNode$ function when computing the current hash of $n$
+and equalities with other nodes.
 
 
 #### Merge
@@ -195,13 +199,13 @@ in more detail. The main steps of _merge_ are outlined below.
 |              | assume $r_1 \neq r_2$                                                                     |
 |              | assume $r_1.sz \leq r_2.sz$                                                               |
 | Erase        | __for each__ $p \in r_1.P$ __where__ $p.cg = p$:                                          |
-|              | \ \ \ \ erase $\mathit{etable}[p.f, p.ts]$                                                       |
+|              | \ \ \ \ erase $\mathit{etable}[p.f, \rootNode(p.ts)]$                                     |
 | Update Root  | $r_1.\find \leftarrow r_2$                                                                |
 | Justify      | justify($r_1, r_2, j$)                                                                    |
 | Insert       | __for each__ $p \in r_1.P$:                                                               |
-|              | \ \ __if__ $\mathit{etable}[p.f,p.ts] = null$ __then__                                     |
-|              | \ \ \ \ \ $\mathit{etable}[p.f,p.ts] \leftarrow p$                                        |
-|              | \ \ $p.cg \leftarrow$ _etable_$[p.f, p.ts]$                                                |
+|              | \ \ __if__ $\mathit{etable}[p.f,\rootNode(p.ts)] = null$ __then__                         |
+|              | \ \ \ \ \ $\mathit{etable}[p.f,\rootNode(p.ts)] \leftarrow p$                             |
+|              | \ \ $p.cg \leftarrow$ _etable_$[p.f, \rootNode(p.ts)]$                                    |
 |              | \ \ __if__ $p.cg = p$ __then__                                                            |
 |              | \ \ \ \ append $p$ to $r_2.P$                                                             |
 |              | \ \ __else__                                                                              |
@@ -231,21 +235,18 @@ Other operations that update nodes are recorded in the same trail. For example w
 the insertion into the cyclic list of parents is recorded so that it can be reverted. To reverting a merge
 requires updating the _etable_ and is sensitive to whether a node was a congruence root:
 
-unmerge($r_1, r_2$):
+The effect of unmerge($r_1, r_2$) is as follows:
 
-```
-Erase:        for each p in r2.P added from r1.P:
-                 erase p from table 
-Unjustify:    ....
-Revert root:  r1.find := r1
-Insert:       for each p in r1.P:
-                 insert p if n was cc root before merge
 
-condition for being cc root before merge:
-  p.cg == p or !congruent(p, p.cg)
+|:~~~~~~~~~~~~~|:~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+| Erase        | __for each__ $p \in r_2.P$ __added from__ $r_1.P$:                                        |
+|              | \ \ erase $\mathit{etable}[p.f, \rootNode(p.ts)]$                                     |
+| UnJusti      | unjustify($r_1, r_2, j$)                                                                  |
+| Revert Root  | $r_1.\find \leftarrow r_1$                                                                |
+| Insert       | __for each__ $p \in r_1.P$:                                                               |
+|              | \ \ __if__ $p.cg \neq p \lor \rootNode(p.ts) \neq \rootNode(p.cg)$                        |
+|              | \ \ \ \ \ $\mathit{etable}[p.f,\rootNode(p.ts)] \leftarrow p.cg \leftarrow  p$            |
 
-congruent(p,q) := roots of p.ts = roots of q.ts
-```
 
 #### Justifications 
 
@@ -503,9 +504,9 @@ The merge also looks for new redexes when $n$ and $n'$ are merged:
 For enforcing $\Astore(A, i, v)[j] = \beta(\Astore(A, i, v)[j])$ the solver only instantiates the axiom $i \simeq j \lor \Astore(A, i, v)[j] \simeq A[j]$
 because the axiom $\Astore(A,i,v)[i] \simeq v$ is instantiated eagerly when the term $\Astore(A, i, v)$ is created.
 
-Extensionality is enforced on pairs of array terms $A, B$, that are in _shared_ positions. An array term is in a shared position when it occurs on side of an equality or under a function that is not part of the theory of arrays. Furthermore, to ensure that semantics of lambdas, if $A \equiv \lambda x \ . \ M$ is a lambda term in a shared position
-and $B$ is in a shared position, the axiom $A \simeq B \implies \forall i \ . \ M[x/i] \simeq B[i]$ is instantiated. Thus, lambda equality is at this point
-enforced by straight-forward instantiation.
+Extensionality is enforced on pairs of array terms $A, B$, that are in _shared_ positions. An array term is in a shared position when it occurs on side of an equality or under a function that is not part of the theory of arrays. Furthermore, to ensure congruence for lambdas, if $A \equiv \lambda x \ . \ M$ is a lambda term in a shared position
+and $B$ is in a shared position, the axiom $\lambda x \ . \ M \simeq B \implies \forall i \ . \ M[x/i] \simeq B[i]$ is instantiated. Thus, lambda equality is at this point
+enforced by a reduction to quantified formulas.
 
 
 

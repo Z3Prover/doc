@@ -156,13 +156,11 @@ Suppose we are given a tableau of the form
  y - \frac{1}{2}x = 0
  z - \frac{1}{3}x  = 0
 ~~
-where $y, z$ are basic variables and $x$ has bounds $[3,10]$, $y$ has bounds $[-3,1]$, $z$ has bounds $[-5,2]$.
+where $y, z$ are basic variables and $x$ has bounds $[3,10]$, $y$ has bounds $[-3,4]$, $z$ has bounds $[-5,12]$.
 The variable $x$ is initially assigned at the bound $\beta(x) = 3$. Then $\beta(y) = \frac{3}{2}$ and
-$\beta(z) = 1$. Then the freedom interval for $x$ is between 
-$\max(\beta(x) - \frac{1 - \beta(y)}{0.5}, \beta(x) - \frac{2-\beta(z)}{\frac{1}{3}}, 10) = \max(3 - 3, 3 + 3, 10) = 10$ and
-$\min(\beta(x) - \frac{-3 - \beta(y)}{0.5}, \beta(x) - \frac{-5 - \beta(z)}{\frac{1}{3}}, 3) =
- \min(3 + \frac{16}{3}, 3 - ...) = $.
-Then ... TODO 
+$\beta(z) = 1$. But neither $y$ nor $z$ is close to their bounds. We can move $x$ to 8 without violating the bound for $y$
+and move $x$ to to 10. Thus the freedom interval for $x$ is the range $[3,8]$ and within this range there is a solution,
+$x = 6$, where $y, z$ are integers and within their bounds.
 ~ End Example
 
 #### Cubes
@@ -343,16 +341,6 @@ and $x = 1 \rightarrow m = y$, for $m = x^2y$.
 As an end-game attempt, the solver attempts to solver the non-linear constraints using a complete solver
 for Tarski's fragment supported by the NLSat solver [@JovanovicM12].
 
-
-### Quantified Satisfaction
-
-#### Model-Based Quantifier Elimination
-
-~ Framed
-Define MBP for arithmetic
-~
-
-#### NLSat
 
 
 ### Data-structures

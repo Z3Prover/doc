@@ -4,7 +4,9 @@ Z3 contains a collection of core engines for solving formulas.
 The engine used by default is based on the CDCL(T) architecture, but other engines
 are available and invoked for special classes of formulas where they are more suitable.
 
-## CDCL(T) - In the light of Theory Solvers
+## CDCL(T) - SAT in the light of Theory Solvers
+
+We here describe the solvers marked as SAT and SMT in Figure [#fig-system].
 
 When SAT solving, as implemented using conflict driven clause learning, CDCL, is combined with theory solving
 it augments propositional satisfiability with theory reasoning. The CDCL solver maintains a set of 
@@ -154,6 +156,17 @@ in the CDCL(T) engine as an _end-game_ solver.
 ## SPACER
 
 Formulas that range over _Constrained Horn Clauses_ (CHC) are solved using a dedicated engine, SPACER.
+A Constrained Horn Clause is a formula of the form
+
+~ MathPre
+   & \forall \vec{x} \ . \ \varphi \land P(t) \land Q(s) \implies R(u)    
+or & \forall \vec{x} \ . \ \varphi \land P(t) \land Q(s) \implies \false
+~ 
+
+where $\varphi$ is a formula that is interpreted over a combination of theories, $P, Q, R$ are uninterpreted predicates, 
+and $t, s, u$ are terms over the bound variables $\vec{x}$ and the theories from $\varphi$. 
+The SPACER searches for a model for $P, Q, R$ such that all clauses are true
+under the model. 
 
 
 

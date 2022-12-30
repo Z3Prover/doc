@@ -1,6 +1,201 @@
 # Quantifiers
 
+## Quantifier Engines in Z3
+
+* E-matching [@MouraB07] 
+
+* Model-based Quantifier Instantiation (MBQI) [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13] 
+
+* Quantifier Elimination and Satifiability [@BjornerAbstract10;@PhanBM12;@BjornerJ15] 
+
+* Horn Clauses [@HoderB12;@BjornerMR13;@GurfinkelEtAl] 
+
+* Deprecated: [@PiskacMB10] EPR using relational algebra, [@MouraB08a] Superposition, see also [VampireZ3]
+
+[VampireZ3]: https://vprover.github.io "VampireZ3"
+
+
 ## E-matching
+
+Let us start with an example of quantifier instantiation using E-matching in action.
+
+~ Begin Example
+
+Consider the formula 
+
+~~ Math
+  \underbrace{(\forall x \ . \ f(g(x,c)) \simeq a)}_{p_\varphi} \land b \simeq c \land g(c,b) \simeq c \land f(b) \neq a
+~~
+
+The smallest subterm properly containing the bound variable $x$ is ${\color{red}g(x,c)}$ in $f({\color{red}g(x,c)}) \simeq a$.
+The only other occurrence of the function $g$ is $g(c,b)$ in the equality $g(c,b) \simeq c$.
+Based on the ground equality $b = c$ $g(c,c) \sim g(c,b)$ so we can instantiate $x$ by $c$ and infer
+
+~~ Math
+  (p_{\varphi} \rightarrow f(g(b,c)) \simeq a
+~~ 
+The formulas are now ground unsatisfiable.
+
+~ End Example
+
+
+Quantifier instantiation using E-matching in Z3 serves a sweet spot by producing instantiations that take 
+congruences of equalities into account, quickly, across a large set of terms and incrementally.
+
+### E-matching - basic algorithm
+
+E-matching is a first-order matching algorithm that takes a congruence closure into account when checking for equality.
+We can describe a basic E-matching algorithm as taking
+
+* a _pattern_ that may contain variables, 
+* an E-node _n_, with set of equal nodes accessed as _n.siblings_,
+
+and producing substitutions that represent the set of matches for _n_ with respect to _pattern_.
+
+
+```python    
+def match(pattern, \($n$\), \($\theta$\)):
+    pattern = pattern\($\theta$\)
+    if pattern == \($n$\):
+       yield \($\theta$\)
+    elif is_var(pattern):
+       yield \($\theta[$\)pattern\($\mapsto$\) \($n$\)\($]$\)
+    else:
+       f(patterns) = pattern
+       for f(terms) in \($n.\mathit{siblings}$\):  
+          # e.g., with same head function symbol f
+          for \($\theta'$\) in matches(patterns, terms, \($\theta$\)):
+            yield \($\theta'$\)
+
+def matches(patterns, terms, \($\theta$\)):
+    if not patterns:
+       yield \($\theta$\)
+       return
+    for \($\theta'$\) in match(patterns[0], terms[0], \($\theta$\)):
+        for \($\theta''$\) in matches(patterns[1:], terms[1:], \($\theta'$\)):
+            yield \($\theta''$\)
+```
+
+The same algorithm can be presented in equational form with an extra argument $S$
+that accumulates substitutions.
+
+~MathPre
+
+ match(x, t, S)     &  =    & \{ \theta[x \mapsto t] \;\mid\; \theta \in S, x \not\in \theta \} 
+                    &       & \cup  \{ \theta \;\mid\; \theta \in S, x \in \theta, \theta(x) \in t.\mathit{siblings} \}
+ match(c, t, S)     &  =    & \emptyset\                 \mathsf{if} c \not\in t.\mathit{siblings}
+ match(c, t, S)     &  =    & S                 \mathsf{if} c \in t.\mathit{siblings}
+ match(f(ps), t, S) &  =    & \bigcup_{f(ts) \in cc(t)} match(ps_n, ts_n, \ldots, 
+                    &       &                                 match(ps_1, ts_n, S))
+~
+
+### E-matching - code trees 
+
+The straight-forward E-matching algorithm is expensive when it is invoked from scratch for every possible 
+candiate of pattern and node during search. To share work across patterns and terms Z3 compiles patterns
+into a _code tree_ data-structure that contains dynamically compiled set of instructions to perform matching.
+The instructions can be regarded as a partial evaluation of the naive algorithm for fixed patterns. The
+instruction set allows merging code sequences from different patterns by sharing common prefixes.
+Substitutions are stored in registers, backtracking just updates the registers.
+
+The abstract maching machine uses an array of registers $reg[i]$ to store sub-terms. 
+Instructions are stored at program counters and each instruction refers to a next program counter.
+
+Consider the following pattern
+
+~ Math
+              f(X, g(X,a), h(Y), b)
+~ 
+
+It compiles into a sequence of instructions as follows:
+
+|----------|-------------------------|---------------------------------------------------|
+| PC       | Instruction             |                                                   |
++----------+-------------------------+---------------------------------------------------+
+| $pc_0$   | init(f, $pc_1$)         |    add arguments of $f$ to registers 1-4          |
++----------+-------------------------+---------------------------------------------------|
+| $pc_1$   | check(4,$b$,$pc_2$)     |    check if $reg[4]$ is congruent to $b$          | 
++----------+-------------------------+---------------------------------------------------+
+| $pc_2$   | bind(2, $g$, 5, $pc_3$) |    bind terms in $reg[2]$ with $g$ to $5-6$       |
++----------+-------------------------+---------------------------------------------------+
+| $pc_3$   | compare(1, 5, $pc_4$  ) |    check if $reg[1]$ equals $reg[5]$              |
++----------+-------------------------+---------------------------------------------------+
+| $pc_4$   | check(6, $a$, $pc_5$)   |    check if $reg[6]$ is congruent to $a$          |
++----------+-------------------------+---------------------------------------------------+
+| $pc_5$   | bind(3, $h$, 7, $pc_6$) |    bind terms in $reg[3]$ with $h$ to $7$         |
++----------+-------------------------+---------------------------------------------------+
+| $pc_6$   | yield(1,7)              |    output binding from $reg[1], reg[7]$           |
++----------+-------------------------+---------------------------------------------------+
+
+Let us trace the instructions for the term $f(h(a),g(h({\color{red}{c}}), a), h(c),b)$
+
+|----------|-------------------------|---|------------------------------------------------|
+| PC       | Instruction             |   | $f(h(a),g(h({\color{red}{c}}), a), h(c),b)$                      |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_0$   | init(f, $pc_1$)         |   | $reg[1:4] \leftarrow h(a), g(h({\color{red}{c}}),a), h(c), b$ |
++----------+-------------------------+---+------------------------------------------------|
+| $pc_1$   | check(4,$b$,$pc_2$)     |   | $reg[4] = b$                                   | 
++----------+-------------------------+---+------------------------------------------------+
+| $pc_2$   | bind(2, $g$, 5, $pc_3$) |   | $reg[5:6] \leftarrow h({\color{red}{c}}), a$                  |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_3$   | compare(1, 5, $pc_4$  ) |   | $reg[1] = h(a) \neq h({\color{red}{c}}) = reg[5]$             |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_4$   | check(6, $a$, $pc_5$)   |                                                   ||
++----------+-------------------------+---------------------------------------------------||
+| $pc_5$   | bind(3, $h$, 7, $pc_6$) |                                                   ||
++----------+-------------------------+---------------------------------------------------||
+| $pc_6$   | yield(1,7)              |                                                   ||
++----------+-------------------------+---------------------------------------------------||
+
+
+If we instead use the term $f(h(a),g(h({\color{blue}{a}}), a), h(c),b)$, we get the following execution
+
+|----------|-------------------------|---|------------------------------------------------|
+| PC       | Instruction             |   | $f(h(a),g(h({\color{blue}{a}}), a), h(c),b)$      |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_0$   | init(f, $pc_1$)         |   | $reg[1:4] \leftarrow h(a), g(h({\color{blue}{a}}),a), h(c), b$ |
++----------+-------------------------+---+------------------------------------------------|
+| $pc_1$   | check(4,$b$,$pc_2$)     |   | $reg[4] = b$                                   | 
++----------+-------------------------+---+------------------------------------------------+
+| $pc_2$   | bind(2, $g$, 5, $pc_3$) |   | $reg[5:6] \leftarrow h({\color{blue}{a}}), a$                  |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_3$   | compare(1, 5, $pc_4$  ) |   | $reg[1] = h(a) = h({\color{blue}{a}}) = reg[5]   $             |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_4$   | check(6, $a$, $pc_5$)   |   | $reg[6] = a$                                   |
++----------+-------------------------+---+------------------------------------------------|
+| $pc_5$   | bind(3, $h$, 7, $pc_6$) |   | $reg[7] \leftarrow c$                          |
++----------+-------------------------+---+------------------------------------------------|
+| $pc_6$   | yield(1,7)              |   | $X \leftarrow h(a) = reg[1], Y \leftarrow c = reg[7]$ |
++----------+-------------------------+---+------------------------------------------------|
+
+
+Patterns that share common (top-down) term structure can share code sequences.
+
+  *  This saves on common work.
+
+  *  Use the choice instruction to branch when patterns end up having different sub-terms.
+
+Other instructions are possible, 
+
+   *  forward pruning: lookahead multiple function symbols in immediate subterms before diving into any subterm.
+
+   *  to deal with _multi-patterns_, when maching more than one pattern at a time.
+
+### Inverted path indexing
+
+During search, congruence classes are merged and we would like to learn which merges
+should trigger new pattern match attempts. Z3 uses a filter called an _inverted path index_
+that trackes when a pattern is potentially useful for matching. 
+
+~ Example
+The pattern $f(X, g(X,a), h(Y), b)$ contains the subterm $g(X, a)$ in position 2.
+The merge between $n_1$ and $n_2$ can potentially trigger a new match when
+$n_1.\mathit{siblings}$ contains a node labeled by $g$, and $n_2$ has a parent labeled by $f$, 
+and occurs as a second position of $f$.
+~
+
+Z3 pre-computes an index based on $f, g$ pairs like these and check if it is triggered 
+for some $f, g$ pair and pattern when nodes $n_1, n_2$ are merged.
 
 ## MBQI
 
