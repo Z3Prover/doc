@@ -65,6 +65,9 @@ Package       : bussproofs
 \newcommand{\Aext}{\mathit{ext}}
 \newcommand{\valueOf}[1]{[\![#1]\!]}
 \newcommand{\Nodes}{\mathit{Nodes}}
+\newcommand{\strategy}{\mathit{strategy}}
+\newcommand{\level}{\mathit{level}}
+\newcommand{\Atoms}{\mathit{Atoms}}
 ~
 
 

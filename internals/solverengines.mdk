@@ -48,15 +48,15 @@ $A = \Theory(M,F)$, when the verdict $A$ is either a propagation or decision.
 
 \mbox{Conflict} & \langle M; F \rangle                        & \Rightarrow & \langle M; F; C \rangle                                & C = \Theory(M, F) 
 
-\mbox{Propagate} & \langle M; {F} \rangle                      & \Rightarrow & \langle M, A; F \rangle                                 & A = \Theory(M, F) 
+\mbox{Augment} & \langle M; {F} \rangle                      & \Rightarrow & \langle M, A; F \rangle                                 & A = \Theory(M, F) 
 
 \mbox{Unsat} & \langle M; \emptyset, {F} \rangle           & \Rightarrow & UNSAT 
 
-\mbox{Backtrack} & \langle M, \Decision{\overline{\ell}}; {F}; C \rangle & \Rightarrow & \langle M, \Propagation{\ell}{C}; {F} \rangle         & \ell \in {C}
+\mbox{Resume} & \langle M, \Decision{\overline{\ell}}; {F}; C \rangle & \Rightarrow & \langle M, \Propagation{\ell}{C}; {F} \rangle         & \ell \in {C}
 
 \mbox{Resolve} & \langle M, \Propagation{\ell}{C'}; F; {C}\rangle     & \Rightarrow & \langle M; F; (C \setminus \{\overline{\ell}\}) \cup (C'\setminus\{{\ell}\}) \rangle & \overline{\ell} \in {C}
 
-\mbox{Learn} & \langle M, A; F; C \rangle               & \Rightarrow & \langle M; F; {C} \rangle                              & otherwise
+\mbox{Backtrack} & \langle M, A; F; C \rangle               & \Rightarrow & \langle M; F; {C} \rangle                              & otherwise
 
 ~
 
@@ -103,8 +103,20 @@ and therefore establishes the theory propagation
 ~~
 We are again eliding the unit literal $x + y < 0$ from the explanation for $\neg(y > 0)$.
 ~
-[^unitremove]: To keep the formula short we have applied a shortcut and removed the literal $\neg(x + y < 0)$ from the conflict clause. In practice, solvers automatically remove unit literals that are false from conflict clauses. 
+[^unitremove]: To keep the formula short we have applied a shortcut and removed the literal $\neg(x + y < 0)$ from the conflict clause.
+In practice, solvers automatically remove unit literals that are false from conflict clauses. 
 
+### Other Inference Rules
+
+In the initial overview of the CDCL(T) loop we left out other inference rules that are integral to efficient search.
+
+* Learn: Conflict clauses are added to the set of formulas $F$. Conflict clauses are marked as redundant.
+
+* Restart: A suffix of the current partial model $M$ is abandoned.
+
+* In-processes: clauses are inferred or marked redundant based on global inferences. 
+
+* Garbage Collection: Redundant clauses are removed from $F$. 
 
 ### Invariants
 
@@ -141,5 +153,77 @@ in the CDCL(T) engine as an _end-game_ solver.
 
 ## SPACER
 
+Formulas that range over _Constrained Horn Clauses_ (CHC) are solved using a dedicated engine, SPACER.
+
+
+
 ## QSAT
 
+The QSAT algorithm determines satisfiability of quantified formulas using theories that allow quantifier projection.
+There are two instances of QSAT, one for combinations of linear arithmetic, algebraic datat-types, bit-vectors and arrays,
+the other is for non-linear polynomial arithmetic formulas over reals.
+The algorithm can be viewed as playing a _game_ of satisfying a quantifier-free body of a formula with quantifier prefix.
+An _existential_ player attemps to satisfy the body by finding instances to the existential quantifiers,
+the _universal_ player attempts to satisfy the negation of the body by finding instances to the universal quantifiers.
+The game is played by processing the quantifiers outside-in.
+If a player get stuck, it is either because the formula is satisifable, unsatisfiable, or a solution to an outer quantifier
+was a losing move. It uses unsatisfiable cores and _quantifier projection_ to create a quantifier free formula that blocks
+the previous outer move.
+
+We provide an outline of QSAT using an example.
+
+~ Begin Example
+
+Assume we have the formula
+
+
+~~ MathPre
+F & = & z \geq 0 \land ((x \geq 0 \land y \geq 0) \lor y + z \leq 1) 
+G & = & \exists x \forall y \exists z \ . \ F
+~~
+
+Then $F_1 = F, F_2 = \neg F, F_3 = F, F_4 = \neg F$.
+
+The existential player works on odd levels, and the universal player at even levels.
+Subformulas are assigned two kinds of levels, $\level_\forall$, which is the
+highest index of a universally quantified variable, while $\level_\exists$
+is the highest index of an existentially quantified variable.
+
+A player at level $j-1$ can use a _strategy_ to force an opponent $j$ to satisfy sub-formulas it has control over.
+The strategy formula is conjoined to $F_j$ when player $j$ attempts to find a solution to variables that are
+quantified at its level.
+
+When a player is unable to make a move, the formula $F_j \land \strategy$ is unsatisfiable, it computes an unsatisfiable core
+based on the strategy and projects variables at level $j$ based on the solution that player $j-1$ used to satisfy $\neg F_j$.
+
+* First we determine if $F_1$ is satisfiable, it is with model $M = [x \mapsto 0, z \mapsto 3, y \mapsto -2]$.
+The atomic formulas $x \geq 0$ and $z \geq 0$ and $y + z \leq 1$ are true. 
+
+* $\strategy(M, 2) = z \geq 0 \land x \geq 0$, because $\level_\forall(z \geq 0) = \level_\forall(x \geq 0) = 0$, but
+$\level_\forall(y \geq 0) = \level_\forall(y + z \leq 1) = 2$.
+Since there are no universal quantifiers in the formula $z \geq 0$, 
+we have $\level_\forall(z \geq 0) = 0$.
+
+* $F_2 \land x \geq 0 \land z \geq 0$ is satisfiable with model $M = [x \mapsto 0, z \mapsto 3, y \mapsto -1]$.
+
+* $\strategy(M, 3) = z \geq 0 \land x \geq 0 \land \neg (y \geq 0)$ because $\level_\exists(y + z \leq 1) = 3$ 
+and $\level_\exists(y \geq 0) = 0$. 
+
+* $F_3 \land z \geq 0 \land x \geq 0 \land \neg (y \geq 0)$ is satisfiable with model $M = [x \mapsto 0, z \mapsto 0, y \mapsto -1]$.
+
+* $F_4 \land z \geq 0 \land x \geq 0 \land \neg (y \geq 0) \land y + z \leq 1$ is unsatisfiable, in particular, 
+$
+	\neg F \implies \neg (z \geq 0 \land y + z \leq 1).
+$
+So we set $I := \neg (z \geq 0 \land y + z \leq 1)$ and compute $J := \Mbp(M, z, z \geq 0 \land y + z \leq 1) = y \leq 1$.
+So $F_2 \leftarrow F_2 \land \neg (y \leq 1)$ and search back-jumps to level 2. 
+
+* $F_2$ is satisfiable with model $M = [x \mapsto -1, y \mapsto 2, z \mapsto -3]$.
+
+* $F_3 \land \neg (x \geq 0) \land \neg (y \leq 1)$ is unsatisfiable with core $\neg (x \geq 0)$, and we back-jump to $j = 1$.
+
+* $F_1$ is satisfiable with $M = [x \mapsto 0, z \mapsto 3, y \mapsto 2]$.
+
+* $F_2 \land z \geq 0 \land z \geq 0$ is unsatisfiable, hence $F$ is true.
+
+~ End Example
