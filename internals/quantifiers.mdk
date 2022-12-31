@@ -24,7 +24,7 @@ Let us start with an example of quantifier instantiation using E-matching in act
 Consider the formula 
 
 ~~ Math
-  \underbrace{(\forall x \ . \ f(g(x,c)) \simeq a)}_{p_\varphi} \land b \simeq c \land g(c,b) \simeq c \land f(b) \neq a
+  \underbrace{(\forall x \ . \ f(g(x,c)) \simeq a)}_{p_\varphi} \land b \simeq c \land g(c,b) \simeq c \land f(b) \not\simeq a
 ~~
 
 The smallest subterm properly containing the bound variable $x$ is ${\color{red}g(x,c)}$ in $f({\color{red}g(x,c)}) \simeq a$.
@@ -32,7 +32,7 @@ The only other occurrence of the function $g$ is $g(c,b)$ in the equality $g(c,b
 Based on the ground equality $b = c$ $g(c,c) \sim g(c,b)$ so we can instantiate $x$ by $c$ and infer
 
 ~~ Math
-  (p_{\varphi} \rightarrow f(g(b,c)) \simeq a
+  p_{\varphi} \rightarrow f(g(b,c)) \simeq a
 ~~ 
 The formulas are now ground unsatisfiable.
 

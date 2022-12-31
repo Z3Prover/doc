@@ -502,14 +502,20 @@ The decision procedure maintains for every array node $n$ the following sets
 When $n_1$ is merged with $n_2$, and $n_1$ is the new root, the sets from $n_2$ are added to $n_1$.
 The merge also looks for new redexes when $n$ and $n'$ are merged:
 
-* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n)$, $\lambda \in \mathit{ParentLambdas}(n')$
-* Assert $\lambda[j] = \beta(\lambda[j])$ for every $A[j] \in \mathit{ParentSelects}(n)$, $\lambda \in \mathit{Lambdas}(n')$
+~ Math
+\AxiomC{$n \sim n'$}
+\AxiomC{$A[j] \in \mathit{ParentSelects}(n)$}
+\AxiomC{$\lambda \in \mathit{Lambdas}(n') \cup \mathit{ParentLambdas}(n')$}
+\TrinaryInfC{$n \simeq n' \implies \lambda[j] = \beta(\lambda[j])$}
+\DisplayProof
+~
 
 For enforcing $\Astore(A, i, v)[j] = \beta(\Astore(A, i, v)[j])$ the solver only instantiates the axiom $i \simeq j \lor \Astore(A, i, v)[j] \simeq A[j]$
 because the axiom $\Astore(A,i,v)[i] \simeq v$ is instantiated eagerly when the term $\Astore(A, i, v)$ is created.
 
 Extensionality is enforced on pairs of array terms $A, B$, that are in _shared_ positions. An array term is in a shared position when it occurs on side of an equality or under a function that is not part of the theory of arrays. Furthermore, to ensure congruence for lambdas, if $A \equiv \lambda x \ . \ M$ is a lambda term in a shared position
-and $B$ is in a shared position, the axiom $\lambda x \ . \ M \simeq B \implies \forall i \ . \ M[x/i] \simeq B[i]$ is instantiated. Thus, lambda equality is at this point
+and $B$ is in a shared position, the axiom $\lambda x \ . \ M \simeq B \implies \forall i \ . \ M[x/i] \simeq B[i]$ is instantiated. Thus, lambda equality is 
+at the time of writing
 enforced by a reduction to quantified formulas.
 
 

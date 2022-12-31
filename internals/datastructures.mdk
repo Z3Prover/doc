@@ -36,11 +36,26 @@ As Section [#sec-cdcl-t] outlines, the SAT solver maintains a set of ground clau
 propagations and in this process consults the theory solver $\Theory(M;F)$ for the next propagation, case split or
 whether $M$ is a theory consistent model of $F$.
 
+There is a good reason why the theory of equality is central: this theory is shared among all other theories.
+Disjoint theory solvers establish satisfiability by reconciling equalities among shared sub-terms.
 
-* Map from E-nodes to set of theories
-* Attaching theories with E-nodes
-* Propagating truth values to theories
-* Propagating equalities between EUF and theories
+Every E-node has an attached set of theory solvers. A theory solver for a theory $T$ gets attached to a node $n$ when
+
+* $n.f$, the function symbol of $n$, is from the signature of $T$.
+* $n.P$, a parent of $n$, belongs to $T$.
+* The sort of $n$ is handled by $T$.
+
+Then, when a Boolean node $n$ is assigned to $\true$ or $\false$ by the CDCL solver, the truth assignment to $n$
+is broadcast to all solvers attached to $n$. 
+Similarly, when two nodes $n, n'$ are merged, and the theory $T$ is attached to a sibling of $n$ and a sibling of $n'$, 
+then the equality $n \simeq n'$ is broadcast to $T$.
+
+In some cases the core also broadcasts disequalities between E-nodes. 
+Solvers cannot rely on complete propagation of disequalities, it is generally 
+too costly to enumerate all pairwise disequalities.
+Propagation of disequalities is triggered by when the CDCL(T) core asserts a
+disequality $n \not\simeq n'$, or when a theory solver propagates a disequality.
+
 * Common data-structures for theories
 
 ### Model-based theory combination
