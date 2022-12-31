@@ -29,9 +29,30 @@ variables.
 * Lambdas as arrays
 --->
 
-## Compiling terms and formulas into Clauses and E-nodes
+## Compiling terms and formulas into clauses and E-nodes
 
-* Replay
+While the input to Z3 is a set of formulas, the core solver works with clauses and E-nodes.
+The _internalization_ process converts formulas into the internal data-structures bottom-up.
+Every sub-term that corresponds to a Boolean connective is compiled, thanks to the Tseitin transformation,
+into a fresh literal with associated set of clauses that define the literal.
+The terms from Boolean connectives may be assigned E-nodes, but the nodes do not
+participate in congruence rules, nor are, by default, allowed to be merged with the constants $\true$ or $\false$:
+The CDCL(T) engine already enforces congruence rules and consistency with assignments to $\true/\false$.
+The default is overridden if a term occurs as an argument to a non-Boolean connective. For eample
+in the term $f(a \land b)$, the node $n_{a \land b}$ merges with $\true/\false$ when the truth value
+to the literal $\ell_{a \land b}$ is propagated. In this way, congruence closure can ensure consistency with
+respect to occurrences of $f$.
+
+Compilation of terms into E-nodes uses a top-down traversal of terms. The top-down traversal is replicated in each theory solver
+where the compilation of terms depends on the solver. The arithmetic solver, for instance, compiles the term $x + y + x$ into a
+node $n$ and adds the basic row $n = 2x + y$. Top-down compilation does not play well with small static stack sizes allocated by
+$C++$ runtimes. The new core in Z3 therefore introduces a visitor pattern to allow top-down processing without using recursion stacks.
+
+E-nodes are compiled dynamically during search. When a quantifier is instantiated or a solver introduces a new lemma that uses new terms, the
+E-nodes corresponding to new terms are introduced at a search level that may later be popped. Learned clauses may refer to these new terms
+in a scope where they are no longer internalized into E-nodes. The core solver therefore interacts with the scope mechanism of the CDCL solver
+to _replay_ literals that are defined in deeper scopes. 
+
 
 ## Interaction with the CDCL(T) core
 
@@ -192,6 +213,19 @@ are treated as Boolean connectives because they are compiled into clauses where 
 
 
 ## The power of propagation
+
+Efficient Theory propagaiton can have a profound effect on overall efficiency of solving.
+Congruence closure is therefore tightly integrated with Boolean propagation: when equality reasoning can infer that an equality
+atom $n \simeq n'$ is true or false, it is useful to propagate this fact eagerly. Congruence closure in Z3 therefore has special
+handling of equality literals. An equality $n \simeq n'$ is both a term with the binary function $\simeq$ and an atom.
+Other atoms are also tracked. For example if $p(t)$ is a unary predicate then the E-node data-structure also tracks the Boolean variable
+that is associated with $p(t)$. When $t$ is equated to $t'$ and $p(t')$ is assigned to true or false, then congruence closure propagates
+the assignment on to $p(t)$. The propagation is justified by the premises for the equality $t \simeq t'$.
+Any overhead of propagating within the E-graph is outweighed by the benefits it brings to pruning the search space.
+
+## Dynamic Ackermann reductions
+
+
 
 ## Iterative deepening for finite models
 
