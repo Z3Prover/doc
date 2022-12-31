@@ -29,6 +29,10 @@ variables.
 * Lambdas as arrays
 --->
 
+## Compiling terms and formulas into Clauses and E-nodes
+
+* Replay
+
 ## Interaction with the CDCL(T) core
 
 In Z3, the solver for the theory of equality acts as a gate-keeper between the SAT solver and solvers for other theories.
@@ -69,7 +73,123 @@ For example, the array solver maintained several attributes, such as the select 
 
 ## Model-based theory combination
 
+The main theories, arrays, arithmetic, algebraic data-types, uninterpreted functions are signature disjoint.
+A central ingredient in combining theory solvers into a complete solver is to reconcile equalities between
+shared sub-terms. Z3 uses a method called _model-based theory combination_ to broadcast equalities on demand.
+
+
+~ Begin Example
+Consider the following formula that combines arithmetic for integers $x$, $y$ and the uninterpreted function $f$.
+
+~~ Math
+  x = f(y-1), f(x) \neq f(y), 0 \leq x \leq 1, 0 \leq y \leq 1
+~~
+
+The purified version of the formula takes the form, where we introduce a proxy variable $z$ for the term
+$y-1$:
+
+~~ Math
+  {\color{blue}{x = f(z), f(x) \neq f(y)}}, {\color{red}{0 \leq x \leq 1, 0 \leq y \leq 1, z = y - 1}}
+~~
+~ End Example
+
+Purification is a formal tool to help us reason about theory combinations. In practice, no new variables
+are introduced. The proxy variable $z$ is just a shorthand for the term $y - 1$.
+
+Returning to our example, the theory solver for $f$ and the solver for arithmetic only need to reconcile
+equalities between shared sub-terms $x, y, z$ in order to establish satisfiability of the overall formula.
+The theory of equality that handles $f$ is agnostic to the specific values of $x, y, z$ but needs to know
+which values are equal and disequal.
+
+~ Begin Example
+Suppose we have a model over arithmetic that sets $x = y = 1, z = 0$ and a model for $f$ that
+sets $x = \star_1, y = \star_2, z = \star_1$,
+$f(x) = \mathit{if}\ x = \star_1\ \mathit{then}\ \star_1\ \mathit{else}\ \star_2$.
+The two models cannot be reconciled as the equality $x \simeq y$ from the arithmetical model contradicts the
+partition imposed by the EUF model.
+
+~ End Example
+
+
+The way Z3 reconciles the equalities is by inspecting the E-graph on final checks.
+If a theory solver induces an equality between two nodes $n, n'$,
+but $n \not\sim n'$ (the nodes are not in the same equivalence class), then
+the theory solver creates a fresh atom $n \simeq n'$ and sets the _phase_ of the atom to $\true$.
+The atom is introduced to the CDCL(T) solver that performs a case split on it.
+The _phase_ of a literal is a flag that instructs the solver to choose the case split.
+It first case splits on $n \simeq n'$ and only backtracking and propagation may force the case $n \not\simeq n'$.
+
+~ Begin Example
+The arithmetic solver creates the literal $x \simeq y$ and the CDCL(T) core assumes this equality.
+Since $x,y$ are shared, the equality is known to both theories. The equality contradicts the EUF
+theory, and it infers $x \not\simeq y$. The arithmetic solver is able to produce a new model, however,
+where $x = 0, y = 1, z = 0$. It creates the equality atom $x \simeq z$, which does not contradict the
+EUF model.
+~ End Example
+
+
+Note that equalities for finite domain theories, such as bit-vectors, are determined by
+complete propositional assignments in final states that is visible to all theories because
+all terms are assigned values from the finite domain.
+
+
 ## Relevancy filtering
+
+The E-matching and MBQI methods for instantiating quantifiers, and the methods for solving the array theory,
+rely on essentially checking a constraints that a satisfying model must meet. The number of quantifier
+instantiations and axiom instantiations grows with the number of constraints and they are often more harmful,
+as they increase the search space, than of use.
+Z3 uses _relevancy filtering_ to filter the Boolean assignments that are made visible to the theory solvers.
+It is inspired by search in semantic Tableau, where establishing satisfiability of a disjunction is
+split into separate branches that process the disjuncts in isolation. 
+
+In Z3 relevancy filtering is set up during clausification. The result of clausifying a Boolean formula
+is a set of _root_ clauses and a set of _definition_ clauses.
+The goal is to establish a labeling of literals as _relevant_ such that
+
+- the set of relevant literals satisfies _roots_
+
+- there is a set of blocked literals that can be used to satisfy the clauses in _defintions_
+independent of their real assignment.
+
+
+The idea is that the _definition_ clauses are obtained from Tseitin transformation so they can be
+grouped by the blocked literal that was used to introduce them.
+For example, when clausifying $a \land b$ we have the clauses
+
+~ MathPre
+  \neg (a \land b) \lor a
+  \neg (a \land b) \lor b
+  \neg a \lor \neg b \lor (a \land b)
+~
+
+then the literal for $a \land b$ is blocked.
+And recursively for clauses introduced for $a, b$ if they use a Boolean connectives
+at top level.
+
+
+Relevancy filtering applies a set of state transitions to update whether literals
+and terms are relvant and should be exposed to the theory solvers. The transitions for setting a literal $\ell$ and node $n$ to relevant are:
+
+* A literal $\ell$ is assigned and $\ell$ appears positively in a _root_ clause $C$ and no other literal in $C$ are relevant. 
+* $\ell$ is inferred as a unit clause
+* The equality $n \simeq n'$ is assigned and $n'$ is relevant.
+
+
+Roots and definitions are updated as well:
+
+* When $\ell$ is assigned relevant, then all _definitions_ where $\ell$ occurs negatively are added to _roots_.
+
+* When a clause is added to _roots_ then:
+  * If it already contains a positive relevant literal it is skipped.
+  * If there is a positive literal (but no other positive relevant literals), the positive literal is set relevant.
+
+* When a clause is added to _definitions_ and it contains a negative relevant literal, the clause is added instead to _roots_.
+
+* When $n$ is set relevant, arguments that don't represent Boolean connectives are set relevant. If-then-else terms
+are treated as Boolean connectives because they are compiled into clauses where the clausal relevancy propagation takes effect.
+
+
 
 ## The power of propagation
 
