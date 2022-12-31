@@ -76,9 +76,8 @@ as explained in the context of Z3 in [@MouraB09].
 
 
 
-## Base Theories
 
-### Boolean Theories
+## Boolean Theories
 Bit-vectors are in the current solver treated as tuples of Boolean variables and all bit-vector
 operations are translated to Boolean SAT. The approach is called bit-blasting.
 Only mild equational reasoning is performed over bit-vectors.
@@ -97,7 +96,8 @@ Examples of cardinality, Bit-vectors
 ~
 
 
-### Equality and Uninterpreted Functions
+
+## Equality and Uninterpreted Functions
 
 This theory captures a shared property of all theory: that equality is a congruence relation. 
 The theory is described many places, including in [@BjornerMNW18].
@@ -138,7 +138,7 @@ When the children of the equality term $a \simeq n_1$ are merged into the same e
 term $a \simeq n_1$ is set to true. This contradicts that $a \simeq n_1$ is already set to false.
 
 
-#### E-Node
+### E-Node
 
 ~ Framed
 TODO add citations to main sources: DST, NO (Oliveras), Simplify Report
@@ -186,7 +186,7 @@ the node $n$ and uses the $\rootNode$ function when computing the current hash o
 and equalities with other nodes.
 
 
-#### Merge
+### Merge
 
 The main functionality of congruence closure is to ensure that all equivalene classes that follow
 from equalities are inferred. It exposes the main function merge($n_1, n_2, j$) to
@@ -228,7 +228,7 @@ of a class to be the node representing the value.
 
 
 
-#### Unmerge
+### Unmerge
 
 All operations on the E-Graph can be inverted. For this purpose, every merge is recorded in an _undo trail_.
 Other operations that update nodes are recorded in the same trail. For example when $p$ is appended to $r_2.P$
@@ -241,14 +241,14 @@ The effect of unmerge($r_1, r_2$) is as follows:
 |:~~~~~~~~~~~~~|:~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 | Erase        | __for each__ $p \in r_2.P$ __added from__ $r_1.P$:                                        |
 |              | \ \ erase $\mathit{etable}[p.f, \rootNode(p.ts)]$                                     |
-| UnJusti      | unjustify($r_1, r_2, j$)                                                                  |
+| UnJustify    | unjustify($r_1, r_2, j$)                                                                  |
 | Revert Root  | $r_1.\find \leftarrow r_1$                                                                |
 | Insert       | __for each__ $p \in r_1.P$:                                                               |
 |              | \ \ __if__ $p.cg \neq p \lor \rootNode(p.ts) \neq \rootNode(p.cg)$                        |
 |              | \ \ \ \ \ $\mathit{etable}[p.f,\rootNode(p.ts)] \leftarrow p.cg \leftarrow  p$            |
 
 
-#### Justifications 
+### Justifications 
 
 A justification is a reason for merging two nodes.
 There are two possible reasons for merging nodes:
@@ -289,7 +289,7 @@ Use cases within CDCL(T), that leverages amortized effect of backtracking search
 hedge on that the cost finding a strongest conflict up front is outweighed by multiple attempts that converge on
 sufficiently strong conflicts.
 
-#### From justifications to proofs
+### From justifications to proofs
 
 We can create proofs from first-principles by using justifications.
 Suppose $\rootNode(s) = \rootNode(t)$ follows from a sequence
@@ -356,19 +356,23 @@ Then a proof of $s \simeq t$ can be extracted using overloaded functions $\pi$:
 
 
 
-#### Control
+### Control
 
 * Congruence closure and Boolean reasoning
   * Do enough CC to speed up search (unit propagation)
   * Don't do too much CC when Boolean search takes care of it.
 
-#### A note on complexity
+### A note on complexity
+
+
+
 
 
 
 [INCLUDE="arithmetic.mdk"]
 
 ## Reducible Theories
+
 
 ### Refinement Types
 Let us illustrate a use of _reduction_ from richer theories to base theories based on 

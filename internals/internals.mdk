@@ -46,7 +46,7 @@ Package       : bussproofs
 \newcommand{\onenorm}[1]{|\!|#1|\!|_1}
 \newcommand{\Th}{{T}}
 \newcommand{\relaxOp}{\mathit{relax}}
-\newcommand{\restrictOp}{\mathit{restrict}}
+\newcommand{\restrictOp}{restrict}
 \newcommand{\Decision}[1]{#1^\delta}
 \newcommand{\Propagation}[2]{#1^{#2}}
 \newcommand{\Theory}{\mathit{Theory}}

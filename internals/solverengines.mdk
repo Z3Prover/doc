@@ -1,4 +1,4 @@
-# Solver Engines
+# Solver Cores
 
 Z3 contains a collection of core engines for solving formulas.
 The engine used by default is based on the CDCL(T) architecture, but other engines

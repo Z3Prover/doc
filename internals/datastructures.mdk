@@ -1,23 +1,55 @@
-# Fundamental data-strutures, algorithms and heuristics
+# Inside of data-strutures, algorithms and heuristics
+
+This section pops the abstraction level and examines the main data-structures, organization, 
+algorithms and heuristics that are central to implementation of Z3. We examine the data-structures
+used for terms and formulas and then describe the setting for how theory solvers interact 
+with the main CDCL(T) engine. 
 
 ## Terms and Formulas
 
+Z3 treats terms and formulas as a single entity, expressions. Expressions of Boolean type can be used as formulas, 
+but they can also be nested within non-Boolean terms, as arguments to functions. Expressions are _hash-consed_, meaning
+they are unique up to term structure. It uses a hash-table when constructing a fresh term, such that if the same function
+is applied to the same arguments as a previously constructed term, 
+the result of creating the term is the same pointer as old term.
+
+Variables that are to be bound by quantifiers are indexed using de-Brujin conventions, 
+such that the index used for the inner-most quantified variable is 0, and incremented outwards.
+For example $\exists x \forall y, z, p(x, y, z)$ uses de-Bruijn indices 0 for $z$ and 1 for $y$, and 2 for $x$.
+To spare users an error-prone process of keeping track of indices, 
+the external API offers a facility to create a quantified expression using a set of constant expressions instead of
+variables. 
+
+<!---
 * term structure
   * free/bound variable de-Bruijn index
   * function and arguments
   * quantifier
 * hash-cons
 * Lambdas as arrays
+--->
 
-## Model-based theory combination
+## Interaction with the CDCL(T) core
 
-## Relevancy filtering
+In Z3, the solver for the theory of equality acts as a gate-keeper between the SAT solver and solvers for other theories.
+As Section [#sec-cdcl-t] outlines, the SAT solver maintains a set of ground clauses $F$ and performs case splits and 
+propagations and in this process consults the theory solver $\Theory(M;F)$ for the next propagation, case split or
+whether $M$ is a theory consistent model of $F$.
 
-## The power of propagation
 
-## Iterative deepening for finite models
+* Map from E-nodes to set of theories
+* Attaching theories with E-nodes
+* Propagating truth values to theories
+* Propagating equalities between EUF and theories
+* Common data-structures for theories
 
+### Model-based theory combination
 
+### Relevancy filtering
+
+### The power of propagation
+
+### Iterative deepening for finite models
 
 ### Incrementality
 
@@ -25,10 +57,3 @@
 * Undo-trail
 * equi-satisfiability
 
-## Theory solver data-structures
-
-* Theory variables - access to subset of E-nodes relevant for theory
-
-* The power of propagation
-
-* The power of filtering
