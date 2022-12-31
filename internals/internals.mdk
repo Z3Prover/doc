@@ -15,11 +15,13 @@ Author        : Christoph Wintersteiger
 Affiliation   : Microsoft Research
 Bibliography  : refs.bib
 
+Doc class     : article
 
 Colorizer     : python
 Bib style     : plainnat
 Bibliography  : example
 Logo          : True
+Package       : fullpage
 Package       : url
 Package       : amssymb
 Package       : [curve]xypic

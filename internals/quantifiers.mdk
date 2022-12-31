@@ -197,7 +197,210 @@ and occurs as a second position of $f$.
 Z3 pre-computes an index based on $f, g$ pairs like these and check if it is triggered 
 for some $f, g$ pair and pattern when nodes $n_1, n_2$ are merged.
 
-## MBQI
+## Model-based Quantifier Instantiation [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13]
+
+Model-based Quantifier Instantiation, MBQI, is based on a simple concept of using ground models
+to model check quantifiers, and extracting substitutions from quantifiers that fail the model check.
+Conceptually, MBQI uses the procedure:
+
+Check $\psi \land \forall x \ . \ \varphi[{x}]$\
+
+__while__ $\psi$ is SAT with model $M$:\
+\ \  __if__  $\neg \varphi^M[{x}]$ is UNSAT __return__ SAT\
+\ \  $M \leftarrow $ model for $\neg \varphi^M[{x}]$ \
+\ \  find $t$, such that $x \not\in t, t^M = x^M$.\
+\ \  $\psi \leftarrow \psi \land \varphi[t]$\
+__return__ UNSAT\
+
+where $t^M$ is $t$ partially evaluated using interpretation $M$.
+
+~ Begin Example
+
+Assume we have a model $M := [y \mapsto 3, f(x) \mapsto \mathit{if}\ x = 1\ \mathit{then}\ 3\ \mathit{else} \ 5]$
+and term $t :=  y + f(y) + f(z)$.
+Then the specialization of $t$ with respect to $M$ is
+~~ Math
+t^M = 8 + \mathit{if}\ z = 1\ \mathit{then}\ 3\ \mathit{else} \ 5
+~~
+~ End Example
+
+MBQI offers a powerful setting to perform quantifier reasoning when
+the searchspace for instantiation terms is finite. This is the case for several fragments:
+EPR, UFBV, Array property fragment, Essentially UF.
+MBQI can also be combined with a set of templates to search over instantiation terms.
+
+### EPR
+
+Effectively Propositional Reasoning, also known as Bernays-Schoenfinkel-Ramsey class comprises
+for formulas with relations, equalities, universally quantified variables, constants but no functions.
+Formally, it can be described as a set of formulas of the form:
+
+~MathPre
+EPR & ::= \exists e_1\ldots e_n \forall u_1\ldots u_m F
+F   & ::= \bigwedge_i C_i
+C   & ::= \bigvee_j L_i
+L   & ::= A | \neg A
+A   & ::= p(\vec{V}) | V = V'
+V   & ::= e_i | u_j
+~
+
+EPR is decidable, as seen from a brute-force decision procedure:
+
+* Skolemize 
+  * $\forall u_1\ldots u_m F$, the $e_1, \ldots, e_n$ are free constants
+* Instantiate 
+  * $\bigwedge_{\theta} F\theta$ 
+  * where $\theta$ ranges over all bindings of $u_i$ to $e_j$.
+* Check ground SAT
+* Ground SAT implies finite model of size at most $n$.
+
+MBQI can be used to harness the set of groundings.
+
+* Skolemize
+  * $\forall u_1\ldots u_m F$, the $e_1, \ldots, e_n$ are free constants
+
+* Models for $\neg F$ bind variables $u_1, \ldots, u_m$ to free constants
+
+* The number of possible such models is bounded by $m^n$.
+
+
+### UFBV [@WintersteigerHM13]
+
+~ MathPre
+F   & ::= \exists e : bv[n] . F | \exists u : bv[n] . F | F \wedge F | C
+C   & ::= \bigvee_j L_i
+L   & ::= A | \neg A
+A   & ::= p(\vec{T}) | T = T' | \mathtt{bvle}(T, T') | \ldots
+T   & ::= f(\vec{T}) | u | v | \mbox{bit-vector expression}
+bv[n] & ::= \mbox{bit-vector of length $n$}
+~
+
+
+UFBV is decidable:
+
+* All variables range over finite domains.
+
+* Quantifier-free fragment is not only NP hard, it is NEXPTIME hard.
+  * QF-UFBV can be encoded into EPR. [@SeidlLB12]
+
+* Quantified fragment is another complexity jump.
+
+* BV - quantifier elimination [@JohnC16;@JohnC13;@JohnC11]
+
+* UFBV using MBQI [@WintersteigerHM13]
+  * Use templates to find general instances
+
+### Map Property Fragment [@BradleyMS06]
+
+~ MathPre
+MP    & ::= \exists \vec{e} . \forall \vec{u} . \bigwedge (G \Rightarrow F)
+G     & ::= G \wedge G | A_G
+A_G   & ::= T[u] \simeq T[u] | T[] \not\simeq T[u]
+T[x]  & ::= x | e
+F     & ::= F \vee F | A_F | \neg A_F
+A_F   & ::= T[a[u]] \simeq T[a[u]] 
+~
+
+~ Begin Example
+
+Let us express the following in the Map Property Fragment:
+
+* $a$ is equal to $b$ except at index $e$.
+
+* $c$ can only have two values, $e_1$ or $e_2$.
+
+~~ MathPre
+  \forall u \ . \ a[u] \simeq e
+  \forall u \ . \ u \not\simeq e \ \Rightarrow a[u] \simeq b[u]
+  \forall u \ . \ c[u] \simeq e_1 \ \vee c[u] \simeq e_2
+~~
+
+~ End Example
+ 
+### Array Property Fragment [@BradleyMS06]
+
+The Array Property Fragment extends the Map Property Fragment by allowing limited arithmetic.
+
+~ MathPre
+AP   & ::= \exists \vec{e} . \forall \vec{u} . \bigwedge (G \Rightarrow F)
+G    & ::= G \wedge G | A_G
+A_G  & ::= T_G \geq T_G
+T_G  & ::= u | T[]
+T[x]  & ::= x | e | k\times T[x] | T[x] + T[x]
+F    & ::= F \vee F | A_F | \neg A_F
+A_F  & ::= T_F \geq T_F | R(T_F, \ldots, T_F) 
+T_F  & ::= T[a[u]]
+k    & ::= \mbox{a numeric constant}
+R    & ::= \mbox{a predicate}
+~
+
+The claim is that the array property fragment admits a finite set of instantiations.
+
+* Given formula $\varphi := \forall \vec{u} . \bigwedge (G \Rightarrow F)$ with $\vec{e}$ free.
+
+* Let $\mathcal{I} = \{ c_1, \ldots, c_m \}$ be set of a set of $T[] \cup \{ 0 \}$ from $\varphi$.
+
+~ Definition
+The set $\mathcal{I}$ is a _sufficient set of instances_ for $\varphi$, if
+  
+    $\forall u \ . \ \bigvee_{c \in \mathcal{I}} \bigwedge_{A_G} (A_G \Rightarrow A_G[c/u])$
+ 
+~
+
+* In other words, for every possible instantiation of $u$ there is a $c$
+  that satisfies at least the same combination of guards.
+
+
+~ Proposition
+  If $\varphi$ admits a finite sufficient set of instances $\mathcal{I}$, it can be evaluated using those.
+~
+
+~ Proposition
+  Formulas in the array and map property fragments admit a sufficient set of instantiations.
+~
+
+~ Proposition
+  MBQI is a decision procedure the array and map property fragments by using the
+  instantiation sets computed from the formulas.
+~
+
+### Essentially Uninterpreted Fragment [@GeM09]
+
+The Array Property Fragment can be seen as an instance of a class of formulas
+where instantiations can be extracted based on a set of grammar rules that are extracted
+from the formulas.
+
+This fragment thus applies to wider range of formulas than the syntactic array property fragment.
+It also captures fragments studied in different contexts:
+
+* the list property fragment by McPeak and Necula
+* several locally finite theories by Stokkermans et. al.
+
+
+~ Begin Example
+
+```smt
+(set-option :smt.mbqi true)
+;; f an g are "streams"
+(declare-fun f (Int) Int)
+(declare-fun g (Int) Int)
+
+;; the segment [a, n + a] of stream f is equal to the segment [0, n] of stream g.
+(declare-const n Int)
+(declare-const a Int)
+(assert (forall ((x Int)) (=> (and (<= 0 x) (<= x n))
+                              (= (f (+ x a)) (g x)))))
+
+;; adding some constraints to a
+(assert (> a 10))
+(assert (>= (f a) 2))
+(assert (<= (g 3) (- 10)))
+
+(check-sat)
+(get-model)
+```
+
+~ End Example
 
 ## MBP
 

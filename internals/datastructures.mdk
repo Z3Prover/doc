@@ -1,4 +1,4 @@
-# Inside of data-strutures, algorithms and heuristics
+# Data-structure and algorithm internals
 
 This section pops the abstraction level and examines the main data-structures, organization, 
 algorithms and heuristics that are central to implementation of Z3. We examine the data-structures
@@ -56,17 +56,26 @@ too costly to enumerate all pairwise disequalities.
 Propagation of disequalities is triggered by when the CDCL(T) core asserts a
 disequality $n \not\simeq n'$, or when a theory solver propagates a disequality.
 
-* Common data-structures for theories
+The set of terms tracked by a given theory is always a subset of all terms used in a formula.
+Particularly, if a formula encodes bit-vector properties, there are thousands of terms used for encoding
+Boolean formulas. Those terms are irrelevant to the theories. Each theory therefore maintains a dense
+encoding of the terms it tracks by maintaining an array of E-nodes associated with the theory.
+The index into this array is the identifier of the theory variable. This identifier is stored in the E-node
+data-structure so that when the core broadcasts an equality about $n \simeq n'$ it accesses the theory variables $v_n$
+and $v_{n'}$ that are indices to the array and broadcast $v_{n} \simeq v_{n'}$. The original nodes $n, n'$ are accessed
+from the theory solver's array, together with other attributes of $n, n'$ that are specific to the theory solver.
+For example, the array solver maintained several attributes, such as the select terms where an array node occurs.
 
-### Model-based theory combination
 
-### Relevancy filtering
+## Model-based theory combination
 
-### The power of propagation
+## Relevancy filtering
 
-### Iterative deepening for finite models
+## The power of propagation
 
-### Incrementality
+## Iterative deepening for finite models
+
+## Incrementality
 
 * External and internal scopes
 * Undo-trail
