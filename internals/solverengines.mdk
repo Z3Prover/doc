@@ -35,7 +35,7 @@ We use the following verdicts of a theory invocation $\Theory(M;F)$:
 * A propagation $\Propagation{\ell}{C}$. The theory solver propagates a literal $\ell$.
 * A decision $\Decision{\ell}$. 
 
-Thus, the verdict determes whether the partial model extends to a model of the theories, 
+Thus, the verdict determines whether the partial model extends to a model of the theories, 
 can identify a subset of $M$ as an unsatisfiable core, 
 propagate the truth assignment of a literal $\ell$, or create a new case split $\Decision{\ell}$ for a
 literal $\ell$ that has not already been assigned in $M$.
@@ -140,7 +140,7 @@ TODO: "peel the onion" further in the user-propagator section based on VMCAI mat
 ## NLSAT (MC-SAT)
 
 Z3 contains a dedicated engine for non-linear arithmetic over polynomials (Tarski's fragment [@Tarski]) [@JovanovicM12].
-The theory is decidable using cylindric algebraic decomposition (CAD) [@Collins74]. The NLSAT engine implements the decision
+The theory is decidable using cylindrical algebraic decomposition (CAD) [@Collins74]. The NLSAT engine implements the decision
 procedure for polynomial arithmetic. It uses a _model constructing satisfiabiltiy engine_ (MC-SAT) to guide uses of CAD to
 a focused set of conflict clauses. Thus, the CAD algorithm is used on fragments of the entire formula for determining
 satisfiability as opposed to globally on an entire formula.
@@ -175,12 +175,12 @@ under the model.
 ## QSAT { #sec-qsat }
 
 The QSAT algorithm determines satisfiability of quantified formulas using theories that allow quantifier projection.
-There are two instances of QSAT, one for combinations of linear arithmetic, algebraic datat-types, bit-vectors and arrays,
+There are two instances of QSAT, one for combinations of linear arithmetic, algebraic data-types, bit-vectors and arrays,
 the other is for non-linear polynomial arithmetic formulas over reals.
 They build on results developed in [@BjornerAbstract10;@PhanBM12;@BjornerJ15] and for solving NLSAT and Model-based projection
 introduced for SPACER.
 The algorithm can be viewed as playing a _game_ of satisfying a quantifier-free body of a formula with quantifier prefix.
-An _existential_ player attemps to satisfy the body by finding instances to the existential quantifiers,
+An _existential_ player attempts to satisfy the body by finding instances to the existential quantifiers,
 the _universal_ player attempts to satisfy the negation of the body by finding instances to the universal quantifiers.
 The game is played by processing the quantifiers outside-in.
 If a player get stuck, it is either because the formula is satisifable, unsatisfiable, or a solution to an outer quantifier
@@ -202,7 +202,7 @@ G & = & \exists x \forall y \exists z \ . \ F
 Then $F_1 = F, F_2 = \neg F, F_3 = F, F_4 = \neg F$.
 
 The existential player works on odd levels, and the universal player at even levels.
-Subformulas are assigned two kinds of levels, $\level_\forall$, which is the
+Sub-formulas are assigned two kinds of levels, $\level_\forall$, which is the
 highest index of a universally quantified variable, while $\level_\exists$
 is the highest index of an existentially quantified variable.
 

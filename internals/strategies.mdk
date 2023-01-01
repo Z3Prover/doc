@@ -7,15 +7,15 @@ Terminology "Strategies" is based on z3guide, but we don't define it below.
 Z3 exposes more than 100 _tactics_ for solving or decomposing goals into one or more sub-goals.
 Tactics can be composed to form new more powerful tactics that meet needs of custom solving tasks.
 Tactics, in the context of Z3, were introduced in [@MouraP13], there is a set of samples
-for using tactics [online](https://microsoft.github.io/z3guide/docs/strategies/tactics), and many tactis are
+for using tactics [online](https://microsoft.github.io/z3guide/docs/strategies/tactics), and many tactics are
 [summarized with examples](https://microsoft.github.io/z3guide/docs/strategies/summary).
 While we have to refer to the online sources for what various tactics accomplish and how to configure them
 we will here summarize an ontology of tactics and provide a high-level guide towards using main tactics.
 
 The first aim of a user is likely well captured by an aim to gain
 _insights into selection of suitable tactics for specific problems_.
-We will not here attempt to catalogue a mapping from problem classes to tactic combinations,
-the space is too open ended and a partial categorization requires signfiicant effort.
+We will not here attempt to catalog a mapping from problem classes to tactic combinations,
+the space is too open ended and a partial categorization requires significant effort.
 The reality is that selecting suitable tactics remains an experimental craft: for a given class of
 problems a user can try available tactics on small instances to measure their effects to deduce overall effects.
 Tactic selection has even been the focus of integration with machine learning tools [@BalunovicBV18].
@@ -126,7 +126,7 @@ To summarize, Alive2's main tactic and solver options are as follows:
 
 All tactics create at least one sub-goal. If a tactic is able to determine satisfiability of a goal, the subgoal contains
 no assertions. If it determines unsatisfiability, the subgoal contains the assertion $\false$. Otherwise, the subgoal
-is a set of assertions. Several subgoals can be viewed as a subgoal comntaining the disjunction of assertions from each subgoal.
+is a set of assertions. Several subgoals can be viewed as a subgoal containing the disjunction of assertions from each subgoal.
 The relationship between the original goal and subgoals is determined by what the tactic accomplishes. The tactic may produce a subgoal
 that either
 
@@ -213,7 +213,7 @@ These are
 There are also several general purpose tactics that apply only well in selected settings as they may carry more overhead.
 
 * `ctx-simplify` - eliminates sub-formulas based on a contextual analysis. For example $a \land (a \implies b)$ can be reduced to $a \land b$
-becaues the second occurrence of $a$ is true in the conjunctive context.
+because the second occurrence of $a$ is true in the conjunctive context.
 * `demodulator` - extracts rewrite rules from quantified equalities and applies them.
 
 Then there are tactics developed to handle specific kinds of formulas. They allow targeting features of a backend that are better amenable
@@ -259,8 +259,8 @@ re-adding formulas that were modified, and retracting the effect of the model co
 A common user issue is around inconsistent behavior of the solver whether it is used in incremental or non-incremental mode. Under the hood,
 the difference in behaviors is caused by non-incremental mode using a combination of default tactics to pre-process the (only) formula being solved.
 Once the solver is used in incremental mode (after a context `push` or after the first `check-sat`) Z3 switches to a solver mode that does not use
-the pre-processing tactics. Specifically, the `solve-eqs` and `elim-uncnstr` tactics can have drammatic effect on solvability over many user scenarios
-and they are not incremntal.
+the pre-processing tactics. Specifically, the `solve-eqs` and `elim-uncnstr` tactics can have dramatic effect on solvability over many user scenarios
+and they are not incremental.
 
 As a sneak peek into functionality in the works,
 configuring z3 with `sat.smt=true` from the command-line switches to a new CDCL(T) core where a set of pre-set tactics,

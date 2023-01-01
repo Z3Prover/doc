@@ -6,7 +6,7 @@ The SPACER engine solves constrained Horn clauses over a limited set of theories
 support for algebraic datatypes, arrays and bit-vectors).
 
 Quantifier reasoning is also available within the CDCL(T) core. Here it relies on _quantifier instantiation_ engines.
-We descibe the main engines in use.
+We describe the main engines in use.
 
 
 ## E-matching [@MouraB07]
@@ -86,13 +86,13 @@ that accumulates substitutions.
 ### E-matching - code trees 
 
 The straight-forward E-matching algorithm is expensive when it is invoked from scratch for every possible 
-candiate of pattern and node during search. To share work across patterns and terms Z3 compiles patterns
+candidate of pattern and node during search. To share work across patterns and terms Z3 compiles patterns
 into a _code tree_ data-structure that contains dynamically compiled set of instructions to perform matching.
 The instructions can be regarded as a partial evaluation of the naive algorithm for fixed patterns. The
 instruction set allows merging code sequences from different patterns by sharing common prefixes.
 Substitutions are stored in registers, backtracking just updates the registers.
 
-The abstract maching machine uses an array of registers $reg[i]$ to store sub-terms. 
+The abstract matching machine uses an array of registers $reg[i]$ to store sub-terms. 
 Instructions are stored at program counters and each instruction refers to a next program counter.
 
 Consider the following pattern
@@ -173,13 +173,13 @@ Other instructions are possible,
 
    *  forward pruning: lookahead multiple function symbols in immediate subterms before diving into any subterm.
 
-   *  to deal with _multi-patterns_, when maching more than one pattern at a time.
+   *  to deal with _multi-patterns_, when matching more than one pattern at a time.
 
 ### Inverted path indexing
 
 During search, congruence classes are merged and we would like to learn which merges
 should trigger new pattern match attempts. Z3 uses a filter called an _inverted path index_
-that trackes when a pattern is potentially useful for matching. 
+that tracks when a pattern is potentially useful for matching. 
 
 ~ Example
 The pattern $f(X, g(X,a), h(Y), b)$ contains the subterm $g(X, a)$ in position 2.
@@ -219,7 +219,7 @@ t^M = 8 + \mathit{if}\ z = 1\ \mathit{then}\ 3\ \mathit{else} \ 5
 ~ End Example
 
 MBQI offers a powerful setting to perform quantifier reasoning when
-the searchspace for instantiation terms is finite. This is the case for several fragments:
+the search space for instantiation terms is finite. This is the case for several fragments:
 EPR, UFBV, Array property fragment, Essentially UF.
 MBQI can also be combined with a set of templates to search over instantiation terms.
 
