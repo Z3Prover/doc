@@ -1,8 +1,4 @@
-# Strategies { #sec-tactics }
-
-~ Framed
-Terminology "Strategies" is based on z3guide, but we don't define it below.
-~
+# Tactics
 
 Z3 exposes more than 100 _tactics_ for solving or decomposing goals into one or more sub-goals.
 Tactics can be composed to form new more powerful tactics that meet needs of custom solving tasks.

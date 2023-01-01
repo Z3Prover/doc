@@ -133,9 +133,6 @@ enforce the main invariants:
 
 That is, each conflict clause is a consequence of $F$ and each propagation is also a consequence of $F$, and the premises of a propagation is justified by $T$.
 
-~ Framed
-TODO: "peel the onion" further in the user-propagator section based on VMCAI material? In other words, expose more information about internal control.
-~
 
 ## NLSAT (MC-SAT)
 
@@ -145,9 +142,6 @@ procedure for polynomial arithmetic. It uses a _model constructing satisfiabilti
 a focused set of conflict clauses. Thus, the CAD algorithm is used on fragments of the entire formula for determining
 satisfiability as opposed to globally on an entire formula.
 
-~ Framed
-Say something about the various data-structures used by NLSAT?
-~
 
 The NLSAT engine is available as a one-shot engine for non-linear arithmetic formulas. It is also integrated with decision procedures
 in the CDCL(T) engine as an _end-game_ solver. 

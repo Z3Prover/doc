@@ -157,6 +157,16 @@ so they are covered in less detail here.
 [INCLUDE="interfacing.mdk"]
 
 
+# Summary
+
+This document developed a bird's eye view of Z3 internals. It offered some ideas of
+the data-structures and algorithms used at a level to capture the gist
+in the format of an extended tool description.
+It also provided background on how users can interact with Z3 to develop encodings and operate the solver.
+A vast amount of details are omitted from this document. Some are described in papers that originally introduced the features, other details
+have yet to be distilled from implementations into a literate format.
+
+<!---
 # Directions
 
 * Programmability
@@ -165,7 +175,7 @@ so they are covered in less detail here.
 * New core
 * Local Search
 * PolySAT
-
+--->
 
 
 [BIB]

@@ -187,7 +187,7 @@ disjoint from any of the solver capabilities.
 * Non-linear integers
 --->
 
-### Programming Quantifiers
+### Programming Quantifiers { #sec-programming-q }
 
 Encoding problems with quantified formulas is extensively studied by users in the programming verification
 space. A thorough overview of trouble-shooting Z3 behavior for formulas using quantifiers 
@@ -197,16 +197,41 @@ is provided in the context of
 
 ## Extracting information from Z3
 
-### Models
+The primary means for retrieving information from z3 is by
+extracting _models_, unsatisfiable _cores_, _proof_ terms,
+or clause traces. Clause traces can be stored to a file or
+monitored directly during search. When run from the
+command-line you can specify to create a `trace` log.
+We summarize the methods below.
 
-### Partial models and E-nodes
+|:--------------------+:-------------------------------------------------------------------------------------------|
+| Interface           | Purpose                                                                                    |
+|---------------------+--------------------------------------------------------------------------------------------|
+| model               | Retrieve an interpretation of a satisfiable formula                                        |
+|                     | Set `smt.candidate_models=true` to to enable model production even if search is incomplete |
++---------------------+--------------------------------------------------------------------------------------------+
+| core                | Retrieve an unsatisfiable subset for the _assumption_ literals passed to the solver        |
+|                     | The cores can optionally be minimized                                                      |
++---------------------+--------------------------------------------------------------------------------------------+
+| proof               | Retrieve a proof term that tracks main inferences                                          |
+|                     | Proof terms are supported for a limited set of pre-processing rules                        |
++---------------------+--------------------------------------------------------------------------------------------+
+| clause trace        | Extract a DRUP(T) style clause trail from search                                           |
+|                     | It is relatively new functionality and subject to extensions and revisions                 |
++---------------------+--------------------------------------------------------------------------------------------+
+| trace               | Log a low level trace that can be processed using the _AxiomProfiler_ from ETHZ            |
++---------------------+--------------------------------------------------------------------------------------------+
+| API log             | Instrument the solver to log API calls into a sequence of instructions that can be replayed|
++---------------------+--------------------------------------------------------------------------------------------+
+| SMT log             | Instrument a solver exposed over the API to log assertions, push, pop as SMTLIB2 commands  |
++---------------------+--------------------------------------------------------------------------------------------+
+| Lemma log           | Instrument a solver to append to standard output a set of learned lemmas in SMTLIB2 format |
++---------------------+--------------------------------------------------------------------------------------------+
 
-### Cores
+For development and debugging purposes, you can configure Z3 in _verbose_ mode and instrument Z3's code with low level tracing.
 
-### Learned clauses
+The guide on programming quantifiers [#sec-programming-q]
+points to detailed information of using feedback from Z3
+to understand search behavior as a user.
 
-* Use the OnClause method
-* Print them to log during search
-
-### Proofs
 
