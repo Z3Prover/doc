@@ -120,40 +120,24 @@ The main point of reference for Z3 is the GitHub repository
 <https://github.com/z3prover/z3>
 ~
 
-~ Framed
-Extends material from _Navigating_ by Bj&oslash;rner and Nachmanson, SBMF 2020. (TODO cite)
+This document builds on top of and extends the material presented in [@BjornerN20] as part of a 
+shorter tutorial.
+
+You can use Z3 online from your browser. No installation is required
+
+~ Center
+<https://microsoft.github.io/z3guide>
 ~
 
-## Questions
+This guide complements the tutorial 
 
+~ Center
+<https://z3prover.github.io/papers/programmingz3.html>
+~
 
-* how do I tune formulas for z3?
-* can z3 tell me how to tune formulas?
-* can I control models (to be diverse, random)?
-* can I get E-graph information from z3?
-* how can I determine which strategies apply to my formulas?
-* how do solvers interact with the core
-
-### Conceptual categories
-
-* Feeding formulas to z3
-* Controlling sesarch and output behavior
-* Extracting information
-
-
-* Internal workings
-  * Data structures
-  * Algorithms
-  * Heuristics
-
-## Organization
-
-* data-structures
-* fundamental algorithms
-* pre-processing
-* decision procedures
-* solver engines
-  * architecture
+Some of the internals are already 
+described in depth in the _Programming Z3_ tutorial
+so they are covered in less detail here.
 
 
 [INCLUDE="solverengines.mdk"]
@@ -170,10 +154,7 @@ Extends material from _Navigating_ by Bj&oslash;rner and Nachmanson, SBMF 2020. 
 
 [INCLUDE="strategies.mdk"]
 
-
-
-
-# Interfacing with Z3
+[INCLUDE="interfacing.mdk"]
 
 
 # Directions

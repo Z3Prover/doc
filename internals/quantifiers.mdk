@@ -1,21 +1,15 @@
 # Quantifiers
 
-## Quantifier Engines in Z3
+The dedicated engines QSAT [#sec-qsat] and SPACER [#sec-spacer] handle classes of quantified formulas.
+The QSAT engine solves formulas using quantifier alternation over theories that allow quantifier elimination using model-based projection.
+The SPACER engine solves constrained Horn clauses over a limited set of theories (with arithmetic being central and including emerging
+support for algebraic datatypes, arrays and bit-vectors).
 
-* E-matching [@MouraB07] 
-
-* Model-based Quantifier Instantiation (MBQI) [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13] 
-
-* Quantifier Elimination and Satifiability [@BjornerAbstract10;@PhanBM12;@BjornerJ15] 
-
-* Horn Clauses [@HoderB12;@BjornerMR13;@GurfinkelEtAl] 
-
-* Deprecated: [@PiskacMB10] EPR using relational algebra, [@MouraB08a] Superposition, see also [VampireZ3]
-
-[VampireZ3]: https://vprover.github.io "VampireZ3"
+Quantifier reasoning is also available within the CDCL(T) core. Here it relies on _quantifier instantiation_ engines.
+We descibe the main engines in use.
 
 
-## E-matching
+## E-matching [@MouraB07]
 
 Let us start with an example of quantifier instantiation using E-matching in action.
 
@@ -402,7 +396,17 @@ It also captures fragments studied in different contexts:
 
 ~ End Example
 
-## MBP
+## Quantifier Elimination through Macro Introduction
 
-## Macro Elimination
+An important ingredient in quantifier reasoning is found in pre-processing.
+Pre-processing techniques may identify quantified assertions as macro definitions.
+Z3 contains several heuristics for identifying macros.
 
+
+
+<!---
+## Deprecated
+* [@PiskacMB10] EPR using relational algebra, [@MouraB08a] Superposition, see also [VampireZ3]
+
+[VampireZ3]: https://vprover.github.io "VampireZ3"
+--->

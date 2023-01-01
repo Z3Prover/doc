@@ -153,9 +153,11 @@ The NLSAT engine is available as a one-shot engine for non-linear arithmetic for
 in the CDCL(T) engine as an _end-game_ solver. 
 
 
-## SPACER
+## SPACER { #sec-spacer }
 
-Formulas that range over _Constrained Horn Clauses_ (CHC) are solved using a dedicated engine, SPACER.
+Formulas that range over _Constrained Horn Clauses_ (CHC) [@BjornerGMR15] 
+are solved using a dedicated engine, SPACER, [@Gurfinkel22]
+that builds on an engine inspired by IC3, [@HoderB12;@BjornerMR13].
 A Constrained Horn Clause is a formula of the form
 
 ~ MathPre
@@ -170,11 +172,13 @@ under the model.
 
 
 
-## QSAT
+## QSAT { #sec-qsat }
 
 The QSAT algorithm determines satisfiability of quantified formulas using theories that allow quantifier projection.
 There are two instances of QSAT, one for combinations of linear arithmetic, algebraic datat-types, bit-vectors and arrays,
 the other is for non-linear polynomial arithmetic formulas over reals.
+They build on results developed in [@BjornerAbstract10;@PhanBM12;@BjornerJ15] and for solving NLSAT and Model-based projection
+introduced for SPACER.
 The algorithm can be viewed as playing a _game_ of satisfying a quantifier-free body of a formula with quantifier prefix.
 An _existential_ player attemps to satisfy the body by finding instances to the existential quantifiers,
 the _universal_ player attempts to satisfy the negation of the body by finding instances to the universal quantifiers.

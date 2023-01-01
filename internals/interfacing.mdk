@@ -1,0 +1,78 @@
+# Interfacing with Z3 { #sec-interfacing }
+
+As we outlined in the introduction users of Z3 are likely less interested 
+in the finer details of internal representations than how to make Z3, whatever is under the hood,
+work better for their applications. The impatient reader might have already given up
+going over the internals, or just skipped to this section to learn about secret recipees for
+best using Z3.
+
+In the previous sections we have tried to address questions such as:
+
+* how do solvers interact with the core?
+* can I control models (to be diverse, random)?
+* how can I determine which strategies apply to my formulas?
+
+But we have not given focussed answers to questions, that cut to the chase of 
+using Z3 to make informed decisions on solving formulas.
+The purpose of this section is to touch on some broad themes around using 
+Z3 effectively with an eye on how the internals affect using Z3.
+
+## Feeding formulas into Z3
+
+### Sweet spots
+
+### Not so sweet spots
+
+### Finitization
+
+* From Arithmetic to Pseudo-Booleans
+
+* From Pseudo-Booleans to Bit-vectors
+
+* From Bit-vectors to propositional SAT
+
+* From Algebraic Data-types to bit-vectors
+
+* From Bounded arithemtic to bit-vectors
+
+* From Floating Point semantics to bit-vectors
+
+* Ackermann reduction
+
+### Arithmetic
+
+Z3's solver for arithmetic are arguably trained on the instances submitted by users and availble in the SMTLIB2 benchmark set.
+It uses a dual Simplex tableau where constants are represented using infinite precision arithmetic. There are no
+specialized representations using floating points for fixed-point arithmetic that can be significantly faster for important
+applications. Reasonable linear programming solvers uses floating point representations. Infinite precision incurs an impractical overhead on 
+standard linear programming applications. On the other hand, there is very little overhead incurred of infinite precision arithmetic for a 
+significant set of applications where Z3 is trained. It _can be significant_ however, on important application scenarios such as 
+Solidity smart contracts that involve very large constants.
+
+~ Framed
+_There are more reals than integers, so isn't search more constrained over integers?_
+~
+
+Problems don't get easier because you formulate them as non-linear integer problems instead of reals.
+Quantified formulas over reals polynomials are decided using the `nlqsat` tactic. On the other hand,
+the quantifier free theory of integer polynomials is undecideable by Matiyasevich's theorem.
+
+
+
+* Linear reals
+
+* Integer linear
+
+* Non-linear reals
+
+* Non-linear integers
+
+
+### Programming Quantifiers
+
+### Propagation strength, Conflict strength
+
+## Controlling sesarch and output behavior
+
+## Extracting information from Z3
+
