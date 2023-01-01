@@ -4,7 +4,7 @@ Z3 contains a collection of core engines for solving formulas.
 The engine used by default is based on the CDCL(T) architecture, but other engines
 are available and invoked for special classes of formulas where they are more suitable.
 
-## CDCL(T) - SAT in the light of Theory Solvers
+## CDCL(T) - SAT in the light of Theory Solvers { #sec-cdcl-t }
 
 We here describe the solvers marked as SAT and SMT in Figure [#fig-system].
 

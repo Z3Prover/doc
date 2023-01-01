@@ -29,6 +29,37 @@ variables.
 * Lambdas as arrays
 --->
 
+## Representing assertions
+
+From input and during pre-processing assertions are represented in a structure of the form
+
+~ MathPre
+ \langle & \varphi & : & \mathit{Bool}       & \mbox{the current formula}
+         & \pi     & : & \mathit{Proof}      & \mbox{a justification for the formula}
+         & \delta  & : & \mathit{Dependency} & \mbox{A dependency structure for the formula}
+ \rangle
+~
+
+For a standard input assertion $\varphi$ the structure is 
+initialized as $\langle \varphi, \mathtt{asserted}(\varphi), null \rangle$.
+The proof of $\varphi$ is that it was asserted. There are no dependencies for $\varphi$.
+
+Input assertions can also be _tracked_ for unsatisfiable cores.
+The SMTLIB2 contains syntax for adding _named_ formulas. The formulas are tracked by their names
+and the solver can produce unsatisfiable cores over the tracking names. 
+Internally, the names are treated as (fresh) Boolean literals. Thus, formulas can also be
+tracked by arbitrary formulas. The programmatic API contains a function `Z3_solver_assert_and_track`
+(and variants surfaced in various programming languages) that allows asserting a formula modulo
+a tracking assumption. When adding tracked formulas using tracking assumption $p$, the
+structure is initialzed as $\langle \varphi, \mathtt{asserted}(\varphi), p \rangle$.
+
+Tactics ([#sec-tactics]) perform updates on the triple representation by applying inferences.
+Properly producing proof objects for tactics and tracking dependencies is supported in a 
+best-effort manner: several tactics are disabled when the user requires proof objects or 
+tracking dependencies. Dependencies can be viewed as light-weight proof objects.
+The mechanism for tracking dependencies is based on tracking a cone of influence, by taking unions,
+of formulas used to derive a new consequence. 
+
 ## Compiling terms and formulas into clauses and E-nodes
 
 While the input to Z3 is a set of formulas, the core solver works with clauses and E-nodes.
@@ -92,7 +123,7 @@ from the theory solver's array, together with other attributes of $n, n'$ that a
 For example, the array solver maintained several attributes, such as the select terms where an array node occurs.
 
 
-## Model-based theory combination
+## Model-based theory combination { #sec-mbtc }
 
 The main theories, arrays, arithmetic, algebraic data-types, uninterpreted functions are signature disjoint.
 A central ingredient in combining theory solvers into a complete solver is to reconcile equalities between
@@ -223,11 +254,108 @@ that is associated with $p(t)$. When $t$ is equated to $t'$ and $p(t')$ is assig
 the assignment on to $p(t)$. The propagation is justified by the premises for the equality $t \simeq t'$.
 Any overhead of propagating within the E-graph is outweighed by the benefits it brings to pruning the search space.
 
-## Dynamic Ackermann reductions
+## Dynamic Ackermann reduction
 
+Basic implementations of CDCL(T) as presented in Section [#sec-cdcl-t] realize a proof system that has the power of regular resolution 
+for propositional logic. The proof system is relatively weak even for EUF when search is limited over the space of initial set of literals
+from a formula.
 
+~ Begin Example
+
+The following clauses are unsatisfiable over the theory of equalities, but the shortest resolution proof that only uses the atomic formulas from the input is in the order of $2^{100}$ clauses. The resolution proof involves clauses with all combinations of $b_i$ and $c_i$ for $i$ ranging from 0 to 99.
+~~ Math
+   a_0 \not\simeq a_{100} \land \displaystyle \bigwedge_{0 \leq i < 100}  
+	(a_i \simeq b_i \lor a_i \simeq c_i) \land 
+	(a_i \simeq b_i \implies b_i \simeq a_{i+1}) \land 
+	(a_i \simeq c_i \implies c_i \simeq a_{i+1})
+~~
+The proofs are linear if we admit clauses using fresh literals of the form
+
+~~ MathPre
+    (a_i \simeq b_i \land b_i \simeq a_{i+1} \implies a_i \simeq a_{i + 1})
+    (a_i \simeq c_i \land c_i \simeq a_{i+1} \implies a_i \simeq a_{i + 1})
+~~
+~ End Example 
+
+Z3 introduces dynamically such auxiliary clauses based on transitifity of equality and congruence rules of the form
+
+~ Math
+   t_1 \simeq s_1 \ldots t_k \simeq s_k \implies f(t_1, \ldots, t_k) \simeq f(s_1, \ldots, s_k)
+~
+
+The axioms are introduced for uninterpreted functions and related axioms are introduced for bit-vectors
+
+~ Math
+  \bigwedge_{i} (\mathit{bit2bool}_i(bv) \Leftrightarrow \mathit{bit2bool}_i(bv')) \implies bv \simeq bv'
+~
+
+where $(\mathit{bit2bool}_i(bv) \Leftrightarrow \mathit{bit2bool}_i(bv'))$ are compiled into new propositional literals
+for each bit position $i$ of bit-vectors $bv, bv'$.
+
+Dynamic Ackerman axioms can also, in theory, have the same effect for other theories, such as arithmetic.
+
+~ Begin Example
+The following arithmetic formula has no short vanilla CDCL(T) proof, but has a short proof if adding axioms for transitivity of inequality.
+
+~~ Math
+   a_0 > a_{100} \land \displaystyle \bigwedge_{0 \leq i < 100}  
+	(a_i \leq b_i \lor a_i \leq c_i) \land 
+	(a_i \leq b_i \implies b_i \leq a_{i+1}) \land 
+	(a_i \leq c_i \implies c_i \leq a_{i+1})
+~~
+~ End Example
+
+In Z3, the EUF and bit-vector theories track the number of times transitivity of equality and congruences are applied in conflicts.
+It introduces the Ackermann axioms based on thresholds. A user can control the thresholds.
+An important question for applications is _when is dynamic Ackermann reduction useful?_ 
+The cost-benefit of introducing new literals into the search space has to be weighed. 
+Importaly, for applications where the main expectation is that formulas are satisfiable, dynamic Ackermann reduction can be detrimental.
+Users could disable dynamic Ackermann reduction and gain signficiant performance.
 
 ## Iterative deepening for finite models
+
+You can declare and reason about recursive functions with Z3. The SMTLIB2 standard introduces recursive function definitions
+and you can add recursive function declarations over the programmatic APIs.
+
+In the following we define two recursive functions `length` (the length of a list) and `nat-list` (a predicate whether a list 
+of integers contains only non-negative inters).
+
+~ Begin Example
+
+```smt
+(define-fun-rec length ((ls (List Int))) Int
+   (if ((_ is nil) ls) 0 (+ 1 (length (tail ls)))))
+
+(define-fun-rec nat-list ((ls (List Int))) Bool 
+   (if ((_ is nil) ls)
+       true
+       (and (>= (head ls) 0) (nat-list (tail ls)))))
+
+(declare-const list1 (List Int))
+(declare-const list2 (List Int))
+(assert (> (length list1) (length list2)))
+(assert (not (nat-list list2)))
+(assert (nat-list list1))
+```
+
+~ End Example
+
+To check satisfiability of a set of ground assertions of these functions, Z3 unfolds the definitions incrementally.
+It uses iterative deepening to control the unfolding depth. Internally, it uses _assumption literals_ that are 
+introduced by the theory solver for recursive functions to control the unfolding depth[^simon]
+
+[^simon]: thanks to Simon Cuares for initiating the implrementation for recursive functions.
+
+The main CDCL(T) solver is now wrapped in an outer loop where assumption literals are supplied by theory solvers, 
+and unsatisfiable cores that contain these assumption literals are presented to the theory solvers that can then
+extend their depth bounds. There is an advantage to maintaining finer-grained depth bounds, that is, separate 
+assumption literals for each recursive function and each recursive branch within a function [@PassmoreCIABKKM20].
+
+The theory of sequences also uses iterative deepending to control the search for finite length sequences.
+The sequence (string) theory also uses a `contains` predicate that captures when a sequence is a subsequence of another.
+Positive occurrences of `contains` can be reduced to solving string equalities, but negative occurrences of `contains` 
+are more tricky. They are treated as recursive functions over sequences. Their unfolding is controlled by size bounds
+of the arguments to `contains`.
 
 ## Incrementality
 
