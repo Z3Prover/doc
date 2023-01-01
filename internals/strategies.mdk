@@ -98,7 +98,7 @@ as variables tend to have large bit-widths.
 
 Besides tactics, there are also the SMT solver (and tactics) parameters.
 For example, Z3 has two algorithms for quantifier instantiation: E-matching
-and MBQI [@mbqi].
+and MBQI.
 These algorithms have different characteristics and each will perform best with
 certain formulas and queries. It's left to the user to pick the best algorithm
 (through the `smt.ematching` config option).
@@ -111,6 +111,16 @@ the application (e.g., because NaNs are irrelevant or because NaNs are already
 handled properly), it can be disabled by setting `rewriter.hi_fp_unspecified` to true.
 Other cases include, for example, bit-vector division by zero.
 
+To summarize, Alive2's main tactic and solver options are as follows:
+```smt
+(set-option :model.partial true)
+(set-option :smt.ematching false)
+(set-option :smt.mbqi.max_iterations 1000000)
+(set-option :memory_high_watermark 2147483648)  ; soft 2 GB memory limit
+(set-option :rewriter.hi_fp_unspecified true)
+(and-then simplify propagate-values simplify elim-uncnstr qe-light
+          simplify elim-uncnstr reduce-args qe-light simplify smt)
+```
 
 ## A classification of tactics
 

@@ -155,7 +155,7 @@ in the CDCL(T) engine as an _end-game_ solver.
 
 ## SPACER { #sec-spacer }
 
-Formulas that range over _Constrained Horn Clauses_ (CHC) [@BjornerGMR15] 
+Formulas that range over _Constrained Horn Clauses_ (CHC) [@BjornerGMR15;@HSF]
 are solved using a dedicated engine, SPACER, [@Gurfinkel22]
 that builds on an engine inspired by IC3, [@HoderB12;@BjornerMR13].
 A Constrained Horn Clause is a formula of the form

@@ -342,9 +342,9 @@ of integers contains only non-negative inters).
 
 To check satisfiability of a set of ground assertions of these functions, Z3 unfolds the definitions incrementally.
 It uses iterative deepening to control the unfolding depth. Internally, it uses _assumption literals_ that are 
-introduced by the theory solver for recursive functions to control the unfolding depth[^simon]
+introduced by the theory solver for recursive functions to control the unfolding depth.[^simon]
 
-[^simon]: thanks to Simon Cuares for initiating the implrementation for recursive functions.
+[^simon]: Thanks to Simon Cuares for initiating the implementation for recursive functions.
 
 The main CDCL(T) solver is now wrapped in an outer loop where assumption literals are supplied by theory solvers, 
 and unsatisfiable cores that contain these assumption literals are presented to the theory solvers that can then
