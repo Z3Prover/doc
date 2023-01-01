@@ -21,9 +21,13 @@ Z3 effectively with an eye on how the internals affect using Z3.
 
 ### Sweet spots
 
-### Not so sweet spots
+### Sour spots
 
 ### Finitization
+
+~ Framed
+Shifting work to CDCL SAT core can produce significant speedups
+~
 
 * From Arithmetic to Pseudo-Booleans
 
@@ -37,9 +41,19 @@ Z3 effectively with an eye on how the internals affect using Z3.
 
 * From Floating Point semantics to bit-vectors
 
+
 * Ackermann reduction
 
+~ Framed
+Compiling arithmetic to SAT can produce significant slowdowns
+~
+* Finite domain arithmetic vs.\ polyhedral arithmetic
+
 ### Arithmetic
+
+~ Framed
+_Z3 subsumes LP and MIP, I should be able to use it for solving LP and MIP problems_
+~
 
 Z3's solver for arithmetic are arguably trained on the instances submitted by users and availble in the SMTLIB2 benchmark set.
 It uses a dual Simplex tableau where constants are represented using infinite precision arithmetic. There are no
@@ -57,8 +71,14 @@ Problems don't get easier because you formulate them as non-linear integer probl
 Quantified formulas over reals polynomials are decided using the `nlqsat` tactic. On the other hand,
 the quantifier free theory of integer polynomials is undecideable by Matiyasevich's theorem.
 
+~ Framed
+_I want to solve formulas using trigonometric functions and exponents. Z3 allows such formulas so why doesn't it work?_
+~
+There is no reasoning support for trigonometric functions and exponentiation. 
+Z3's API supports calculation with extension fields over algebraic numbers, a feature that is
+disjoint from any of the solver capabilities.
 
-
+<!---
 * Linear reals
 
 * Integer linear
@@ -66,9 +86,14 @@ the quantifier free theory of integer polynomials is undecideable by Matiyasevic
 * Non-linear reals
 
 * Non-linear integers
-
+--->
 
 ### Programming Quantifiers
+
+Encoding problems with quantified formulas is extensively studied by users in the programming verification
+space. A thorough overview of trouble-shooting Z3 behavior for formulas using quantifiers 
+is provided in the context of 
+[$F\star$](http://fstar-lang.org/tutorial/book/under_the_hood/uth_smt.html).
 
 ### Propagation strength, Conflict strength
 
