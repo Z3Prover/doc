@@ -6,48 +6,147 @@ work better for their applications. The impatient reader might have already give
 going over the internals, or just skipped to this section to learn about secret recipees for
 best using Z3.
 
-In the previous sections we have tried to address questions such as:
+In the previous sections we have included material in an effort to address questions such as:
 
 * how do solvers interact with the core?
 * can I control models (to be diverse, random)?
 * how can I determine which strategies apply to my formulas?
 
-But we have not given focussed answers to questions, that cut to the chase of 
+But we have not given focussed answers to questions that cut to the chase of 
 using Z3 to make informed decisions on solving formulas.
 The purpose of this section is to touch on some broad themes around using 
 Z3 effectively with an eye on how the internals affect using Z3.
 
 ## Feeding formulas into Z3
 
-### Sweet spots
+The first layer of interaction with SMT solvers is invariably about how to formulate problems
+in a way that they match better tuned back-ends. Formula encoding is arguably a source for
+where the most speedup can be gained. This experience is shared with constraint programming (CP)
+and mixed-integer programming (MIP) solvers. The SMT format offers some flexibility in encoding
+formats (you can write disjunctions without introducing big $M$ variables on your own), but
+using all features is not necessarily an advantage.
 
-### Sour spots
-
-### Finitization
-
-~ Framed
-Shifting work to CDCL SAT core can produce significant speedups
-~
-
-* From Arithmetic to Pseudo-Booleans
-
-* From Pseudo-Booleans to Bit-vectors
-
-* From Bit-vectors to propositional SAT
-
-* From Algebraic Data-types to bit-vectors
-
-* From Bounded arithemtic to bit-vectors
-
-* From Floating Point semantics to bit-vectors
-
-
-* Ackermann reduction
+We here mention a few examples of encoding scenarios.
 
 ~ Framed
-Compiling arithmetic to SAT can produce significant slowdowns
+Using string constants to represent cases of a finite domain is not great.
 ~
-* Finite domain arithmetic vs.\ polyhedral arithmetic
+
+The string and sequence solver in Z3 is tailored for solving string equations. It has no special handling when
+it only processes equations of the form $x \simeq "abc"$ that comprise a variable $x$ and a string constant.
+Applications should not use strings in this case. They can use a finite enumeration sort or bit-vectors.
+
+~ Framed
+Solving Sudoko problems with integers is far worse than with bit-vectors.
+~
+
+Sudoko problems have natural formalization using integers. They really only require the `distinct` constraint over a finite domain `1..9`.
+The SAT solver is much more effective at solving such constraints (the all-difference constraint is not built into Z3, so has to be programmed
+[externally if it is useful](https://github.com/Z3Prover/z3/tree/master/examples/userPropagator)).
+
+
+~ Framed
+Stick with integers or bit-vectors. Mixed formulas are not solved efficiently.
+~
+
+There are functions for converting integers to bit-vectors (`int2bv`) and from bit-vectors to integers (`bv2nat`).
+The trigger creating axioms that capture the meaning of these functions. The axioms incur overhead both for bit-vector
+reasoning and integer reasoning. The solvers decoupled and don't integrate strong propagation for mixed integer/bit-vector reasoning.
+
+~ Framed
+Adding constraints that break symmetries tends to have a dramatic effect on problems with symmetries.
+~
+
+Symmetries are major obstacle to CDCL and essentially all $T$ solvers.
+There is limited built-in support for breaking symmetries of problems over EUF, but otherwise applications
+should carefully encode problems in a way that resolve symmetries.
+
+## Controlling sesarch and output behavior
+
+### Limitations of CDCL
+
+~ Framed
+_SAT is a solved problem, right?_
+~
+
+Z3 integrates a reasonably efficient SAT solver. There are more efficient modern SAT solvers,
+specifically Kissat is available for one-shot problems and CaDiCaL supports incrementality.
+While there can be a significant gap between problems solved by Kissat and Z3's SAT engine
+on SAT problems they share some underlying principles that have known limitations.
+
+* CDCL is horrible at xor reasoning. By nature CDCL SAT searches for regular resolution proofs.
+Applications that produce parity constraints tend to not have any short regular resolution proofs.
+A domain solver, based on CryptoMiniSAT, for xor constraints is currently being integrated as a theory solver.
+Yet, even with native xor reasoning, the art of synthesizing strong lemmas during xor search remains an open problem.
+
+* Z3 is more stable for unsatisfiable problems than satisfiable problems. CDCL solvers are particularly good at finding
+small resolution proofs. Favoring phase caching (e.g., `smt.phase_caching_on=80000`) is observed to help on satisfiable problems.
+Tuning of phase caching is among one of the recent advances in Kissat and Z3 borrows some of the ideas.
+
+~ Framed
+_Parallel Z3 doesn't offer any speedups_
+~
+
+* For problems expected with a satisfiable outcome, you can often with some advantage
+activate parallel SAT solving within the SAT core by setting `sat.threads=N`. It spawns `N` threads that work on the same problem.
+Running separate instances with different random seeds may also reduce overall latency in getting answers.
+
+* There is an option to run solvers in parallel by _cube and conquer_ decomposition. The idea of cube and conquer is to partition
+a problem based on one or more case splits (cubes). The cubes are found using a lookahead solver that measures and estimates the
+benefits of case splitting on Boolean variables. Cube and conguer solving has been used successfully for solving _small_ but hard
+combinatorial problems. A sweet spot for cube and conquer is to decompose problems into more constrained partititions that each
+have small resolution proofs. Z3's lookahead solver is exposed over the API. It can be used to produce cubes and integrated in a specialzed solver.
+It has shown to be useful also on deomposing larger combinatorial problems solved in a distributed cloud environment.
+Note that Z3 does not offer any automatic guidance for tuning the ratio and frequency of cubing to conquering and the default settings are unlikely to
+produce speedups, and much more likely to slow down overall solving.
+
+
+
+### Ackermann reductions
+
+~ Framed
+Shifting reasoning about uninterpreted functions to the CDCL SAT core can produce significant speedups
+~
+
+Z3 contains both pre-processing and in-processing techniques for Ackermann reduction.
+It replaces uninterpreted functions by propositional logic. Ackermann reduction incurs
+significant asymptotic overhead, quadratic in the number of a function occurrence, so it
+is only useful when the number of function occurrences is small (in the tens). The EUF decision
+procedure is much more scalable in general.
+
+~ Framed
+Shifting reasoning about uninterpreted functions to the CDCL SAT core is not practical for large formulas
+~
+
+### Converting arithmetic to propositional reasoning
+
+~ Framed
+Shifting work to the CDCL SAT core can produce significant speedups
+~
+
+There are several tactics that support transformations from integer arithmetic to
+propositional reasoning.
+
+* `lia2pb` from bounded arithmetic to Pseudo-Boolean formulas
+* `card2bv` from Pseudo-Boolean formulas to bit-vector formulas or other circuit encodings
+* `dt2bv` from finite enumeration sorts to bit-vectors
+* `bit-blaster` from bit-vectors to propositional formulas
+
+Bit-vectors are a convenient intermediary representation
+that retains equality reasoning or can be fully converted to SAT. The CDCL(T) cores
+also reason natively with cardinality and Pseudo-Boolean formulas. Native reasoning
+is an advantage when the clausal forms incur a significant overhead, othewise, compiling
+to clausal form very often offers superior performance. 
+
+~ Framed
+Compiling to SAT can produce significant slowdowns
+~
+
+Conversion into Pseudo-Boolean constraints or bit-vectors is a disadvantage when
+constraints are mostly convex and can be solved using dual Simplex. The native
+solver for Pseudo-Booleans in Z3 requires compiling bounded variables into a set of 0-1 variables,
+and it does not integrate dual Simplex reasoning (yet).
+
 
 ### Arithmetic
 
@@ -67,7 +166,7 @@ Solidity smart contracts that involve very large constants.
 _There are more reals than integers, so isn't search more constrained over integers?_
 ~
 
-Problems don't get easier because you formulate them as non-linear integer problems instead of reals.
+Problems don't get easier because you formulate them as integer problems instead of reals.
 Quantified formulas over reals polynomials are decided using the `nlqsat` tactic. On the other hand,
 the quantifier free theory of integer polynomials is undecideable by Matiyasevich's theorem.
 
@@ -95,9 +194,19 @@ space. A thorough overview of trouble-shooting Z3 behavior for formulas using qu
 is provided in the context of 
 [$F\star$](http://fstar-lang.org/tutorial/book/under_the_hood/uth_smt.html).
 
-### Propagation strength, Conflict strength
-
-## Controlling sesarch and output behavior
 
 ## Extracting information from Z3
+
+### Models
+
+### Partial models and E-nodes
+
+### Cores
+
+### Learned clauses
+
+* Use the OnClause method
+* Print them to log during search
+
+### Proofs
 

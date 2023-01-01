@@ -140,11 +140,8 @@ term $a \simeq n_1$ is set to true. This contradicts that $a \simeq n_1$ is alre
 
 ### E-Node
 
-~ Framed
-TODO add citations to main sources: DST, NO (Oliveras), Simplify Report
-~
 
-The E-Node data-structure is used to implement congruence closure efficiently. The main fields of an E-Node are
+The E-Node data-structure [@DowneyST80;@DetlefsNS05;@NieuwenhuisO07] is used to implement congruence closure efficiently. The main fields of an E-Node are
 
 ~ MathPre
     n : & \langle & f: & Func  & \mbox{function symbol}
