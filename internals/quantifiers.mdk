@@ -23,7 +23,7 @@ Consider the formula
 
 The smallest subterm properly containing the bound variable $x$ is ${\color{red}g(x,c)}$ in $f({\color{red}g(x,c)}) \simeq a$.
 The only other occurrence of the function $g$ is $g(c,b)$ in the equality $g(c,b) \simeq c$.
-Based on the ground equality $b = c$ $g(c,c) \sim g(c,b)$ so we can instantiate $x$ by $c$ and infer
+Based on the ground equality $b \simeq c$ it follows $g(c,c) \sim g(c,b)$ so we can instantiate $x$ by $c$ and infer
 
 ~~ Math
   p_{\varphi} \rightarrow f(g(b,c)) \simeq a
@@ -86,8 +86,8 @@ that accumulates substitutions.
 ### E-matching - code trees 
 
 The straight-forward E-matching algorithm is expensive when it is invoked from scratch for every possible 
-candidate of pattern and node during search. To share work across patterns and terms Z3 compiles patterns
-into a _code tree_ data-structure that contains dynamically compiled set of instructions to perform matching.
+candidate of pattern and node during search. To share work across patterns and terms, Z3 compiles patterns
+into a _code tree_ data-structure that contains a dynamically compiled set of instructions to perform matching.
 The instructions can be regarded as a partial evaluation of the naive algorithm for fixed patterns. The
 instruction set allows merging code sequences from different patterns by sharing common prefixes.
 Substitutions are stored in registers, backtracking just updates the registers.
@@ -261,11 +261,11 @@ MBQI can be used to harness the set of groundings.
 ### UFBV [@WintersteigerHM13]
 
 ~ MathPre
-F   & ::= \exists e : bv[n] . F | \exists u : bv[n] . F | F \wedge F | C
+F   & ::= \exists e_i : bv[n] . F | \forall u_j : bv[n] . F | F \wedge F | C
 C   & ::= \bigvee_j L_i
 L   & ::= A | \neg A
 A   & ::= p(\vec{T}) | T = T' | \mathtt{bvle}(T, T') | \ldots
-T   & ::= f(\vec{T}) | u | v | \mbox{bit-vector expression}
+T   & ::= f(\vec{T}) | e_i | u_j | \mbox{bit-vector expression}
 bv[n] & ::= \mbox{bit-vector of length $n$}
 ~
 
@@ -295,17 +295,21 @@ F     & ::= F \vee F | A_F | \neg A_F
 A_F   & ::= T[a[u]] \simeq T[a[u]] 
 ~
 
+where $a$ are arrays and $T[]$ denotes just $e$.
+
 ~ Begin Example
 
 Let us express the following in the Map Property Fragment:
 
-* $a$ is equal to $b$ except at index $e$.
+* $a$ is the constant $e$-array.
+
+* $a$ is equal to $b$ except at index $v$.
 
 * $c$ can only have two values, $e_1$ or $e_2$.
 
 ~~ MathPre
   \forall u \ . \ a[u] \simeq e
-  \forall u \ . \ u \not\simeq e \ \Rightarrow a[u] \simeq b[u]
+  \forall u \ . \ u \not\simeq v \ \Rightarrow a[u] \simeq b[u]
   \forall u \ . \ c[u] \simeq e_1 \ \vee c[u] \simeq e_2
 ~~
 
@@ -354,17 +358,17 @@ The set $\mathcal{I}$ is a _sufficient set of instances_ for $\varphi$, if
 ~
 
 ~ Proposition
-  MBQI is a decision procedure the array and map property fragments by using the
+  MBQI is a decision procedure for the array and map property fragments by using the
   instantiation sets computed from the formulas.
 ~
 
 ### Essentially Uninterpreted Fragment [@GeM09]
 
-The Array Property Fragment can be seen as an instance of a class of formulas
+The Array Property Fragment can be seen as an instance of a class of formulas,
 where instantiations can be extracted based on a set of grammar rules that are extracted
 from the formulas.
 
-This fragment thus applies to wider range of formulas than the syntactic array property fragment.
+This fragment thus applies to a wider range of formulas than the syntactic array property fragment.
 It also captures fragments studied in different contexts:
 
 * the list property fragment by McPeak and Necula

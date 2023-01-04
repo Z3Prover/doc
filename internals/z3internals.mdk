@@ -62,7 +62,7 @@ Package       : bussproofs
 \newcommand{\Nat}{\mathcal{N}}
 \newcommand{\Aconst}{\mathit{const}}
 \newcommand{\Amap}{\mathit{map}}
-\newcommand{\Aasarray}{\mathit{as{\-}array}}
+\newcommand{\Aasarray}{\mathit{as\text{-}array}}
 \newcommand{\Astore}{\mathit{store}}
 \newcommand{\Aext}{\mathit{ext}}
 \newcommand{\valueOf}[1]{[\![#1]\!]}
@@ -70,6 +70,7 @@ Package       : bussproofs
 \newcommand{\strategy}{\mathit{strategy}}
 \newcommand{\level}{\mathit{level}}
 \newcommand{\Atoms}{\mathit{Atoms}}
+\setlength{\fboxsep}{.5\fboxsep}
 ~
 
 
@@ -84,7 +85,7 @@ _what controls a user has over search behavior_,
 and _what information a user can extract from the solver_.
 While we will try to address these questions by providing background on principles and examples of experiences,
 it is impossible to provide comprehensive answers. The hope is
-that sheding light into internal workings of Z3 at a
+that shedding light into the internal workings of Z3 at a
 conceptual level offers a bridge towards developing an understanding of how to operate Z3 as well.
 ~
 
@@ -98,7 +99,7 @@ the main interest among users is more likely about _how to best use an SMT solve
 By introducing the internals of Z3 from the point of view of foundations, data-structures, algorithm design, and
 heuristics we introduce the reader to the development process. But, in this process, we also indirectly
 aim to address readers whose aim is to understand the how and why of using Z3.
-Many of the principles underlying the implementation in Z3 have been described in papers over several years
+Many of the principles underlying the implementation of Z3 have been described in papers over several years
 and this document is not a substitute for these papers. We therefore often resort to references when material
 is covered elsewhere and instead attempt to reflect updated systems aspects.
 
@@ -163,7 +164,7 @@ This document developed a bird's eye view of Z3 internals. It offered some ideas
 the data-structures and algorithms used at a level to capture the gist
 in the format of an extended tool description.
 It also provided background on how users can interact with Z3 to develop encodings and operate the solver.
-A vast amount of details are omitted from this document. Some are described in papers that originally introduced the features, other details
+A vast amount of details is omitted from this document. Some are described in papers that originally introduced the features, other details
 have yet to be distilled from implementations into a literate format.
 
 <!---
