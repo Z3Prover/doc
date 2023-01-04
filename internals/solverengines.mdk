@@ -161,7 +161,7 @@ or & \forall \vec{x} \ . \ \varphi \land P(t) \land Q(s) \implies \false
 
 where $\varphi$ is a formula that is interpreted over a combination of theories, $P, Q, R$ are uninterpreted predicates, 
 and $t, s, u$ are terms over the bound variables $\vec{x}$ and the theories from $\varphi$. 
-The SPACER searches for a model for $P, Q, R$ such that all clauses are true
+The SPACER engine searches for a model for $P, Q, R$ such that all clauses are true
 under the model. 
 
 
