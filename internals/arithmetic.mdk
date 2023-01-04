@@ -111,10 +111,10 @@ Pivoting re-establishes feasibility using a different solution, for example
   ~~ Math
     x = z - u - s_1, y = z - u - s_2, 1 \leq u \leq 1, 0 \leq s_1 \leq 0, 0 \leq s_2 \leq 0
   ~~
-with assignment $z = 0, x = y = -1$. The variables $y, y$ have the same value,
-but must they be equal under all assignments? We an establish this directly by subtracting the
+with assignment $z = 0, x = y = -1$. The variables $x$ and $y$ have the same value,
+but must they be equal under all assignments? We can establish this directly by subtracting the
 right hand sides $z - u - s_1$ and $z - u - s_2$ from another and by factoring in the constant bounds obtain
-the result 0. But subtraction is generally expensive if there are many bounded constants in the rows.
+the result $0$. But subtraction is generally expensive if there are many bounded constants in the rows.
 The arithmetical operations are not required to infer that $x = y$. Z3 uses two facts to infer the equality
 
 * The variables $x, y$ have the same value in the current assignment.
