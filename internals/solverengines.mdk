@@ -9,8 +9,8 @@ are available and invoked for special classes of formulas where they are more su
 We here describe the solvers marked as SAT and SMT in Figure [#fig-system].
 
 When SAT solving, as implemented using conflict driven clause learning, CDCL, is combined with theory solving
-it augments propositional satisfiability with theory reasoning. The CDCL solver maintains a set of 
-formulas $F$ and a partial assignment to literals in $F$ that we refer to as $M$.  
+it augments propositional satisfiability with theory reasoning. The CDCL solver maintains a set $F$ of 
+formulas and a partial assignment to literals in $F$ that we refer to as $M$.  
 The solver starts in a state $\langle M, F\rangle$, where $M$ is initially empty. 
 It then attempts to complete $M$ to a full model of $F$ to show that $F$ is satisfiable
 and at the same time adds consequences
@@ -20,9 +20,9 @@ The state during conflict resolution is a triple $\langle M; F; C\rangle$,
 where, besides the partial model $M$ and formula $F$, there is also a conflict clause $C$
 false under $M$.
 The auxiliary function _Theory_ is used to advance decisions, propagations and identify conflicts.
-If _Theory_ determines that $S$ is conflicting with respect to the literals in $M$ it produces a conflict clause $C$, that
+If _Theory_ determines that $F$ is conflicting with respect to the literals in $M$ it produces a conflict clause $C$, that
 contains a subset of conflicting literals from $M$. It can also produce a trail assignment $A$, which is either a propagation
-or decision and finally, if it determines that $S$ is satisfiable under trail $M$ it produces $SAT$.
+or decision and finally, if it determines that $F$ is satisfiable under trail $M$ it produces $SAT$.
 
 From the point of view of the CDCL(T) solver
 theory reasoning is a module that can take a state during search and produce verdicts on how search should progress.
@@ -35,7 +35,7 @@ We use the following verdicts of a theory invocation $\Theory(M;F)$:
 * A propagation $\Propagation{\ell}{C}$. The theory solver propagates a literal $\ell$.
 * A decision $\Decision{\ell}$. 
 
-Thus, the verdict determines whether the partial model extends to a model of the theories, 
+Thus, the verdict of _Theory_ determines whether the partial model extends to a model of the theories, 
 can identify a subset of $M$ as an unsatisfiable core, 
 propagate the truth assignment of a literal $\ell$, or create a new case split $\Decision{\ell}$ for a
 literal $\ell$ that has not already been assigned in $M$.
@@ -52,7 +52,7 @@ $A = \Theory(M,F)$, when the verdict $A$ is either a propagation or decision.
 
 \mbox{Augment} & \langle M; {F} \rangle                      & \Rightarrow & \langle M, A; F \rangle                                 & A = \Theory(M, F) 
 
-\mbox{Unsat} & \langle M; \emptyset, {F} \rangle           & \Rightarrow & UNSAT 
+\mbox{Unsat} & \langle \emptyset; {F}; {C} \rangle           & \Rightarrow & UNSAT 
 
 \mbox{Resume} & \langle M, \Decision{\overline{\ell}}; {F}; C \rangle & \Rightarrow & \langle M, \Propagation{\ell}{C}; {F} \rangle         & \ell \in {C}
 
@@ -66,24 +66,23 @@ $A = \Theory(M,F)$, when the verdict $A$ is either a propagation or decision.
 Consider the formula $(x > 0 \vee y > 0) \wedge x + y < 0$.
 The initial state of search is 
 ~~Math
-\langle \epsilon; (x > 0 \vee y > 0)\wedge x + y < 0\rangle
+\langle \emptyset; (x > 0 \vee y > 0)\wedge x + y < 0\rangle
 ~~
-based on the empty partial assignment $\epsilon$ and the original formula.
+based on the empty partial assignment $\emptyset$ and the original formula.
 A possible next state is to propagate on the unit literal $x + y < 0$, producing
 ~~Math
 \langle \Propagation{x + y < 0}{x + y < 0}; (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
-This step may be followed by a case split setting $x > 0$.
+This step may be followed by a case split setting $x > 0$ to false.
 ~~Math
 \langle \Propagation{x + y < 0}{x + y < 0},\Decision{\neg(x > 0)}; (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
-which triggers a propagation
+which triggers a unit-propagation
 ~~Math
 \langle \Propagation{x + y < 0}{x + y < 0},\Decision{\neg(x > 0)},\Propagation{y > 0}{x > 0 \vee y > 0}; (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
 The resulting state is satisfiable in the theory of arithmetic. 
-On the other hand, if we had made the case split on $x > 0$ instead of $\neg(x > 0)$, 
-and then guess the assignment $y > 0$, 
+On the other hand, if we had chosen to set $x > 0$ to true as well as $y > 0$, 
 we would have encountered a conflicting state with conflict clause 
 $\neg (x > 0) \vee \neg (y > 0)$[^unitremove]:
 ~~Math
@@ -97,16 +96,15 @@ The last decision is then reverted to produce the satisfiable state
 ~~
 A third scenario uses theory propagation. In this scenario, the decision $x > 0$ is made, but
 instead of making a decision $y > 0$, the theory solver for arithmetic is given a chance to find
-opportunities for propagation. It deduces that $x + y < 0, x > 0$ implies $\neg(y > 0)$,
+opportunities for propagation. It deduces that $x + y < 0$ together wih $x > 0$ implies $\neg(y > 0)$,
 and therefore establishes the theory propagation
 ~~Math
 \langle \Propagation{x + y < 0}{x + y < 0},\Decision{x > 0},\Propagation{\neg(y > 0)}{\neg(y > 0) \vee \neg (x > 0)};\
  (x > 0 \vee y > 0) \wedge x + y < 0\rangle
 ~~
-We are again eliding the unit literal $x + y < 0$ from the explanation for $\neg(y > 0)$.
+We are again eliding the unit literal $x + y < 0$ from the explanation for $\neg(y > 0)$. In practice, solvers automatically remove literals from conflict clauses that are necessarily false. 
 ~
 [^unitremove]: To keep the formula short we have applied a shortcut and removed the literal $\neg(x + y < 0)$ from the conflict clause.
-In practice, solvers automatically remove unit literals that are false from conflict clauses. 
 
 ### Other Inference Rules
 
@@ -116,7 +114,7 @@ In the initial overview of the CDCL(T) loop we left out other inference rules th
 
 * Restart: A suffix of the current partial model $M$ is abandoned.
 
-* In-processes: clauses are inferred or marked redundant based on global inferences. 
+* In-processes: Clauses are inferred or marked redundant based on global inferences. This is usually done after a restart.
 
 * Garbage Collection: Redundant clauses are removed from $F$. 
 
@@ -126,9 +124,9 @@ To be well-behaved we expect _Theory_ to produce propagations on literals that d
 enforce the main invariants:
 
 * The conflict clause $C$ is false in $M$ and a consequence of $F$. Thus, 
-  for state $\langle M; F, C \rangle$ we have $F \models_T \bigvee_{\ell \in C} \neg \ell$, as well as $\overline{C} \in M$.
+  for state $\langle M; F; C \rangle$ we have $F \models_T \bigvee_{\ell \in C} \neg \ell$, as well as $\overline{C} \in M$.
 * A propagated literal is justified by the current partial model $M$. Thus, 
-  for state $\langle M \Propagation{\ell}{C}, F \rangle$ we have $F \models_T C$, $\ell \in C$, 
+  for state $\langle M, \Propagation{\ell}{C}; F \rangle$ we have $F \models_T C$, $\ell \in C$, 
   and for each $\ell' \in C \setminus \{ \ell \}: \overline{\ell}' \in M$.
 
 That is, each conflict clause is a consequence of $F$ and each propagation is also a consequence of $F$, and the premises of a propagation is justified by $T$.
@@ -197,8 +195,8 @@ Then $F_1 = F, F_2 = \neg F, F_3 = F, F_4 = \neg F$.
 
 The existential player works on odd levels, and the universal player at even levels.
 Sub-formulas are assigned two kinds of levels, $\level_\forall$, which is the
-highest index of a universally quantified variable, while $\level_\exists$
-is the highest index of an existentially quantified variable.
+highest index of a universally quantified variable occuring in the subformula, while $\level_\exists$
+is the highest index of an existentially quantified variable. We start with the index $1$. If there is no universally resp. existentially quantified variable in the subformula we denote this with index $0$.
 
 A player at level $j-1$ can use a _strategy_ to force an opponent $j$ to satisfy sub-formulas it has control over.
 The strategy formula is conjoined to $F_j$ when player $j$ attempts to find a solution to variables that are
@@ -212,8 +210,6 @@ The atomic formulas $x \geq 0$ and $z \geq 0$ and $y + z \leq 1$ are true.
 
 * $\strategy(M, 2) = z \geq 0 \land x \geq 0$, because $\level_\forall(z \geq 0) = \level_\forall(x \geq 0) = 0$, but
 $\level_\forall(y \geq 0) = \level_\forall(y + z \leq 1) = 2$.
-Since there are no universal quantifiers in the formula $z \geq 0$, 
-we have $\level_\forall(z \geq 0) = 0$.
 
 * $F_2 \land x \geq 0 \land z \geq 0$ is satisfiable with model $M = [x \mapsto 0, z \mapsto 3, y \mapsto -1]$.
 
