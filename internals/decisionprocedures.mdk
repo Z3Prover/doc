@@ -91,11 +91,36 @@ Cardinality and Pseudo-Boolean inequalities can also be translated into CNF clau
 when there are very few variables in the summations, but the overhead of translation can quickly become
 impractical. Z3 therefore contains dedicated solvers for cardinality and Pseudo-Boolean constraints.
 
-~ Framed
-Examples of cardinality, Bit-vectors
-~
+~ Begin Example
 
+Bit-blasting the arithmetic expression $x + y \ge 2$ assuming both $x$ and $y$ consist of $2$ bits results in the formula 
 
+~~ MathPre
+z_1 &\equiv (x_1 \vee y_1) \wedge (\lnot x_1 \vee \lnot y_1)
+c_2 &\equiv (x_1 \wedge y_1)
+z_2 &\equiv (x_2 \vee y_2 \vee c_2) \wedge (\lnot x_2 \vee y_2 \vee c_2) \wedge (x_2 \vee \lnot y_2 \vee \lnot c_2) \wedge (\lnot x_2 \vee \lnot y_2 \vee \lnot c_2)
+z_2&
+~~
+
+the result of the summation is given by $z = (z_1, z_2)$. $c_2$ is the carry of adding the first bits of $x$ and $y$.
+Pseudo-Boolean constraints like $x + \lnot y + 2z \ge 2$ can be translated in multiple ways like translating it to bit-vector addition/multiplication as before, translating it to decision-diagrams or sorting-networks.
+
+A decision diagram for this constraint looks like
+~~ MathPre
+if z:&&&
+& true&&
+else:&&&
+& if x:&&
+&&if \lnot y:&
+&&& true
+&&else:&
+&&&false
+&else:
+&&false&
+~~
+which can be translated to a propositional formula. The sorting network approach sorts the bit-sequence $\langle x, \lnot y, z, z\rangle$ to a sequene $\langle s_1, s_2, s_3, s_4 \rangle$ and asserts that $s_3$ has to be true.
+
+The native solver instead tracks the partial sum of already assigned booleans and sets some of the remaining ones in case it is not possible to exceed the desired bound without them.
 
 ## Equality and Uninterpreted Functions
 
