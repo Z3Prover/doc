@@ -11,11 +11,11 @@ Z3 treats terms and formulas as a single entity, expressions. Expressions of Boo
 but they can also be nested within non-Boolean terms, as arguments to functions. Expressions are _hash-consed_, meaning
 they are unique up to term structure. It uses a hash-table when constructing a fresh term, such that if the same function
 is applied to the same arguments as a previously constructed term, 
-the result of creating the term is the same pointer as old term.
+the result of creating the term is the same pointer as the old term.
 
 Variables that are to be bound by quantifiers are indexed using de-Brujin conventions, 
-such that the index used for the inner-most quantified variable is 0, and incremented outwards.
-For example $\exists x \forall y, z, p(x, y, z)$ uses de-Bruijn indices 0 for $z$ and 1 for $y$, and 2 for $x$.
+such that the index used for the innermost quantified variable is 0, and incremented outwards.
+For example, $\exists x \forall y, z, p(x, y, z)$ uses de-Bruijn indices 0 for $z$ and 1 for $y$, and 2 for $x$.
 To spare users an error-prone process of keeping track of indices, 
 the external API offers a facility to create a quantified expression using a set of constant expressions instead of
 variables. 
@@ -51,7 +51,7 @@ Internally, the names are treated as (fresh) Boolean literals. Thus, formulas ca
 tracked by arbitrary formulas. The programmatic API contains a function `Z3_solver_assert_and_track`
 (and variants surfaced in various programming languages) that allows asserting a formula modulo
 a tracking assumption. When adding tracked formulas using tracking assumption $p$, the
-structure is initialzed as $\langle \varphi, \mathtt{asserted}(\varphi), p \rangle$.
+structure is initialized as $\langle \varphi, \mathtt{asserted}(\varphi), p \rangle$.
 
 Tactics ([#sec-tactics]) perform updates on the triple representation by applying inferences.
 Properly producing proof objects for tactics and tracking dependencies is supported in a 
@@ -69,12 +69,12 @@ into a fresh literal with associated set of clauses that define the literal.
 The terms from Boolean connectives may be assigned E-nodes, but the nodes do not
 participate in congruence rules, nor are, by default, allowed to be merged with the constants $\true$ or $\false$:
 The CDCL(T) engine already enforces congruence rules and consistency with assignments to $\true/\false$.
-The default is overridden if a term occurs as an argument to a non-Boolean connective. For eample
+The default is overridden if a term occurs as an argument to a non-Boolean connective. For example,
 in the term $f(a \land b)$, the node $n_{a \land b}$ merges with $\true/\false$ when the truth value
 to the literal $\ell_{a \land b}$ is propagated. In this way, congruence closure can ensure consistency with
 respect to occurrences of $f$.
 
-Compilation of terms into E-nodes uses a top-down traversal of terms. The top-down traversal is replicated in each theory solver
+Compilation of terms into E-nodes uses a top-down traversal of terms. The top-down traversal is replicated in each theory solver,
 where the compilation of terms depends on the solver. The arithmetic solver, for instance, compiles the term $x + y + x$ into a
 node $n$ and adds the basic row $n = 2x + y$. Top-down compilation does not play well with small static stack sizes allocated by
 $\text{C}\texttt{++}$ runtimes. The new core in Z3 therefore introduces a visitor pattern to allow top-down processing without using recursion stacks.
@@ -106,7 +106,7 @@ is broadcast to all solvers attached to $n$.
 Similarly, when two nodes $n, n'$ are merged, and the theory $T$ is attached to a sibling of $n$ and a sibling of $n'$, 
 then the equality $n \simeq n'$ is broadcast to $T$.
 
-In some cases the core also broadcasts disequalities between E-nodes. 
+In some cases, the core also broadcasts disequalities between E-nodes. 
 Solvers cannot rely on complete propagation of disequalities, it is generally 
 too costly to enumerate all pairwise disequalities.
 Propagation of disequalities is triggered by when the CDCL(T) core asserts a
@@ -157,7 +157,7 @@ which values are equal and disequal.
 Suppose we have a model over arithmetic that sets $x = y = 1, z = 0$ and a model for $f$ that
 sets $x = \star_1, y = \star_2, z = \star_1$,
 $f(x) = \mathit{if}\ x = \star_1\ \mathit{then}\ \star_1\ \mathit{else}\ \star_2$.
-The two models cannot be reconciled as the equality $x \simeq y$ from the arithmetical model contradicts the
+The two models cannot be reconciled, as the equality $x \simeq y$ from the arithmetical model contradicts the
 partition imposed by the EUF model.
 
 ~ End Example
@@ -181,21 +181,21 @@ EUF model.
 
 
 Note that equalities for finite domain theories, such as bit-vectors, are determined by
-complete propositional assignments in final states that is visible to all theories because
+complete propositional assignments in final states that are visible to all theories because
 all terms are assigned values from the finite domain.
 
 
 ## Relevancy filtering
 
 The E-matching and MBQI methods for instantiating quantifiers, and the methods for solving the array theory,
-rely on essentially checking a constraints that a satisfying model must meet. The number of quantifier
+rely on essentially checking constraints that a satisfying model must meet. The number of quantifier
 instantiations and axiom instantiations grows with the number of constraints and they are often more harmful,
 as they increase the search space, than of use.
 Z3 uses _relevancy filtering_ to filter the Boolean assignments that are made visible to the theory solvers.
 It is inspired by search in semantic Tableau, where establishing satisfiability of a disjunction is
 split into separate branches that process the disjuncts in isolation. 
 
-In Z3 relevancy filtering is set up during clausification. The result of clausifying a Boolean formula
+In Z3, relevancy filtering is set up during clausification. The result of clausifying a Boolean formula
 is a set of _root_ clauses and a set of _definition_ clauses.
 The goal is to establish a labeling of literals as _relevant_ such that
 
@@ -216,12 +216,12 @@ For example, when clausifying $a \land b$ we have the clauses
 ~
 
 then the literal for $a \land b$ is blocked.
-And recursively for clauses introduced for $a, b$ if they use a Boolean connectives
+And recursively for clauses introduced for $a, b$ if they use Boolean connectives
 at top level.
 
 
 Relevancy filtering applies a set of state transitions to update whether literals
-and terms are relvant and should be exposed to the theory solvers. The transitions for setting a literal $\ell$ and node $n$ to relevant are:
+and terms are relevant and should be exposed to the theory solvers. The transitions for setting a literal $\ell$ and node $n$ to relevant are:
 
 * A literal $\ell$ is assigned and $\ell$ appears positively in a _root_ clause $C$ and no other literal in $C$ are relevant. 
 * $\ell$ is inferred as a unit clause
@@ -239,7 +239,7 @@ Roots and definitions are updated as well:
 * When a clause is added to _definitions_ and it contains a negative relevant literal, the clause is added instead to _roots_.
 
 * When $n$ is set relevant, arguments that don't represent Boolean connectives are set relevant. If-then-else terms
-are treated as Boolean connectives because they are compiled into clauses where the clausal relevancy propagation takes effect.
+are treated as Boolean connectives because they are compiled into clauses where, the clausal relevancy propagation takes effect.
 
 
 
@@ -249,14 +249,14 @@ Efficient theory propagation can have a profound effect on overall efficiency of
 Congruence closure is therefore tightly integrated with Boolean propagation: when equality reasoning can infer that an equality
 atom $n \simeq n'$ is true or false, it is useful to propagate this fact eagerly. Congruence closure in Z3 therefore has special
 handling of equality literals. An equality $n \simeq n'$ is both a term with the binary function $\simeq$ and an atom.
-Other atoms are also tracked. For example if $p(t)$ is a unary predicate then the E-node data-structure also tracks the Boolean variable
+Other atoms are also tracked. For example, if $p(t)$ is a unary predicate then the E-node data-structure also tracks the Boolean variable
 that is associated with $p(t)$. When $t$ is equated to $t'$ and $p(t')$ is assigned to true or false, then congruence closure propagates
 the assignment on to $p(t)$. The propagation is justified by the premises for the equality $t \simeq t'$.
 Any overhead of propagating within the E-graph is outweighed by the benefits it brings to pruning the search space.
 
 ## Dynamic Ackermann reduction
 
-Basic implementations of CDCL(T) as presented in Section [#sec-cdcl-t] realize a proof system that has the power of regular resolution 
+Basic implementations of CDCL(T) as presented in Section [#sec-cdcl-t] produce a proof system that has the power of regular resolution 
 for propositional logic. The proof system is relatively weak even for EUF when search is limited over the space of initial set of literals
 from a formula.
 
@@ -309,7 +309,7 @@ In Z3, the EUF and bit-vector theories track the number of times transitivity of
 It introduces the Ackermann axioms based on thresholds. A user can control the thresholds.
 An important question for applications is _when is dynamic Ackermann reduction useful?_ 
 The cost-benefit of introducing new literals into the search space has to be weighed. 
-Importaly, for applications where the main expectation is that formulas are satisfiable, dynamic Ackermann reduction can be detrimental.
+Importantly, for applications where the main expectation is that formulas are satisfiable, dynamic Ackermann reduction can be detrimental.
 Users can disable dynamic Ackermann reduction to gain significant performance improvement.
 
 ## Iterative deepening for finite models

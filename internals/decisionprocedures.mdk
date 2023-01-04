@@ -118,7 +118,7 @@ else:&&&
 &else:
 &&false&
 ~~
-which can be translated to a propositional formula. The sorting network approach sorts the bit-sequence $\langle x, \lnot y, z, z\rangle$ to a sequene $\langle s_1, s_2, s_3, s_4 \rangle$ and asserts that $s_3$ has to be true.
+which can be translated to a propositional formula. The sorting network approach sorts the bit-sequence $\langle x, \lnot y, z, z\rangle$ to a sequence $\langle s_1, s_2, s_3, s_4 \rangle$ and asserts that $s_3$ has to be true.
 
 The native solver instead tracks the partial sum of already assigned booleans and sets some of the remaining ones in case it is not possible to exceed the desired bound without them.
 
@@ -127,7 +127,7 @@ The native solver instead tracks the partial sum of already assigned booleans an
 ## Equality and Uninterpreted Functions
 
 This theory captures a shared property of all theory: that equality is a congruence relation. 
-The theory is described many places, including in [@BjornerMNW18].
+The theory is described in many places, including in [@BjornerMNW18].
 
 
 Let us use a simple example to illustrate the scope and main functionality of congruence closure
@@ -139,7 +139,7 @@ based decision procedures for equality. We are given two equalities and one dise
 
 Their conjunction is unsatisfiable. Unsatisfiability is established by combining union-find [@UnionFind] data-structures
 to maintain equivalence classes and a data-structure of E-graphs to enforce congruences.
-In a first step the terms are represented by unique nodes in a DAG structure for every sub-term. We represent the DAG
+In a first step, the terms are represented by unique nodes in a DAG structure for every sub-term. We represent the DAG
 structure as a sequence of definitions. Then equalities and disequalities are between nodes in DAG.
 
 ~ MathPre
@@ -199,13 +199,13 @@ of $n$ in the same equivalence class. The set of siblings forms a singly linked 
 The size field $sz$ is the size of the equivalence class. 
 
 
-Besides the E-nodes the solver maintains a hash-table, we call _etable_, that
+Besides the E-nodes, the solver maintains a hash-table, we call _etable_, that
 is used to find the congruence root of a function application. It maps a
 function symbol $f$ and list of arguments to $f$ that are represented by
 root E-nodes into a congruence closure root. For the congruence closure
 root $n$ it maintains the invariant $n.cg = \mathit{etable}[n.f, \rootNode(n.ts)]$.
 We write $\mathit{etable}[n.f, \rootNode(n.ts)]$ to indicate that the _etable_
-tracks function applications to root nodes. In reality the _etable_ just stores
+tracks function applications to root nodes. In reality, the _etable_ just stores
 the node $n$ and uses the $\rootNode$ function when computing the current hash of $n$
 and equalities with other nodes.
 
@@ -255,8 +255,8 @@ of a class to be the node representing the value.
 ### Unmerge
 
 All operations on the E-Graph can be inverted. For this purpose, every merge is recorded in an _undo trail_.
-Other operations that update nodes are recorded in the same trail. For example when $p$ is appended to $r_2.P$
-the insertion into the cyclic list of parents is recorded so that it can be reverted. To reverting a merge
+Other operations that update nodes are recorded in the same trail. For example, when $p$ is appended to $r_2.P$
+the insertion into the cyclic list of parents is recorded so that it can be reverted. Reverting a merge
 requires updating the _etable_ and is sensitive to whether a node was a congruence root:
 
 The effect of unmerge($r_1, r_2$) is as follows:
@@ -308,9 +308,9 @@ __NB__ The linked list does not follow direction of union-find.
 Note that not all possible justifications are tracked, if
 merge($n_1, n_2, j$) is invoked but already $\rootNode(n_1) = \rootNode(n_2)$, then
 the justification $j$ for the equality of $n_1, n_2$ is dropped.
-In contrast __egg__ [@EggProofs] keeps track of potential extra paths to find _short_ proofs.
+In contrast, __egg__ [@EggProofs] keeps track of potential extra paths to find _short_ proofs.
 Use cases within CDCL(T), that leverages amortized effect of backtracking search typically
-hedge on that the cost finding a strongest conflict up front is outweighed by multiple attempts that converge on
+hedge on that the cost of finding a strongest conflict up front is outweighed by multiple attempts that converge on
 sufficiently strong conflicts.
 
 ### From justifications to proofs
@@ -401,9 +401,9 @@ Then a proof of $s \simeq t$ can be extracted using overloaded functions $\pi$:
 ### Refinement Types
 Let us illustrate a use of _reduction_ from richer theories to base theories based on 
 a simple example based on refinement types. 
-It encodes refinement types using auxiliary functions as explained
-in [@JacobsCategorical]. Refinement types are not part of Z3 so the decision procedure we outline
-here is not available out of the box. One way to realize this theory is externally through the UserPropagator
+It encodes refinement types using auxiliary functions, as explained
+in [@JacobsCategorical]. Refinement types are not part of Z3, so the decision procedure we outline
+here is not available out of the box. One way to realize this theory is externally through the User-Propagator
 facility.
 
 Abstractly, a refinement
@@ -437,7 +437,7 @@ Let us illustrate the sort of natural numbers as a refinement type of integers:
 We obtain a theory solver for formulas with refinement types by instantiating these axioms whenever there is a term $t$ introduced
 of sort $S \mid p$ introduced as part of the input or during search (from instantiating quantifiers).
 The main challenge with supporting this theory is to ensure that the new terms introduced from axiom instantiation 
-is bounded. We don't want the solver to create terms $\relaxOp(\restrictOp(\relaxOp(\restrictOp(\ldots))))$.
+are bounded. We don't want the solver to create terms $\relaxOp(\restrictOp(\relaxOp(\restrictOp(\ldots))))$.
 
 
 * For every sub-term of the form $\restrictOp(t)$, where $t$ is not $\relaxOp(t')$ instantiate the axiom:
@@ -461,7 +461,7 @@ is useful for modeling arrays in programming languages will henceforth use $A[i]
 
 
 Z3 reduces the theory of arrays to reasoning about uninterpreted functions.
-It furthermore treats arrays as function spaces which assuming more axioms about arrays.
+It furthermore treats arrays as function spaces, which assuming more axioms about arrays.
 The first-order theory of arrays axiomatized above enjoys compactness and so the following formula is satisfiable[^jazzman]
 
 [^jazzman]: thanks to Jasmin Blanchette for drawing attention to this distinction.
@@ -492,7 +492,7 @@ and they are defined by the beta-reduction axioms:
 \beta((\lambda x \ . \ M)[i]) & = & M[i/x]
 ~
 
-The reduction into EUF, is then in a nutshell an application of the following inference rule:
+The reduction into EUF, is then, in a nutshell, an application of the following inference rule:
 
 ~Math
 \AxiomC{$b$ is a lambda term}
@@ -534,10 +534,10 @@ The merge also looks for new redexes when $n$ and $n'$ are merged:
 \DisplayProof
 ~
 
-For enforcing $\Astore(A, i, v)[j] = \beta(\Astore(A, i, v)[j])$ the solver only instantiates the axiom $i \simeq j \lor \Astore(A, i, v)[j] \simeq A[j]$
+For enforcing $\Astore(A, i, v)[j] = \beta(\Astore(A, i, v)[j])$, the solver only instantiates the axiom $i \simeq j \lor \Astore(A, i, v)[j] \simeq A[j]$
 because the axiom $\Astore(A,i,v)[i] \simeq v$ is instantiated eagerly when the term $\Astore(A, i, v)$ is created.
 
-Extensionality is enforced on pairs of array terms $A, B$, that are in _shared_ positions. An array term is in a shared position when it occurs on side of an equality or under a function that is not part of the theory of arrays. Furthermore, to ensure congruence for lambdas, if $A \equiv \lambda x \ . \ M$ is a lambda term in a shared position
+Extensionality is enforced on pairs of array terms $A, B$, that are in _shared_ positions. An array term is in a shared position when it occurs on one side of an equality or under a function that is not part of the theory of arrays. Furthermore, to ensure congruence for lambdas, if $A \equiv \lambda x \ . \ M$ is a lambda term in a shared position
 and $B$ is in a shared position, the axiom $\lambda x \ . \ M \simeq B \implies \forall i \ . \ M[x/i] \simeq B[i]$ is instantiated. Thus, lambda equality is 
 at the time of writing
 enforced by a reduction to quantified formulas.
@@ -547,8 +547,8 @@ enforced by a reduction to quantified formulas.
 ### Algebraic Datatypes
 
 The theory of algebraic data-types is an SMTLIB2 standard [@SMTLIB2]. The theory
-allows to declare a `datatype` sort, or set of mutually recursive `datatypes` sorts.
-The elements of an algebraic datatypes is the least set generated by the constructors in the type declaration.
+allows declaring a `datatype` sort, or a set of mutually recursive `datatypes` sorts.
+The elements of an algebraic datatype are the least set generated by the constructors in the type declaration.
 You can declare algebraic data-types in SMTLIB2 using the `declare-datatypes` command
 
 ```
@@ -580,7 +580,7 @@ The example below uses `Stmt' nested in a sequence.
     (Seq (stmts (Seq Stmt))))))
 ```
 
-For arrays, the datatype are allowed only in the range of arrays.
+For arrays, datatypes are allowed only in the range of arrays.
 
 ~ Framed
 Provide example with nested arrays
@@ -589,9 +589,9 @@ Provide example with nested arrays
 We will in the following use the notation $C$ for a constructor, for example `Assignment` is a constructor;
 $acc_1, \ldots, acc_n$ for accessors corresponding to $C$, for example `lval` and `rval` are accessors
 corresponding to the constructor `Assignment`. The predicate symbol $isC(t)$ is true if the term $t$
-is equal to term headed by the constructor $C$. The construct $\{ t \mbox{ with } \mathit{field} := s \}$
-assigns term $s$ to an accessor _field_ for the term $t$. Note that it is possible to apply an
-accessor to a data-type constructor that does not match. For example taking the head of an empty list,
+is equal to a term headed by the constructor $C$. The construct $\{ t \mbox{ with } \mathit{field} := s \}$
+assigns the term $s$ to an accessor _field_ for the term $t$. Note that it is possible to apply an
+accessor to a data-type constructor that does not match. For example, taking the head of an empty list,
 $\mathit{head}(\mathit{nil})$. The interpretation of $\mathit{head}(\mathit{nil})$ is not fixed by the
 theory, instead $\mathit{head}$ is treated as an uninterpreted function.
 
@@ -610,8 +610,8 @@ The saturation rules add theory axioms on demand to enforce that the
 theory of algebraic datatypes axioms are satisfied in a consistent state.
 Accessor axioms, update-field axioms are added as soon as terms are created.
 Recognizer axioms are added when the truth value of a recognizer is asserted.
-If a datatype has a single constructor the recognizer is asserted as a unit.
-Occurs check is applied lazily. It ensures that the partially constructed
+If a datatype has a single constructor, the recognizer is asserted as a unit.
+The occurs check is applied lazily. It ensures that the partially constructed
 model corresponds to acyclic algebraic datatypes.
 
 #### Accessor axioms:

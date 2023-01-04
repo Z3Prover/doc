@@ -1,12 +1,12 @@
 # Interfacing with Z3 { #sec-interfacing }
 
-As we outlined in the introduction users of Z3 are likely less interested 
+As we outlined in the introduction, users of Z3 are likely less interested 
 in the finer details of internal representations than how to make Z3, whatever is under the hood,
 work better for their applications. The impatient reader might have already given up
 going over the internals, or just skipped to this section to learn about secret recipes for
 best using Z3.
 
-In the previous sections we have included material in an effort to address questions such as:
+In the previous sections, we have included material in an effort to address questions such as:
 
 * how do solvers interact with the core?
 * can I control models (to be diverse, random)?
@@ -57,7 +57,7 @@ reasoning and integer reasoning. The solvers decoupled and don't integrate stron
 Adding constraints that break symmetries tends to have a dramatic effect on problems with symmetries.
 ~
 
-Symmetries are major obstacle to CDCL and essentially all $T$ solvers.
+Symmetries are a major obstacle to CDCL and essentially all $T$ solvers.
 There is limited built-in support for breaking symmetries of problems over EUF, but otherwise applications
 should carefully encode problems in a way that resolve symmetries.
 
@@ -72,9 +72,9 @@ _SAT is a solved problem, right?_
 Z3 integrates a reasonably efficient SAT solver. There are more efficient modern SAT solvers,
 specifically Kissat is available for one-shot problems and CaDiCaL supports incrementality.
 While there can be a significant gap between problems solved by Kissat and Z3's SAT engine
-on SAT problems they share some underlying principles that have known limitations.
+on SAT problems, they share some underlying principles that have known limitations.
 
-* CDCL is horrible at xor reasoning. By nature CDCL SAT searches for regular resolution proofs.
+* CDCL is horrible at xor reasoning. By nature, CDCL SAT searches for regular resolution proofs.
 Applications that produce parity constraints tend to not have any short regular resolution proofs.
 A domain solver, based on CryptoMiniSAT, for xor constraints is currently being integrated as a theory solver.
 Yet, even with native xor reasoning, the art of synthesizing strong lemmas during xor search remains an open problem.
@@ -154,7 +154,7 @@ and it does not integrate dual Simplex reasoning (yet).
 _Z3 subsumes LP and MIP, I should be able to use it for solving LP and MIP problems_
 ~
 
-Z3's solver for arithmetic are arguably trained on the instances submitted by users and available in the SMTLIB2 benchmark set.
+Z3's solvers for arithmetic are arguably trained on the instances submitted by users and available in the SMTLIB2 benchmark set.
 It uses a dual Simplex tableau where constants are represented using infinite precision arithmetic. There are no
 specialized representations using floating points for fixed-point arithmetic that can be significantly faster for important
 applications. Reasonable linear programming solvers uses floating point representations. Infinite precision incurs an impractical overhead on 

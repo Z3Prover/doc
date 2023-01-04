@@ -24,13 +24,13 @@ If _Theory_ determines that $F$ is conflicting with respect to the literals in $
 contains a subset of conflicting literals from $M$. It can also produce a trail assignment $A$, which is either a propagation
 or decision and finally, if it determines that $F$ is satisfiable under trail $M$ it produces $SAT$.
 
-From the point of view of the CDCL(T) solver
+From the point of view of the CDCL(T) solver,
 theory reasoning is a module that can take a state during search and produce verdicts on how search should progress.
 We use the following verdicts of a theory invocation $\Theory(M;F)$:
 
 * $SAT$. The theory solver may determine that the assignment $M$ extends to a model of $F$.
 * Conflict $C$. The theory solver may determine that a subset $M$ is inconsistent relative to $F$. 
-  In the propositional case an inconsistent clause $C$ is a member of $F$, such that each literal in $C$ is false in $M$.
+  In the propositional case, an inconsistent clause $C$ is a member of $F$, such that each literal in $C$ is false in $M$.
   With theory reasoning, $C$ does not need to correspond to a clause in $F$, but be assignments in $M$ that are inconsistent modulo theories.
 * A propagation $\Propagation{\ell}{C}$. The theory solver propagates a literal $\ell$.
 * A decision $\Decision{\ell}$. 
@@ -96,7 +96,7 @@ The last decision is then reverted to produce the satisfiable state
 ~~
 A third scenario uses theory propagation. In this scenario, the decision $x > 0$ is made, but
 instead of making a decision $y > 0$, the theory solver for arithmetic is given a chance to find
-opportunities for propagation. It deduces that $x + y < 0$ together wih $x > 0$ implies $\neg(y > 0)$,
+opportunities for propagation. It deduces that $x + y < 0$ together with $x > 0$ implies $\neg(y > 0)$,
 and therefore establishes the theory propagation
 ~~Math
 \langle \Propagation{x + y < 0}{x + y < 0},\Decision{x > 0},\Propagation{\neg(y > 0)}{\neg(y > 0) \vee \neg (x > 0)};\
@@ -104,11 +104,11 @@ and therefore establishes the theory propagation
 ~~
 We are again eliding the unit literal $x + y < 0$ from the explanation for $\neg(y > 0)$. In practice, solvers automatically remove literals from conflict clauses that are necessarily false. 
 ~
-[^unitremove]: To keep the formula short we have applied a shortcut and removed the literal $\neg(x + y < 0)$ from the conflict clause.
+[^unitremove]: To keep the formula short, we have applied a shortcut and removed the literal $\neg(x + y < 0)$ from the conflict clause.
 
 ### Other Inference Rules
 
-In the initial overview of the CDCL(T) loop we left out other inference rules that are integral to efficient search.
+In the initial overview of the CDCL(T) loop, we left out other inference rules that are integral to efficient search.
 
 * Learn: Conflict clauses are added to the set of formulas $F$. Conflict clauses are marked as redundant.
 
@@ -136,9 +136,9 @@ That is, each conflict clause is a consequence of $F$ and each propagation is al
 
 Z3 contains a dedicated engine for non-linear arithmetic over polynomials (Tarski's fragment [@Tarski]) [@JovanovicM12].
 The theory is decidable using cylindrical algebraic decomposition (CAD) [@Collins74]. The NLSAT engine implements the decision
-procedure for polynomial arithmetic. It uses a _model constructing satisfiabiltiy engine_ (MC-SAT) to guide uses of CAD to
+procedure for polynomial arithmetic. It uses a _model constructing satisfiability engine_ (MC-SAT) to guide uses of CAD to
 a focused set of conflict clauses. Thus, the CAD algorithm is used on fragments of the entire formula for determining
-satisfiability as opposed to globally on an entire formula.
+satisfiability, as opposed to globally on an entire formula.
 
 
 The NLSAT engine is available as a one-shot engine for non-linear arithmetic formulas. It is also integrated with decision procedures
@@ -175,7 +175,7 @@ The algorithm can be viewed as playing a _game_ of satisfying a quantifier-free 
 An _existential_ player attempts to satisfy the body by finding instances to the existential quantifiers,
 the _universal_ player attempts to satisfy the negation of the body by finding instances to the universal quantifiers.
 The game is played by processing the quantifiers outside-in.
-If a player get stuck, it is either because the formula is satisifable, unsatisfiable, or a solution to an outer quantifier
+If a player get stuck, it is either because the formula is satisfiable, unsatisfiable, or a solution to an outer quantifier
 was a losing move. It uses unsatisfiable cores and _quantifier projection_ to create a quantifier free formula that blocks
 the previous outer move.
 
@@ -195,7 +195,7 @@ Then $F_1 = F, F_2 = \neg F, F_3 = F, F_4 = \neg F$.
 
 The existential player works on odd levels, and the universal player at even levels.
 Sub-formulas are assigned two kinds of levels, $\level_\forall$, which is the
-highest index of a universally quantified variable occuring in the subformula, while $\level_\exists$
+highest index of a universally quantified variable occurring in the subformula, while $\level_\exists$
 is the highest index of an existentially quantified variable. We start with the index $1$. If there is no universally resp. existentially quantified variable in the subformula we denote this with index $0$.
 
 A player at level $j-1$ can use a _strategy_ to force an opponent $j$ to satisfy sub-formulas it has control over.

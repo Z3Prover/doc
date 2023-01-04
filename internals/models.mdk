@@ -27,7 +27,7 @@ with respect to all theories. Model construction then works by layers:
 * Dependencies are then topologically sorted such that nodes without dependencies are processed first and assigned _values_.
 
   * Boolean nodes are evaluated by the SAT solver. They are assigned $\true$ or $\false$. Nodes ranging over an uninterpreted sort are assigned to an abstract value
-    that is distinct from values from other equivalence classes. Values of nodes with associated theory solvers are are assigned by the solvers.
+    that is distinct from values from other equivalence classes. Values of nodes with associated theory solvers are assigned by the solvers.
   
   * Int and Real nodes are assigned values assigned by the arithmetic solver. For non-linear arithmetic formulas,
     the values of a Real can be an algebraic numeral. Algebraic numerals are represented as a $k$'th root to polynomials
@@ -38,7 +38,7 @@ with respect to all theories. Model construction then works by layers:
 
 * After all nodes have been assigned a value, model construction assigns interpretations to uninterpreted functions.
   Uninterpreted functions are assigned to lookup tables. $f$ is assigned the value $[\valueOf{n} \mapsto \valueOf{f(n)} \mid f(n) \in \Nodes ] \cup [\mathit{else} \mapsto e]$,
-  where $e$ is one of the values from $\valueOf{f(n)}$. Z3 synthesizes interpretations of uninterpreted functions that go beyond finite lookup tables. In these cases it mines
+  where $e$ is one of the values from $\valueOf{f(n)}$. Z3 synthesizes interpretations of uninterpreted functions that go beyond finite lookup tables. In these cases, it mines
   quantified formulas for macros. For example, asserting $\forall x \ . \ x \geq 0 \implies f(x) \simeq x + 1$ creates the function interpretation $f(x) = \mathit{if}\ x < 0\ \mathit{then}\ f'(x) \ \mathit{else} \ x + 1$ for $f$, where $f'$ is a fresh function. The function $f$ is replaced everywhere by the macro definition.
 
 This completes the description of model extraction in Z3.
@@ -60,7 +60,7 @@ also produces symbolic models.
 
 Models produced by the solver map terms to values. Given a solution to $x \simeq y + 1$, the solver will assign $x$ to a numeral
 that is one greater than the numeral assigned to $y$. Pre-processing, on the other hand, may choose to _solve_ for $x$ and record the
-solution $x \mapsto y + 1$. In this case the model for $x$ can be retrieved as $y + 1$. Z3 supports a setting to
+solution $x \mapsto y + 1$. In this case, the model for $x$ can be retrieved as $y + 1$. Z3 supports a setting to
 force $y + 1$ to be evaluated to a numeral if the user wants this.
 
 ~ Framed

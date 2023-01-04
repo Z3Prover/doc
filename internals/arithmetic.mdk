@@ -11,7 +11,7 @@ describe internals of the newer solver in more detail.
 
 In overview, the arithmetic solver uses a waterfall model for solving arithmetic constraints.
 
-* First it establishes feasibility with respect to linear inequalities. Variables are solved over the rationals.
+* First, it establishes feasibility with respect to linear inequalities. Variables are solved over the rationals.
 * Second, it establishes feasibility with respect to mixed integer linear constraints. Integer variables are solved if they are assigned integer values.
 * Finally, it establishes feasibility with respect to non-linear polynomial constraints.
 
@@ -27,7 +27,7 @@ In overview, the arithmetic solver uses a waterfall model for solving arithmetic
 
 ### Rational linear arithmetic
 
-The solver for rational linear inequalities uses a dual simplex solver as explained in [@DutertreM06].
+The solver for rational linear inequalities uses a dual simplex solver, as explained in [@DutertreM06].
 It maintains a global set of equalities of the form $A\vec{x} = 0$, and
 each variable $x_j$ is assigned lower and upper bounds during search.
 The solver then checks for feasibility of the resulting system
@@ -80,7 +80,7 @@ For example, assume we start with a set of initial values
 $x = y = s_1 = s_2 = 0$
 and bounds $x \geq 0, s_1 \leq 2, s_1 \geq 2$. 
 Then $s_1$ has to be 2 and it is made non-basic. 
-Instead $y$ becomes basic:
+Instead, $y$ becomes basic:
 
 ~ Math
 {y} + x - s_1 = 0, \ {s_2} + x - 2s_1 = 0
@@ -113,7 +113,7 @@ Pivoting re-establishes feasibility using a different solution, for example
   ~~
 with assignment $z = 0, x = y = -1$. The variables $x$ and $y$ have the same value,
 but must they be equal under all assignments? We can establish this directly by subtracting the
-right hand sides $z - u - s_1$ and $z - u - s_2$ from another and by factoring in the constant bounds obtain
+right-hand sides $z - u - s_1$ and $z - u - s_2$ from another and by factoring in the constant bounds to obtain
 the result $0$. But subtraction is generally expensive if there are many bounded constants in the rows.
 The arithmetical operations are not required to infer that $x = y$. Z3 uses two facts to infer the equality
 
@@ -127,11 +127,11 @@ Variables that satisfy these two criteria must be equal.
 
 ### Integer linear arithmetic
 
-The mixed integer linear solver comprises of several layers. 
+The mixed integer linear solver consists of several layers. 
 
 #### GCD consistency
-Each row is first normalized by multiplying it with the the least common multiple of the denominators of each coefficient.
-For each row it assembles a value from the fixed variables. 
+Each row is first normalized by multiplying it with the least common multiple of the denominators of each coefficient.
+For each row, it assembles a value from the fixed variables. 
 A variable $x_j$ is fixed if the current values $lo_j$, $hi_j$ are equal. 
 Then it checks that the gcd of the coefficients to variables divide the fixed value. If they don't the row has no integer solution.
 
@@ -146,7 +146,7 @@ Then it checks that the gcd of the coefficients to variables divide the fixed va
 Following [@MouraB08], the integer solver moves non-basic variables away from their bounds in order to ensure that
 basic, integer, variables are assigned integer values. The process examines each non-basic variable and checks every row where it occurs
 to estimate a safe zone where its value can be changed without breaking any bounds. If the safe zone is sufficiently large to patch
-a basic integer variable it performs an update. This heuristic is highly incomplete, but is able to locally patch several variables
+a basic integer variable, it performs an update. This heuristic is highly incomplete, but is able to locally patch several variables
 without resorting to more expensive analyses.
 
 ~ Begin Example
@@ -158,14 +158,14 @@ Suppose we are given a tableau of the form
 where $y, z$ are basic variables and $x$ has bounds $[3,10]$, $y$ has bounds $[-3,4]$, $z$ has bounds $[-5,12]$.
 The variable $x$ is initially assigned at the bound $\beta(x) = 3$. Then $\beta(y) = \frac{3}{2}$ and
 $\beta(z) = 1$. But neither $y$ nor $z$ is close to their bounds. We can move $x$ to $8$ without violating the bound for $y$ because of $y - \frac{1}{2} x = 0$.
-Thus the freedom interval for $x$ is the range $[3,8]$ and within this range there is a solution,
+Thus, the freedom interval for $x$ is the range $[3,8]$ and within this range there is a solution,
 $x = 6$, where $y, z$ are integers and within their bounds.
 ~ End Example
 
 #### Cubes
 An important factor in solving more satisfiable integer arithmetic instances is
 a method by Bromberger and Weidenbach [@BrombergerW16;@BrombergerW17].
-It allows to detect feasible inequalities over integer variables 
+It allows detecting feasible inequalities over integer variables 
 by solving a stronger linear system.
 In addition, we observed that the default strengthening proposed by Bromberger and Weidenbach
 can often be avoided: integer solutions can be guaranteed from weaker systems.
@@ -192,8 +192,8 @@ integer solution to the original inequalities.
 ~
 
 Our twist on Bromberger and Weidenbach's method is to avoid strengthening on selected inequalities.
-First we note that _difference_ inequalities of the form $x - y \leq k$, where $x, y$ are integer variables
-and $k$ is an integer offset need not be strengthened. For octagon constraints $\pm x \pm y \leq k$
+First, we note that _difference_ inequalities of the form $x - y \leq k$, where $x, y$ are integer variables
+and $k$ is an integer offset need not be strengthened. For octagon constraints $\pm x \pm y \leq k$,
 there is a boundary condition: they need only require strengthening if $x, y$ are assigned at mid-points
 between integral solutions. For example, if $V(x) = \frac{1}{2}$ and $V(y) = \frac{3}{2}$, for $x + y \leq 2$.
 Our approach is described in detail in [@Vampire17Theorem].
@@ -271,7 +271,7 @@ where the basic variable is bounded. It adds equations $v = v_1\ldots v_k$ for
 arithmetic variables that are defined as monomials.
 
 - Equations are pre-solved if they are linear and can be split
-into two groups one containing a single variable that has a
+into two groups, one containing a single variable that has a
 lower (upper) bound, the other with more than two variables
 with upper (lower) bounds. This avoids losing bounds information
 during completion.
@@ -286,7 +286,7 @@ the clause $x y p \simeq 0 \implies x \simeq 0 \lor y \simeq 0 \lor p \simeq 0$.
 
 We use an adaptation of ZDD (Zero suppressed decision diagrams [@Minato93;@NishinoYMN16]) to represent polynomials.
 The representation has the advantage that polynomials are stored in a shared data-structure and operations
-over polynomials are memoized. A polynomial over the real is represented as an acyclic graph where 
+over polynomials are memorized. A polynomial over the real is represented as an acyclic graph, where 
 nodes are labeled by variables and edges are labeled by coefficients. For example, the polynomial $5x^2y + xy + y + x + 1$
 is represented by the acyclic graph shown below.
 

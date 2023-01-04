@@ -86,8 +86,8 @@ that accumulates substitutions.
 ### E-matching - code trees 
 
 The straight-forward E-matching algorithm is expensive when it is invoked from scratch for every possible 
-candidate of pattern and node during search. To share work across patterns and terms Z3 compiles patterns
-into a _code tree_ data-structure that contains dynamically compiled set of instructions to perform matching.
+candidate of pattern and node during search. To share work across patterns and terms, Z3 compiles patterns
+into a _code tree_ data-structure that contains a dynamically compiled set of instructions to perform matching.
 The instructions can be regarded as a partial evaluation of the naive algorithm for fixed patterns. The
 instruction set allows merging code sequences from different patterns by sharing common prefixes.
 Substitutions are stored in registers, backtracking just updates the registers.
@@ -358,17 +358,17 @@ The set $\mathcal{I}$ is a _sufficient set of instances_ for $\varphi$, if
 ~
 
 ~ Proposition
-  MBQI is a decision procedure the array and map property fragments by using the
+  MBQI is a decision procedure for the array and map property fragments by using the
   instantiation sets computed from the formulas.
 ~
 
 ### Essentially Uninterpreted Fragment [@GeM09]
 
-The Array Property Fragment can be seen as an instance of a class of formulas
+The Array Property Fragment can be seen as an instance of a class of formulas,
 where instantiations can be extracted based on a set of grammar rules that are extracted
 from the formulas.
 
-This fragment thus applies to wider range of formulas than the syntactic array property fragment.
+This fragment thus applies to a wider range of formulas than the syntactic array property fragment.
 It also captures fragments studied in different contexts:
 
 * the list property fragment by McPeak and Necula
