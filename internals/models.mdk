@@ -12,12 +12,12 @@ non-linear arithmetic formulas and quantified formulas.
 
 This section describes how models are constructed from a satisfiable state. A starting point for model construction in Z3 is a T-consistent
 assignment to atomic formulas such that all ground clauses are satisfied and the conjunction of assignments to atomic formulas are consistent
-with respect to all theories. Model construction then works by layers
+with respect to all theories. Model construction then works by layers:
 
 * For each E-node $n$ it collects _dependencies_ of E-nodes $n_1, \ldots, n_k$ that must be assigned a value before $n$ can be assigned a value.
   Dependencies are specific to theories. There are no dependencies when $n$ ranges over Bool, Int, or Real.
   * When $n$ is an array, the value of $n$ depends on the values of all nodes $n'[n'']$ or $\delta(n')$ where $n \sim n'$.
-    That is, the value of $n$ as a n array depends on the values of select and default terms where it occurs.
+    That is, the value of $n$ as an array depends on the values of select and default terms where it occurs.
   * When $n$ is an algebraic data-type headed by constructor $C(n_1, \ldots, n_k)$, then the value of $n$ depends on $n_1, \ldots, n_k$.
   * When $n$ is a finite sequence $[n_1, \ldots, n_k]$, then the value of $n$ depends on $n_1, \ldots, n_k$.
 

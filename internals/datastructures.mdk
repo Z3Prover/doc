@@ -277,10 +277,10 @@ The proofs are linear if we admit clauses using fresh literals of the form
 ~~
 ~ End Example 
 
-Z3 introduces dynamically such auxiliary clauses based on transitifity of equality and congruence rules of the form
+Z3 dynamically introduces such auxiliary clauses based on transitivity of equality and congruence rules of the form
 
 ~ Math
-   t_1 \simeq s_1 \ldots t_k \simeq s_k \implies f(t_1, \ldots, t_k) \simeq f(s_1, \ldots, s_k)
+   t_1 \simeq s_1, \ldots, t_k \simeq s_k \implies f(t_1, \ldots, t_k) \simeq f(s_1, \ldots, s_k)
 ~
 
 The axioms are introduced for uninterpreted functions and related axioms are introduced for bit-vectors
@@ -310,24 +310,24 @@ It introduces the Ackermann axioms based on thresholds. A user can control the t
 An important question for applications is _when is dynamic Ackermann reduction useful?_ 
 The cost-benefit of introducing new literals into the search space has to be weighed. 
 Importaly, for applications where the main expectation is that formulas are satisfiable, dynamic Ackermann reduction can be detrimental.
-Users could disable dynamic Ackermann reduction and gain signficiant performance.
+Users can disable dynamic Ackermann reduction to gain significant performance improvement.
 
 ## Iterative deepening for finite models
 
 You can declare and reason about recursive functions with Z3. The SMTLIB2 standard introduces recursive function definitions
 and you can add recursive function declarations over the programmatic APIs.
 
-In the following we define two recursive functions `length` (the length of a list) and `nat-list` (a predicate whether a list 
-of integers contains only non-negative inters).
+In the following, we define two recursive functions `length` (the length of a list) and `nat-list` (a predicate whether a list 
+of integers contains only non-negative integers).
 
 ~ Begin Example
 
 ```smt
 (define-fun-rec length ((ls (List Int))) Int
-   (if ((_ is nil) ls) 0 (+ 1 (length (tail ls)))))
+   (ite ((_ is nil) ls) 0 (+ 1 (length (tail ls)))))
 
 (define-fun-rec nat-list ((ls (List Int))) Bool 
-   (if ((_ is nil) ls)
+   (ite ((_ is nil) ls)
        true
        (and (>= (head ls) 0) (nat-list (tail ls)))))
 
@@ -351,7 +351,7 @@ and unsatisfiable cores that contain these assumption literals are presented to 
 extend their depth bounds. There is an advantage to maintaining finer-grained depth bounds, that is, separate 
 assumption literals for each recursive function and each recursive branch within a function [@PassmoreCIABKKM20].
 
-The theory of sequences also uses iterative deepending to control the search for finite length sequences.
+The theory of sequences also uses iterative deepening to control the search for finite length sequences.
 The sequence (string) theory also uses a `contains` predicate that captures when a sequence is a subsequence of another.
 Positive occurrences of `contains` can be reduced to solving string equalities, but negative occurrences of `contains` 
 are more tricky. They are treated as recursive functions over sequences. Their unfolding is controlled by size bounds
