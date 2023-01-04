@@ -23,7 +23,7 @@ Consider the formula
 
 The smallest subterm properly containing the bound variable $x$ is ${\color{red}g(x,c)}$ in $f({\color{red}g(x,c)}) \simeq a$.
 The only other occurrence of the function $g$ is $g(c,b)$ in the equality $g(c,b) \simeq c$.
-Based on the ground equality $b = c$ $g(c,c) \sim g(c,b)$ so we can instantiate $x$ by $c$ and infer
+Based on the ground equality $b \simeq c$ it follows $g(c,c) \sim g(c,b)$ so we can instantiate $x$ by $c$ and infer
 
 ~~ Math
   p_{\varphi} \rightarrow f(g(b,c)) \simeq a
@@ -261,11 +261,11 @@ MBQI can be used to harness the set of groundings.
 ### UFBV [@WintersteigerHM13]
 
 ~ MathPre
-F   & ::= \exists e : bv[n] . F | \exists u : bv[n] . F | F \wedge F | C
+F   & ::= \exists e_i : bv[n] . F | \forall u_j : bv[n] . F | F \wedge F | C
 C   & ::= \bigvee_j L_i
 L   & ::= A | \neg A
 A   & ::= p(\vec{T}) | T = T' | \mathtt{bvle}(T, T') | \ldots
-T   & ::= f(\vec{T}) | u | v | \mbox{bit-vector expression}
+T   & ::= f(\vec{T}) | e_i | u_j | \mbox{bit-vector expression}
 bv[n] & ::= \mbox{bit-vector of length $n$}
 ~
 
@@ -295,17 +295,21 @@ F     & ::= F \vee F | A_F | \neg A_F
 A_F   & ::= T[a[u]] \simeq T[a[u]] 
 ~
 
+where $a$ are arrays and $T[]$ denotes just $e$.
+
 ~ Begin Example
 
 Let us express the following in the Map Property Fragment:
 
-* $a$ is equal to $b$ except at index $e$.
+* $a$ is the constant $e$-array.
+
+* $a$ is equal to $b$ except at index $v$.
 
 * $c$ can only have two values, $e_1$ or $e_2$.
 
 ~~ MathPre
   \forall u \ . \ a[u] \simeq e
-  \forall u \ . \ u \not\simeq e \ \Rightarrow a[u] \simeq b[u]
+  \forall u \ . \ u \not\simeq v \ \Rightarrow a[u] \simeq b[u]
   \forall u \ . \ c[u] \simeq e_1 \ \vee c[u] \simeq e_2
 ~~
 

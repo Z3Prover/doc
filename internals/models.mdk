@@ -39,7 +39,7 @@ with respect to all theories. Model construction then works by layers:
 * After all nodes have been assigned a value, model construction assigns interpretations to uninterpreted functions.
   Uninterpreted functions are assigned to lookup tables. $f$ is assigned the value $[\valueOf{n} \mapsto \valueOf{f(n)} \mid f(n) \in \Nodes ] \cup [\mathit{else} \mapsto e]$,
   where $e$ is one of the values from $\valueOf{f(n)}$. Z3 synthesizes interpretations of uninterpreted functions that go beyond finite lookup tables. In these cases it mines
-  quantified formulas for macros. For example, asserting $\forall x \ . \ x \geq 0 \implies f(x) \simeq x + 1$ creates the function interpretation $f(x) = \mathit{if}\ x < 0\ \mathit{then}\ f'(x) \ \mathit{else} \ x + q$ for $f$, where $f'$ is a fresh function. The function $f$ is replaced everywhere by the macro definition.
+  quantified formulas for macros. For example, asserting $\forall x \ . \ x \geq 0 \implies f(x) \simeq x + 1$ creates the function interpretation $f(x) = \mathit{if}\ x < 0\ \mathit{then}\ f'(x) \ \mathit{else} \ x + 1$ for $f$, where $f'$ is a fresh function. The function $f$ is replaced everywhere by the macro definition.
 
 This completes the description of model extraction in Z3.
 
