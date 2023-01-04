@@ -122,6 +122,8 @@ which can be translated to a propositional formula. The sorting network approach
 
 The native solver instead tracks the partial sum of already assigned booleans and sets some of the remaining ones in case it is not possible to exceed the desired bound without them.
 
+~ End Example
+
 ## Equality and Uninterpreted Functions
 
 This theory captures a shared property of all theory: that equality is a congruence relation. 
