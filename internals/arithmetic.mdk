@@ -137,8 +137,7 @@ Then it checks that the gcd of the coefficients to variables divide the fixed va
 
 ~ Begin Example
   Assume we are given a row $5/6x + 3/6y + z + 5/6u = 0$, where $x, y$ are fixed at $2 \leq x \leq 2$, $-1 \leq u \leq -1$, and $z$ is the base variable.
-  Then it follows that $5 + 3(y + 2z) = 0$. The term $y + 2z$ does not have any solutions over the integers because $5/3$ is not an integer. The
-  greatest common divisor of coefficients to the non-fixed variables does not divide the constant offset from the fixed variables.
+  Then it follows that $5 + 3(y + 2z) = 0$ which has no solution over the integers: The greatest common divisor of coefficients to the non-fixed variables ($3$) does not divide the constant offset from the fixed variables ($5$).
 ~ End Example
 
 
@@ -153,13 +152,13 @@ without resorting to more expensive analyses.
 ~ Begin Example
 Suppose we are given a tableau of the form
 ~~ MathPre
- y - \frac{1}{2}x = 0
- z - \frac{1}{3}x  = 0
+ y - \frac{1}{2} x = 0
+ z - \frac{1}{3} x  = 0
 ~~
 where $y, z$ are basic variables and $x$ has bounds $[3,10]$, $y$ has bounds $[-3,4]$, $z$ has bounds $[-5,12]$.
 The variable $x$ is initially assigned at the bound $\beta(x) = 3$. Then $\beta(y) = \frac{3}{2}$ and
-$\beta(z) = 1$. But neither $y$ nor $z$ is close to their bounds. We can move $x$ to 8 without violating the bound for $y$
-and move $x$ to to 10. Thus the freedom interval for $x$ is the range $[3,8]$ and within this range there is a solution,
+$\beta(z) = 1$. But neither $y$ nor $z$ is close to their bounds. We can move $x$ to $8$ without violating the bound for $y$ because of $y - \frac{1}{2} x = 0$.
+Thus the freedom interval for $x$ is the range $[3,8]$ and within this range there is a solution,
 $x = 6$, where $y, z$ are integers and within their bounds.
 ~ End Example
 
@@ -176,7 +175,7 @@ In the following we let $A, A'$ range over integer matrices
 and $a$, $b$, $c$ over integer vectors. The 1-norm $\onenorm{A}$ of a matrix
 is a column vector, such that each entry $i$ is the sum of the absolute
 values of the elements in the corresponding row $A_i$. We write
-$\onenorm{A_i}$ to directly access the 1-norm of a row.
+$\onenorm{A_i}$ to directly access the 1-norm of a row $i$.
 
 A (unit) _cube_ is a polyhedron that is a Cartesian 
 product of intervals of length one for each variable.
@@ -246,7 +245,7 @@ Add example
 
 
 #### Bounds propagation on monomials
-A relatively inexpensive step is to propagate and check bounds based on 
+A relatively inexpensive step is to propagate and check bounds based 
 on non-linear constraints. For example, for $y \geq 3$, then $m = x\cdot x\cdot y \geq 3$,
 if furthermore $x \leq -2$, we have the strengthened bound $m \geq 12$.
 Bounds propagation can also flow from bounds on $m$ to bounds on the 

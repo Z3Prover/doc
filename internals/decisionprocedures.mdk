@@ -410,7 +410,7 @@ Abstractly, a refinement
 type of sort $S$ uses a predicate $p$ over $S$. At least one element of $S$ must satisfy $p$ for the
 construction to make sense. The refinement type $S \mid p$ represents the elements of $S$ that satisfy
 $p$. The properties we need to know about elements of $S\mid p$ can be encoded using two auxiliary
-functions that form a surjection $\restrictOp$ from $S \mid p$ into $S$ with a partial inverse $\restrictOp$ that maps
+functions that form a surjection $\relaxOp$ from $S \mid p$ into $S$ with a partial inverse $\restrictOp$ that maps
 elements from $S$ into $S \mid p$. The properties of these functions are summarized as follows:
 
 ~MathPre

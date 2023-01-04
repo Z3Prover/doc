@@ -62,7 +62,7 @@ Package       : bussproofs
 \newcommand{\Nat}{\mathcal{N}}
 \newcommand{\Aconst}{\mathit{const}}
 \newcommand{\Amap}{\mathit{map}}
-\newcommand{\Aasarray}{\mathit{as{\-}array}}
+\newcommand{\Aasarray}{\mathit{as\text{-}array}}
 \newcommand{\Astore}{\mathit{store}}
 \newcommand{\Aext}{\mathit{ext}}
 \newcommand{\valueOf}[1]{[\![#1]\!]}
@@ -70,6 +70,7 @@ Package       : bussproofs
 \newcommand{\strategy}{\mathit{strategy}}
 \newcommand{\level}{\mathit{level}}
 \newcommand{\Atoms}{\mathit{Atoms}}
+\setlength{\fboxsep}{.5\fboxsep}
 ~
 
 

@@ -77,7 +77,7 @@ respect to occurrences of $f$.
 Compilation of terms into E-nodes uses a top-down traversal of terms. The top-down traversal is replicated in each theory solver
 where the compilation of terms depends on the solver. The arithmetic solver, for instance, compiles the term $x + y + x$ into a
 node $n$ and adds the basic row $n = 2x + y$. Top-down compilation does not play well with small static stack sizes allocated by
-$C++$ runtimes. The new core in Z3 therefore introduces a visitor pattern to allow top-down processing without using recursion stacks.
+$\text{C}\texttt{++}$ runtimes. The new core in Z3 therefore introduces a visitor pattern to allow top-down processing without using recursion stacks.
 
 E-nodes are compiled dynamically during search. When a quantifier is instantiated or a solver introduces a new lemma that uses new terms, the
 E-nodes corresponding to new terms are introduced at a search level that may later be popped. Learned clauses may refer to these new terms
@@ -210,9 +210,9 @@ grouped by the blocked literal that was used to introduce them.
 For example, when clausifying $a \land b$ we have the clauses
 
 ~ MathPre
-  \neg (a \land b) \lor a
-  \neg (a \land b) \lor b
-  \neg a \lor \neg b \lor (a \land b)
+  \neg \boxed{(a \land b)} \lor a
+  \neg \boxed{(a \land b)} \lor b
+  \neg a \lor \neg b \lor \boxed{(a \land b)}
 ~
 
 then the literal for $a \land b$ is blocked.
@@ -245,7 +245,7 @@ are treated as Boolean connectives because they are compiled into clauses where 
 
 ## The power of propagation
 
-Efficient Theory propagaiton can have a profound effect on overall efficiency of solving.
+Efficient theory propagation can have a profound effect on overall efficiency of solving.
 Congruence closure is therefore tightly integrated with Boolean propagation: when equality reasoning can infer that an equality
 atom $n \simeq n'$ is true or false, it is useful to propagate this fact eagerly. Congruence closure in Z3 therefore has special
 handling of equality literals. An equality $n \simeq n'$ is both a term with the binary function $\simeq$ and an atom.
