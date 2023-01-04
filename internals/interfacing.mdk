@@ -195,6 +195,19 @@ is provided in the context of
 [$F\star$](http://fstar-lang.org/tutorial/book/under_the_hood/uth_smt.html).
 
 
+~ Framed
+_Z3 creates a lot of instantiations. How can I diagnose when there are too many quantifier instantiations_?
+~
+
+~ Framed
+_Z3 fails to instantiate a quantifier I thought would be useful. How do I diagnose a failed quantifier instantiation_?
+~
+
+~ Framed
+_How does Z3 prioritize quantifier instantiation_?
+~
+
+
 ## Extracting information from Z3
 
 The primary means for retrieving information from z3 is by
