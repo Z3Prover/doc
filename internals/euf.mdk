@@ -1,0 +1,285 @@
+## Equality and Uninterpreted Functions
+
+This theory captures a shared property of all theory: that equality is a congruence relation. 
+The theory is described in many places, including in [@BjornerMNW18].
+
+
+Let us use a simple example to illustrate the scope and main functionality of congruence closure
+based decision procedures for equality. We are given two equalities and one disequality
+
+~ Math
+  a \simeq f(f(a)), a \simeq f(f(f(a))), a \not\simeq f(a)
+~
+
+Their conjunction is unsatisfiable. Unsatisfiability is established by combining union-find [@UnionFind] data-structures
+to maintain equivalence classes and a data-structure of E-graphs to enforce congruences.
+In a first step, the terms are represented by unique nodes in a DAG structure for every sub-term. We represent the DAG
+structure as a sequence of definitions. Then equalities and disequalities are between nodes in DAG.
+
+~ MathPre
+  n_1 \equiv f(a), n_2 \equiv f(n_1), n_3 \equiv f(n_2) \\
+  a \simeq n_2, a \simeq n_3, a \not\simeq n_1
+~
+
+Process equality atoms using union-find. It establishes the equivalence classes
+
+~ Math
+ \{  a, n_2, n_3 \}, \{ n_1 \}
+~
+
+Then congruence closure triggers whenever there are two nodes, $n_1, n_2$ from different equivalence classes,
+labeled by the same function $f$, with equal children. In our case $a, n_2$ belong to the same equivalence class
+so the nodes $n_1, n_3$ are merged.
+
+~ Math
+\{  a, n_2, n_3, n_1 \}
+~
+
+When the children of the equality term $a \simeq n_1$ are merged into the same equivalence class, the
+term $a \simeq n_1$ is set to true. This contradicts that $a \simeq n_1$ is already set to false.
+
+
+### E-Node
+
+
+The E-Node data-structure [@DowneyST80;@DetlefsNS05;@NieuwenhuisO07] is used to implement congruence closure efficiently. The main fields of an E-Node are
+
+~ MathPre
+    n : & \langle & f: & Func  & \mbox{function symbol}
+        &      & ts: & N^* & \mbox{arguments}
+        &      & find: & N \times N \times \Nat & \mbox{link to representative, sibling and class size}
+        &      & P:    & N^*   & \mbox{list of parents}            
+        &      & cg:   & N    & \mbox{congruence representative}
+        &      & j:    & null | Just \times N & \mbox{pointer to justification and node}
+        & \rangle
+~
+
+When a term $f(ts)$ occurs in a formula used by the solver it is compiled into an E-node $n$.
+The E-node $n$ is initialized to
+
+~ Math
+ n \leftarrow \langle f = f, ts = ts, \find = (n,n,1), P = null, cg = n, j = null \rangle.
+~
+
+~ Begin Example
+
+The result of internalizing the following term
+
+~~ Math
+   f(g(a), g(a), a)
+~~
+
+is 
+
+~~ MathPre
+  n_1 & := & \langle f = a, ts = [], \find = (n_1, n_1, 1), P = [n_2, n_3], j = null \rangle
+  n_2 & := & \langle f = g, ts = [n_1], \find = (n_2, n_2, 1), P = [n_3], j = null \rangle
+  n_3 & := & \langle f = f, ts = [n_2, n_2, n_1], \find = (n_3, n_3, 1), P = [], j = null \rangle
+
+~~ 
+
+~ End Example
+
+The field $\find$ is used to implement union-find. The _root_ of a node is found by
+looking up the representative until it is the same node.
+Thus, let $(n_1, n_2, sz) = \find(n)$. Then $\rootNode(n) = n$ if $n_1 = n$, otherwise
+$\rootNode(n) = \rootNode(n_1)$. We extend $\rootNode$ to apply to a list of nodes by mapping it on each node in the list.
+Z3 does not perform path compaction, instead it eagerly updates
+the representative of all siblings when nodes are merged. In other words, if roots $n_1, n_2$ are merged
+and $n_2$ is made the root, then all siblings $n_s$ of $n_1$ are updated such that $n_s := n_2$.
+The second field $n_2$ is the sibling
+of $n$ in the same equivalence class. The set of siblings forms a singly linked cyclic list.
+The size field $sz$ is the size of the equivalence class. 
+
+
+Besides the E-nodes, the solver maintains a hash-table, we call _etable_, that
+is used to find the congruence root of a function application. It maps a
+function symbol $f$ and list of arguments to $f$ that are represented by
+root E-nodes into a congruence closure root. For the congruence closure
+root $n$ it maintains the invariant $n.cg = \mathit{etable}[n.f, \rootNode(n.ts)]$.
+We write $\mathit{etable}[n.f, \rootNode(n.ts)]$ to indicate that the _etable_
+tracks function applications to root nodes. In reality, the _etable_ just stores
+the node $n$ and uses the $\rootNode$ function when computing the current hash of $n$
+and equalities with other nodes.
+
+
+### Merge
+
+The main functionality of congruence closure is to ensure that all equivalence classes that follow
+from equalities are inferred. It exposes the main function merge($n_1, n_2, j$) to
+establish that two nodes $n_1, n_2$ are equal under justification $j$. We describe justifications later
+in more detail. The main steps of _merge_ are outlined below.
+
+
+|:~~~~~~~~~~~~~|:~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+| Roots        | $r_1 \leftarrow \rootNode(n_1), r_2 \leftarrow \rootNode(n_2)$                            |
+|              | assume $r_1 \neq r_2$                                                                     |
+|              | assume $r_1.sz \leq r_2.sz$                                                               |
+| Erase        | __for each__ $p \in r_1.P$ __where__ $p.cg = p$:                                          |
+|              | \ \ \ \ erase $\mathit{etable}[p.f, \rootNode(p.ts)]$                                     |
+| Update Root  | $r_1.\find \leftarrow r_2$                                                                |
+| Justify      | justify($r_1, r_2, j$)                                                                    |
+| Insert       | __for each__ $p \in r_1.P$:                                                               |
+|              | \ \ __if__ $\mathit{etable}[p.f,\rootNode(p.ts)] = null$ __then__                         |
+|              | \ \ \ \ \ $\mathit{etable}[p.f,\rootNode(p.ts)] \leftarrow p$                             |
+|              | \ \ $p.cg \leftarrow$ _etable_$[p.f, \rootNode(p.ts)]$                                    |
+|              | \ \ __if__ $p.cg = p$ __then__                                                            |
+|              | \ \ \ \ append $p$ to $r_2.P$                                                             |
+|              | \ \ __else__                                                                              |
+|              | \ \ \ \ add $\langle p.cg, p, cc\rangle$ to _tomerge_                                     |
+
+* __Roots__: congruence closure always merges current roots of equivalence classes. If the roots are equal, there is nothing to merge.
+We assume that $r_2$ is chosen as root. The main mechanism for ensuring congruence closure has sub-quadratic running time
+is obtained by applying Hopcroft's method of merging the _lesser_ half. Z3 makes an exception to this rule if $r_1$ is labeled by a term
+that qualifies as a _value_. To quickly identify if a congruence class contains a value, such as $1, 2, cons(3, nil)$, it sets the root
+of a class to be the node representing the value. 
+
+* __Erase__: Entries of the _etable_ that are stale are removed. An entry is stale if it points to the old root as congruence closure representative.
+
+* __Update Root__: The root is updated along with size of equivalence classes and links into the cyclic list of siblings.
+
+* __Justify__: The _justification_ for a merged equality is updated. We describe this functionality later.
+
+* __Insert__: Finally, the _etable_ is updated by updating the $cg$ field of parents from $r_1$. It maintains a list _tomerge_ of new nodes that are discovered congruent. An outer loop invokes _merge_ on the list of new nodes until it is empty.
+
+
+
+
+### Unmerge
+
+All operations on the E-Graph can be inverted. For this purpose, every merge is recorded in an _undo trail_.
+Other operations that update nodes are recorded in the same trail. For example, when $p$ is appended to $r_2.P$
+the insertion into the cyclic list of parents is recorded so that it can be reverted. Reverting a merge
+requires updating the _etable_ and is sensitive to whether a node was a congruence root:
+
+The effect of unmerge($r_1, r_2$) is as follows:
+
+
+|:~~~~~~~~~~~~~|:~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+| Erase        | __for each__ $p \in r_2.P$ __added from__ $r_1.P$:                                        |
+|              | \ \ erase $\mathit{etable}[p.f, \rootNode(p.ts)]$                                     |
+| UnJustify    | unjustify($r_1, r_2, j$)                                                                  |
+| Revert Root  | $r_1.\find \leftarrow r_1$                                                                |
+| Insert       | __for each__ $p \in r_1.P$:                                                               |
+|              | \ \ __if__ $p.cg \neq p \lor \rootNode(p.ts) \neq \rootNode(p.cg)$                        |
+|              | \ \ \ \ \ $\mathit{etable}[p.f,\rootNode(p.ts)] \leftarrow p.cg \leftarrow  p$            |
+
+
+### Justifications 
+
+A justification is a reason for merging two nodes.
+There are two possible reasons for merging nodes:
+
+1. A literal $\ell: s \simeq t$ is asserted. The justification is the literal $\ell$.
+2. Nodes are merged due to congruence closure.
+
+~ MathPre
+   Just ::= \ell: s \simeq t | cc: f(ts) \simeq f(ts')
+~
+
+__NB__: $cc: f(ts) \simeq f(ts')$ is justified _recursively_ by justifying $ts \simeq ts'$.
+
+
+__Invariant:__ Every non-root node points to a linked list of justifications leading to the root
+
+__NB__ The linked list does not follow direction of union-find.
+
+~ MathPre
+    r_1 \leftarrow \rootNode(n_1)
+    r_2 \leftarrow \rootNode(n_2)
+    r_1.\find \leftarrow r_2
+    old justification: n_1 \stackrel{j_1}{\rightarrow} n^1_1 \stackrel{j_2}{\rightarrow} n^2_1 \cdots \stackrel{j_m}{\rightarrow} r_1
+    new justification: n_1 \stackrel{j_1}{\leftarrow} n^1_1 \stackrel{j_2}{\leftarrow} n^2_1 \cdots \stackrel{j_m}{\leftarrow} r_1
+    add justification: n_1 \stackrel{j}{\rightarrow} n_2
+~
+
+
+![justificationunionfind]
+[justificationunionfind]: images/justifiedunionfind.jpg "justificationunionfind" { width:auto; max-width:80% }
+
+
+Note that not all possible justifications are tracked, if
+merge($n_1, n_2, j$) is invoked but already $\rootNode(n_1) = \rootNode(n_2)$, then
+the justification $j$ for the equality of $n_1, n_2$ is dropped.
+In contrast, __egg__ [@EggProofs] keeps track of potential extra paths to find _short_ proofs.
+Use cases within CDCL(T), that leverages amortized effect of backtracking search typically
+hedge on that the cost of finding a strongest conflict up front is outweighed by multiple attempts that converge on
+sufficiently strong conflicts.
+
+### From justifications to proofs
+
+We can create proofs from first-principles by using justifications.
+Suppose $\rootNode(s) = \rootNode(t)$ follows from a sequence
+merge($s_1, t_1, \ell_1$), merge($s_2, t_2, \ell_2$),$\ldots$, merge($s_k, t_k, \ell_k$).
+
+
+Then a proof of $s \simeq t$ can be extracted using overloaded functions $\pi$:
+
+
+~ Math
+\begin{array}{ll}
+   \proof(s \simeq t) & =
+   \begin{array}{c}
+   \AxiomC{$\proof(s \stackrel{j}{\rightarrow} \cdots a)$}
+   \AxiomC{$\proof(t \stackrel{j'}{\rightarrow} \cdots a)$}
+   \RightLabel{symm}
+   \UnaryInfC{$a \simeq t$}
+   \RightLabel{trans}
+   \BinaryInfC{$s \simeq t$}
+   \DisplayProof\\[2em]
+   \mbox{$a$ is a least common $\rightarrow$ ancestor of $s, t$}
+   \end{array}
+\end{array}
+~
+
+~Math
+\begin{array}{ll}
+   \proof(s \stackrel{j}{\rightarrow} t \stackrel{j'}{\rightarrow} \cdots u) & =
+   \begin{array}{c}
+   \AxiomC{$\proof(j, s \simeq t)$}
+   \AxiomC{$\proof(t \stackrel{j'}{\rightarrow} \cdots u)$}
+   \RightLabel{trans}
+   \BinaryInfC{$s \simeq u$}
+   \DisplayProof
+   \end{array}
+   \\[1.5em]
+   \proof(s) & =
+   \begin{array}{c}
+   \AxiomC{\mbox{}}
+   \RightLabel{refl}
+   \UnaryInfC{$s \simeq s$}
+   \DisplayProof
+   \end{array}
+   \\[1.5em]
+   \proof(\ell : s \simeq t, s \simeq t) & = \ell
+   \\[1.5em]
+   \proof(\ell : t \simeq s, s \simeq t) & = 
+   \begin{array}{c}
+   \AxiomC{$\ell$}
+   \RightLabel{symm}
+   \UnaryInfC{$s \simeq t$}
+   \DisplayProof    
+   \end{array}
+   \\[1.5em]
+   \proof(cc: f(ts) \simeq f(ts'), f..) & =
+   \begin{array}{c}
+   \AxiomC{$\proof(ts_1 \simeq ts'_1), \ldots, \proof(ts_k \simeq ts'_k)$}   
+   \RightLabel{cong}
+   \UnaryInfC{$f(ts) \simeq f(ts')$}
+   \DisplayProof
+   \end{array}
+\end{array}
+~
+
+
+
+### Control
+
+* Congruence closure and Boolean reasoning
+  * Do enough CC to speed up search (unit propagation)
+  * Don't do too much CC when Boolean search takes care of it.
+
+### A note on complexity
+
+
+
