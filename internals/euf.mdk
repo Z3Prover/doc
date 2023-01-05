@@ -72,9 +72,9 @@ The result of internalizing the following term
 is 
 
 ~~ MathPre
-  n_1 & := & \langle f = a, ts = [], \find = (n_1, n_1, 1), P = [n_2, n_3], j = null \rangle
-  n_2 & := & \langle f = g, ts = [n_1], \find = (n_2, n_2, 1), P = [n_3], j = null \rangle
-  n_3 & := & \langle f = f, ts = [n_2, n_2, n_1], \find = (n_3, n_3, 1), P = [], j = null \rangle
+  n_1 & := & \langle f = a, ts = [], \find = (n_1, n_1, 1), P = [n_2, n_3], cg = n_1, j = null \rangle
+  n_2 & := & \langle f = g, ts = [n_1], \find = (n_2, n_2, 1), P = [n_3], cg = n_2, j = null \rangle
+  n_3 & := & \langle f = f, ts = [n_2, n_2, n_1], \find = (n_3, n_3, 1), P = [], cg = n_3, j = null \rangle
 
 ~~ 
 
