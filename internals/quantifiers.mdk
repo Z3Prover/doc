@@ -8,6 +8,29 @@ support for algebraic datatypes, arrays and bit-vectors).
 Quantifier reasoning is also available within the CDCL(T) core. Here it relies on _quantifier instantiation_ engines.
 We describe the main engines in use.
 
+The quantifier instantiation engines rely on auxiliary annotations with quantifiers.
+We elided them when first introducing terms in Section [#sec-terms-and-formulas].
+The fields that are of relevance to quantifier instantiation are expanded below:
+
+```koka
+type Expr
+   Var{ index : int; sort : Sort }
+   App{ f : FuncDecl; args : list<Expr> }
+   Quantifier{ b : Binder; decl : list<Declaration>; body : Expr; 
+               patterns : list<list<Expr>>; 
+               nopatterns : list<Expr>;
+               weight : int;
+               qid : symbol }
+
+```
+
+* A set of _multi_ patterns are used by the E-matching engine to search for instantiations. Quantifiers can be manually annotated by patterns or if no patterns are annotated, z3 infers a set of patterns based on smallest subterms. More than one pattern might be needed to find a full instantiation of all quantified variables. 
+
+* A set of _non-patterns_ that identify sub-terms that cannot be used as patterns. It provides a user with control over quantifier instantiation by the E-matching engine.
+
+* A _weight_ to provide priortization of quantifier instantiation.
+
+* A _quantifier identifier_ (_qid_) which can be used to trace instantiations of a quantifier in logs.
 
 ## E-matching [@MouraB07]
 

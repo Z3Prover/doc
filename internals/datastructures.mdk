@@ -5,7 +5,7 @@ algorithms and heuristics that are central to implementation of Z3. We examine t
 used for terms and formulas and then describe the setting for how theory solvers interact 
 with the main CDCL(T) engine. 
 
-## Terms and Formulas
+## Terms and Formulas { #sec-terms-and-formulas }
 
 Z3 treats terms and formulas as a single entity, expressions. Expressions of Boolean type can be used as formulas, 
 but they can also be nested within non-Boolean terms, as arguments to functions. Expressions are _hash-consed_, meaning
@@ -19,6 +19,15 @@ For example, $\exists x \forall y, z, p(x, y, z)$ uses de-Bruijn indices 0 for $
 To spare users an error-prone process of keeping track of indices, 
 the external API offers a facility to create a quantified expression using a set of constant expressions instead of
 variables. 
+
+A representation of Z3 terms using the Koka language is as follows
+
+```koka
+type Expr
+   Var{ index : int; sort : Sort }
+   App{ f : FuncDecl; args : list<Expr> }
+   Quantifier{ b : Binder; decl : list<Declaration>; body : Expr; ...}
+```
 
 <!---
 * term structure

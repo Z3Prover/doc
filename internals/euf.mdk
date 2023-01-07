@@ -279,7 +279,17 @@ Then a proof of $s \simeq t$ can be extracted using overloaded functions $\pi$:
   * Do enough CC to speed up search (unit propagation)
   * Don't do too much CC when Boolean search takes care of it.
 
-### A note on complexity
+* Two fields E-node: $\langle\ldots, boolVar : \Nat, value : \{ \true, \false, \mathit{undef}\} \rangle$.
 
+* Equality is a function, but when children of equalities are merged equal propagate _value_ of the equality node.
+
+* When to merge true/false nodes
+
+* Propagating equalities and disequalities to and from theories from congruence closure.
+
+
+<!---
+### A note on complexity
+--->
 
 
