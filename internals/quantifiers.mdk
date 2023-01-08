@@ -214,6 +214,36 @@ and occurs as a second position of $f$.
 Z3 pre-computes an index based on $f, g$ pairs like these and check if it is triggered 
 for some $f, g$ pair and pattern when nodes $n_1, n_2$ are merged.
 
+
+### Prioritizing Quantifier Instantiation
+
+The _weight_ field on quantifiers is used to assign a priority to quantifier instantiation.
+Quantifiers with _weight_ set to 0 are instantiated without delay. Quantifiers with higher weights
+are inserted into a quantifier instantiation queue. The queue is emptied based on a set of rules:
+
+* The _cost_ of a quantifier is computed as a function of the _weight_ other attributes using an expression 
+that can be configured by setting the parameter `smt.qi.cost`. The default value of `smt.qi.cost` is 
+`(+ weight generation)`, where _weight_ is obtained from the quantifier and _generation_ keeps track of instantiation depths. 
+All terms have initially generation 0, terms created as a by-product of quantifier instantiation have 1 plus the maximal
+generation of previous terms. Other parameters that can be used to encode quantifier priorities include
+  * `instances` number of instances of current branch
+  * `size` number of sub-expression of the quantifier
+  * `depth` depth of quantified expression
+  * `vars` number of bound variables
+  * `pattern_width` number of patterns in multi-pattern annotation
+  * `total_instances` the number of existing instances based on the quantifier
+  * `scope` the scope level of search (how many case splits)
+  * `cs_factor` a case split factor computed by considering number of disjuncts in a quantified body
+
+* Quantifiers are instantiated eagerly if their cost is below a configurable `smt.qi.eager_threshold`.
+* A partial checker can be enabled by setting `smt.qi.quick_checker` to 1 or 2 to promote instantiation where quantified instantiations are known to close a branch.
+* Quantifiers whose cost are above the eager threshold and does not pass a quick checker are inserted into a _lazy_ queue.
+
+The _lazy_ queue is instantiated on _final_ checks. It uses a cost threshold to iteratively increase the number of instances that are processed.
+
+* All quantifiers with cost below `smt.qi.lazy_threshold` are instantiated during final check.
+
+
 ## Model-based Quantifier Instantiation [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13]
 
 Model-based Quantifier Instantiation, MBQI, is based on a simple concept of using ground models
@@ -429,7 +459,62 @@ An important ingredient in quantifier reasoning is found in pre-processing.
 Pre-processing techniques may identify quantified assertions as macro definitions.
 Z3 contains several heuristics for identifying macros.
 
+### Tactic macro-finder
 
+The tactic finds implicit macro definitions in quantifiers. 
+A main instance of a macro an equality that defines a function `f` using some term `t` that does not contain `f`.
+Other instances of macros are also recognized by the macro finder.
+
+* `(forall (x) (= (f x) t))`
+
+* `not (= (p x) t)` is recognized as `(p x) = (not t)`
+
+* `(iff (= (f x) t) cond)`  rewrites to `(f x) = (if cond t else (k x))`
+   * add clause `(not (= (k x) t))`
+
+* `(= (+ (f x) s) t)` becomes `(= (f x) (- t s))`
+
+* `(= (+ (* -1 (f x)) x) t)`  becomes `(= (f x) (- (- t s)))`
+
+### Tactic elim-predicates
+
+The elim-predicates subsumes `macro-finder` (and the `quasi-macro` tactic that we skip describing).
+In addition to the `macro-finder` macros it identifies rewrite opportunities of the form
+
+* `(assert (forall ((x Int) (y Int)) (= (f x y (+ x y)) (* 2 x y))))` that implies that `f` can be treated
+as a function `(f x y z) = (if (= z (+ x y)) (* 2 x y) (f' x y z))`
+
+* Predicates that occur at most in every clause and such that the cross-product of positive 
+and negative occurrences is small relative to the original set of occurrences are eliminated. 
+The elimination process was introduced by Davis and Putnam in a seminal paper that preceeded the 
+Davis Logeman Loveland backtracking SAT procedure. We illustrate the functionality of `elim-predicates` 
+with an example
+
+
+```smt
+(declare-fun f (Int Int Int) Int)
+(declare-fun p (Int) Bool)
+(declare-const a Int)
+(declare-const b Int)
+
+(assert (forall ((x Int) (y Int)) (= (f x y (+ x y)) (* 2 x y))))
+(assert (p (f 8 a (+ a 8))))
+(assert (not (p (f 0 a (+ a 8)))))
+(assert (not (p (f 2 a (+ a 8)))))
+(assert (not (p (f 1 a (+ a b)))))
+(apply elim-predicates)
+```
+
+The result of the tactic is a goal of the form:
+
+```smt
+(goal
+  (not (= (* 16 a) (f!0 0 a (+ 8 a))))
+  (not (= (* 16 a) (f!0 2 a (+ 8 a))))
+  (let ((a!1 (= (* 16 a) (ite (= 1 b) (* 2 a) (f!0 1 a (+ a b))))))
+    (not a!1))
+  :precision precise :depth 1)
+```
 
 <!---
 ## Deprecated
