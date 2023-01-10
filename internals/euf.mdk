@@ -80,16 +80,16 @@ is
 
 ~ End Example
 
-The field $\find$ is used to implement union-find. The _root_ of a node is found by
-looking up the representative until it is the same node.
-Thus, let $(n_1, n_2, sz) = \find(n)$. Then $\rootNode(n) = n$ if $n_1 = n$, otherwise
-$\rootNode(n) = \rootNode(n_1)$. We extend $\rootNode$ to apply to a list of nodes by mapping it on each node in the list.
-Z3 does not perform path compaction, instead it eagerly updates
-the representative of all siblings when nodes are merged. In other words, if roots $n_1, n_2$ are merged
-and $n_2$ is made the root, then all siblings $n_s$ of $n_1$ are updated such that $n_s := n_2$.
-The second field $n_2$ is the sibling
-of $n$ in the same equivalence class. The set of siblings forms a singly linked cyclic list.
-The size field $sz$ is the size of the equivalence class. 
+The field $\find$ is used to implement union-find. 
+We use three fields to represent the union-find data-structure, comprising of:
+
+* _root_ - the root of the equivalence class. 
+* _next_ - a next sibling in the equivalence class of a node. All nodes within the same equivalence class are linked in a singly-linked list.
+* _sz_ - the class size (number of siblings in the cyclic list). The class size is used to guide which node is made root when merging two classes.
+
+Z3 performs eager path compression. It has the effect that the root node can always be accessed by a single pointer dereference.
+The singly-linked cyclic list of siblings of an equivalence class is used by operations that need to iterate over equivalence classes.
+Access to the equivalence class is used by E-matching and for propagation
 
 
 Besides the E-nodes, the solver maintains a hash-table, we call _etable_, that
