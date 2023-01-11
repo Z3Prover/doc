@@ -47,7 +47,7 @@ However, many of those UFs have constant arguments or they become constant
 after using the `simplify` tactic.
 It is then very useful to run the `reduce-args` tactic to remove arguments of UFs
 that are constant, or even to transform UF applications into variables (e.g.,
-`f(#x1)` is replaced with `f!1`).
+`f(#x42)` is replaced with `f!1`).
 
 After removing UFs, other tactics that don't work with UFs can be used now.
 For example, Alive2 runs `elim-uncnstr` to remove single uses of variables,
