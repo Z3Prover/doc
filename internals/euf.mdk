@@ -273,20 +273,24 @@ Then a proof of $s \simeq t$ can be extracted using overloaded functions $\pi$:
 
 
 
-### Control
+### Integration with Boolean reasoning
 
-* Congruence closure and Boolean reasoning
-  * Do enough CC to speed up search (unit propagation)
-  * Don't do too much CC when Boolean search takes care of it.
+In the setting of CDCL(T), congruence closure is integrated with Boolean reasoning.
+For example, if $p(a)$ is assigned true, $a \simeq b$, then the Boolean predicate $p(b)$ can be propagated to true.
+Thus, congruence closure can be benefitial in propagation. On the other hand, propagations made by the CDCL(T)
+core need not be replicated by congruence closure: if the literal corresponding to $a \wedge b$ is assigned to $\true$,
+then clausification of $a\wedge b$ introduces clauses $\neg (a \wedge b) \vee a$ and $\neg (a \wedge b) \vee b$,
+the ensure propagation to $a, b$. Z3 therefore dampens the role of congruence closure for Boolean connectives that
+are handled by CDCL. 
 
-* Two fields E-node: $\langle\ldots, boolVar : \Nat, value : \{ \true, \false, \mathit{undef}\} \rangle$.
+To track Boolean assignments the E-node data-structure includes the fields
 
-* Equality is a function, but when children of equalities are merged equal propagate _value_ of the equality node.
+* $\langle\ldots, boolVar : \Nat, value : \{ \true, \false, \mathit{undef}\} \rangle$.
 
-* When to merge true/false nodes
+Furthermore, equality is treated as a special function symbol. If the children $n_1, n_2$ of $n_3: n_1 \simeq n_2$
+are merged, then the $\mathit{value}$ of $n_3$ is set to $\true$.
 
-* Propagating equalities and disequalities to and from theories from congruence closure.
-
+The E-graph also dispatches equality and disequality propagation between theories.
 
 <!---
 ### A note on complexity
