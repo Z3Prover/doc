@@ -202,11 +202,8 @@ Our approach is described in detail in [@Vampire17Theorem].
 #### Branching
 Similar to traditional MIP branch-and-bound methods, 
 the solver creates somewhat eagerly case splits on bounds 
-of integer variables if the dual simplex solver fails to assign them integer values.
-
-~ Framed
-Add example
-~
+of integer variables if the dual simplex solver fails to assign them integer values. For example, Simplex may assign an integer variable $x$, the value $\frac{1}{2}$, in which case z3 creates a literal $x \leq 0$ that triggers two branches
+$x \leq 0$ and $\neg(x \leq 0) \equiv x \geq 1$.
 
 
 #### Gomory and Hermite cuts
@@ -216,6 +213,7 @@ to generate cuts after the linear systems have been transformed
 into Hermite matrices.
 
 
+<!---
 ~ Framed
 Add example
 ~
@@ -223,7 +221,7 @@ Add example
 ~ Framed
 Configuring branch vs. cut frequency
 ~
-
+--->
 
 ### Non-linear arithmetic
 
@@ -237,11 +235,7 @@ that represents the monomial $x \cdot x \cdot y $.
 The module for non-linear arithmetic then attempts to 
 establish a valuation $V$ where $V(m) = V(x) \cdot V(x) \cdot V(y)$, 
 or derive a consequence that no such valuation exists.
-The stages in the waterfall model are summarized as follows:
-
-~ Framed
-Add example
-~
+The stages in the waterfall model are summarized in the following paragraphs.
 
 
 #### Bounds propagation on monomials
@@ -345,12 +339,13 @@ for Tarski's fragment supported by the NLSat solver [@JovanovicM12].
 
 ### Data-structures
 
-* Infinite precision integers and rationals
+Z3 uses infinite precision integers and rationals.
+This ensures that all operations are sound and not subject to
+errors introduced by rounding. It uses a sparse matrix representation
+for the Dual Simplex tableau. Note that pivoting may turn an otherwise sparse matrix
+into a dense form. We also created a version that uses an LRU decomposition and floating
+point numbers but found that extending this version with efficient backtracking was not practical
+compared to the straight-forward sparse matrix format.
 
-* LRU decomposition and floating point solver discontinued based on skew of SMTLIB benchmarks
-
-* Dual simplex over a sparse tableau representation
-
-* Dynamic axioms by front-end
-  * bounds propagation
-  * reduction of div/mod (and rem)
+The arithmetic solver reduces operations such as integer modulus, remainder, and division into equations.
+It eagerly compiles bounds axioms of the form $x \geq 3 \implies x \geq 2$ for atomic formulas $x \geq 3, x\geq 2$.
