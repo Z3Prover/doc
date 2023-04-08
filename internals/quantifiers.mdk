@@ -434,7 +434,7 @@ the interpretation of $f(x)$ to either $\mathcal{M}(f(c_i))$ or $\mathcal{M}(f(c
 Z3 represents the updated interpretations to the function $f$ using _projection functions_.
 In other words, it uses the original interpretation of $f$ as an interpretation to a fresh function $f_{aux}$,
 and then interprets $f(x)$ as $f_{aux}(f_\pi(x))$, where $f_\pi$ is a projection function. The projection
-function maps an integer $x$ to the bound $c_i$ or $c_i$, where $\mathcal{M}(c_i) \leq x \leq \mathcal{M}(c_{i+1})$.
+function maps an integer $x$ to the bound $c_i$ or $c_{i+1}$, where $\mathcal{M}(c_i) \leq x \leq \mathcal{M}(c_{i+1})$.
 
 Models are also updated by detecting macro patterns in quantified formulas.
 For example, a quantified formula $\forall x \ . \ f(x) = t$, where $f$ is not used in $t$ defines $f$ as a macro.
