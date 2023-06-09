@@ -143,11 +143,12 @@ Then it checks that the gcd of the coefficients to variables divide the fixed va
 
 
 #### Patching
-Following [@MouraB08], the integer solver moves non-basic variables away from their bounds in order to ensure that
-basic, integer, variables are assigned integer values. The process examines each non-basic variable and checks every row where it occurs
-to estimate a safe zone where its value can be changed without breaking any bounds. If the safe zone is sufficiently large to patch
-a basic integer variable, it performs an update. This heuristic is highly incomplete, but is able to locally patch several variables
-without resorting to more expensive analyses.
+
+When a tableau with integer variables is feasible, all non-basic variables can be assumed to be integers:
+Dual simplex moves non-basic variables to their bounds and the bounds are integers.
+Only the basic variables could be non-integral (they are still within their bounds).
+Patching seeks changing values to non-basic values to move as many basic variables to integers.
+
 
 ~ Begin Example
 Suppose we are given a tableau of the form
@@ -161,6 +162,38 @@ $\beta(z) = 1$. But neither $y$ nor $z$ is close to their bounds. We can move $x
 Thus, the freedom interval for $x$ is the range $[3,8]$ and within this range there is a solution,
 $x = 6$, where $y, z$ are integers and within their bounds.
 ~ End Example
+
+Z3 patches non-basic variables based on the following approach. It performs a (single) pass over the set non-integral basic variables
+and computes a shift amount, $\delta$, to move more variables to be integral.
+
+```python
+   for \($x_b$\) in basic variables, such that \($\beta(x_b) \not\in Z$\):
+       for \($\alpha y$\) in row of \($x_b$\) with \($\alpha \not\in Z$\):
+           find \($\delta$\) such that the update \($\beta(y) := \beta(y) + \delta$\)
+	        is feasible and fixes more basic variables than it breaks 
+```
+
+
+Given a row $x_b + \alpha y + r = 0$, where
+$x_b$ is a basic variable, $y$ is non-basic variable multiplied by the fraction $\alpha$,
+and $r$ is the remainding of the row, the shift amount $\delta$ is computed using the formula:
+
+* $x_1/x_2 := \mathrm{frac}(\beta(x_b))$, s.t. $0 < x_1 < x_2$.
+* $a_1/a_2 := \mathrm{frac}(\alpha)$, s.t. $0 < a_1 < a_2$.
+* $x_2 \uparrow a_2$
+* $g = \gcd(a_1, a_2), g = a_1\cdot A + a_2 \cdot B$ (from Euclid)
+* $g \uparrow x_1$:
+  * $\delta := \pm A \cdot \frac{a_2}{x_2} \cdot \frac{x_1}{g}$, or
+* $g \uparrow (x_2 - x_1)$:
+  * $\delta := \pm A \cdot \frac{a_2}{x_2} \cdot \frac{x_2 - x_1}{g}$
+
+The sign of $\delta$ is chosen such that
+$\mathrm{frac}(\alpha\delta) = \mathrm{frac}(\beta(x_b))$,
+respectively, $\mathrm{frac}(\alpha\delta) = - \mathrm{frac}(-\beta(x_b))$.
+
+
+
+
 
 #### Cubes
 An important factor in solving more satisfiable integer arithmetic instances is
