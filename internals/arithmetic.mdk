@@ -141,6 +141,8 @@ Then it checks that the gcd of the coefficients to variables divide the fixed va
 ~ End Example
 
 
+This GCD test is extended to a 
+
 
 #### Patching
 
@@ -176,20 +178,46 @@ and computes a shift amount, $\delta$, to move more variables to be integral.
 
 Given a row $x_b + \alpha y + r = 0$, where
 $x_b$ is a basic variable, $y$ is non-basic variable multiplied by the fraction $\alpha$,
-and $r$ is the remainding of the row, the shift amount $\delta$ is computed using the formula:
+and $r$ is the remainding of the row, the shift amount $\delta$ is computed based on the
+following analysis.
 
-* $x_1/x_2 := \mathrm{frac}(\beta(x_b))$, s.t. $0 < x_1 < x_2$.
-* $a_1/a_2 := \mathrm{frac}(\alpha)$, s.t. $0 < a_1 < a_2$.
-* $x_2 \uparrow a_2$
-* $g = \gcd(a_1, a_2), g = a_1\cdot A + a_2 \cdot B$ (from Euclid)
-* $g \uparrow x_1$:
-  * $\delta := \pm A \cdot \frac{a_2}{x_2} \cdot \frac{x_1}{g}$, or
-* $g \uparrow (x_2 - x_1)$:
-  * $\delta := \pm A \cdot \frac{a_2}{x_2} \cdot \frac{x_2 - x_1}{g}$
+Take first the fractional parts of $\beta(x_b)$ and $\alpha$:
 
-The sign of $\delta$ is chosen such that
-$\mathrm{frac}(\alpha\delta) = \mathrm{frac}(\beta(x_b))$,
-respectively, $\mathrm{frac}(\alpha\delta) = - \mathrm{frac}(-\beta(x_b))$.
+* $f_x := x_1/x_2 := \mathrm{frac}(\beta(x_b))$, s.t. $0 < x_1 < x_2$.
+* $f_\alpha := a_1/a_2 := \mathrm{frac}(\alpha)$, s.t. $0 < a_1 < a_2$.
+
+The goal is to compute integers
+
+* $\min \delta^+ > 0 \ . \ \mathrm{frac}(\alpha\delta^+) = 1 - f_x$,
+* $\max \delta^- < 0 \ . \ \mathrm{frac}(\alpha\delta^-) = 1 - f_x$.
+
+These two integers are the minimal amount to move the value $\beta(y)$ to make the value of $\beta(x_b)$ integral.
+
+In other words we are solving for $\delta$ and $n$:
+
+* $\alpha \delta = n - f_x$
+
+To bring this in integral form
+
+* $x_2 a_1 \delta = a_2 x_2 n - x_1 a_2$, which we abbreviate as $C = B n - A \delta$.
+
+Assume that $\gcd(A, B) \uparrow C$ we can compute
+
+* $\gcd(A, B) = u A + v B$ using extended Euclid.
+
+The assumption $\gcd(A, B) \uparrow C$ expands into
+$\gcd(x_2 a_1, a_2 x_2) \uparrow x_1 a_2$, which simplifies to $x_2 \uparrow a_2$
+beause we can assume that $\gcd(a_1, a_2) = 1, \gcd(x_1, x_2) = 1$, and therefore $\gcd(x_2 a_1, x_2 a_2) = x_2$.
+
+Then we set $\delta^{\pm} = \mathit{sign}(a) \frac{C}{\gcd(A, B)} \cdot u$,
+depending on the sign of $u$ and $a$,
+$\delta^\pm$ is either $\delta^+$ or $\delta^-$.
+
+Bezout's equality stipulates that all solutions to $x_2 = u A + v B$
+is given by $(u - k \frac{A}{\gcd(A,B)}, v + k \frac{B}{\gcd(A,B)})$ for $k \in Z$.
+Set $k := \lceil \frac{|u|}{\gcd(A,B)} \rceil$ and subtract or add by a factor of $k$ to obtain positive and negative values for $u$. Note that $\gcd(A,B) = x_2, \frac{A}{\gcd(A,B)} = a_1, \frac{B}{\gcd(A,B)} = a_2$.
+
+
 
 
 
