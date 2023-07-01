@@ -229,13 +229,12 @@ Since $t \uparrow a_2$, and $a_2$ and $a_1$ are coprime, $t \uparrow \delta$. Th
  We obtain $L:=  \frac{x_1}{x_2}+\frac{a_1}{x_2 t} m t = \frac{x_1+m a_1}{x_2}$. 
  From $L \in Z$ follows $x_2 k = x_1 + m a_1$ for some $k \in Z$. We can rewrite the 
  last equality as $x_1 =  a_1 m - x_2 k$. Because $x_2 \uparrow a_2$, and $a_1$ and $a_2$ are coprime, $x_2$ and $a_1$ are mutually prime too. That means that for some $u, v$ we have 
- $1 = a_1 u + x_2 v$, and for any $l \in Z$ holds $1 = a_1 (u-l x_2) + x_2 (v + l a_1)$.
+ $1 = a_1 u + x_2 v$. We can show that if $\delta := u t x_1$ then $\frac{x_1}{x_2}+\frac{a_1}{a_2}\delta \in Z$. 
+ 
 
-Let $l := s \lfloor{|\frac{u}{x_2}}| \rfloor$, where $s := \mathit{sign}(u)$,
-then the negative of the numbers $(u - l x_2)x_1 t$, $(u - (l + s)x_2)x_1 t$ 
-gives $\delta^-$, and the positive gives $\delta^+$. 
-
-We have proved that the $\delta$'s that we found patch the row, but we have not proved the minimality.
+From the other side, for any $\gamma \in Z$ satisfying $\frac{x_1}{x_2}+\frac{a_1}{a_2}\gamma \in Z$
+holds $\frac{a_1(\delta - \gamma)}{a_2} \in Z$. 
+Since $a_1$ and $a_2$ are coprime, $a_2 \uparrow (\delta - \gamma)$, and $\gamma := \delta \mod a_2$. We conclude that $\delta^+ = \delta \mod a_2$, and $\delta^{-} = \delta^+ - a_2$.
 
 
 

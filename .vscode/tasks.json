@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "madoko.cmd -v z3internals.mdk",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+				
+			},
+			
+			"options": {
+				"cwd": "${workspaceFolder}/internals"
+			},
+			
+		}
+		
+	]
+}
