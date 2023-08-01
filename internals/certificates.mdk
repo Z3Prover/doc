@@ -277,17 +277,16 @@ of the disequality are in the same equivalence class.
 Consider the inferece
 
 ```python
-infer(euf(Not(f(f(f(f(f(f(x)))))) == x),
-          f(f(f(x))) == x,
-          cc(f(x) == f(f(f(f(x))))),
-          cc(f(f(f(f(f(x))))) == f(f(x))),
-          cc(f(f(f(f(f(f(x)))))) == f(f(f(x))))),
-      f(f(f(f(f(f(x)))))) == x)
+euf(Not(f(f(f(f(f(f(x)))))) == x),
+    f(f(f(x))) == x,
+    cc(f(x) == f(f(f(f(x))))),
+    cc(f(f(f(f(f(x))))) == f(f(x))),
+    cc(f(f(f(f(f(f(x)))))) == f(f(f(x)))))
 ```
 
-The conclusion is `f(f(f(f(f(f(x)))))) == x` and it is based on the unsatisfiability of
-`And(Not(f(f(f(f(f(f(x)))))) == x), f(f(f(x))) == x)` and that `Not(f(f(f(x))) == x)` is a unit literal.
-To justify the unsatisfiability of `And(Not(f(f(f(f(f(f(x)))))) == x), f(f(f(x))) == x)` consider first the
+The conjunction of
+`Not(f(f(f(f(f(f(x)))))) == x), f(f(f(x))) == x)` is unsatisfiable.
+To justify this consider first the
 equality `f(f(f(x))) == x` and three applications of congruence closure to establish
 `f(f(f(f(f(f(x)))))) == f(f(f(x))))`. By transitivity of equality, it follows that `f(f(f(f(f(f(x)))))) == x`
 and therefore the negated equality is conflicting.
