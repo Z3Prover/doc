@@ -129,7 +129,7 @@ Variables that satisfy these two criteria must be equal.
 
 The mixed integer linear solver consists of several layers. 
 
-#### GCD consistency
+#### GCD consistency { #sec-gcd-consistency }
 Each row is first normalized by multiplying it with the least common multiple of the denominators of each coefficient.
 For each row, it assembles a value from the fixed variables. 
 A variable $x_j$ is fixed if the current values $lo_j$, $hi_j$ are equal. 
@@ -286,7 +286,7 @@ of integer variables if the dual simplex solver fails to assign them integer val
 $x \leq 0$ and $\neg(x \leq 0) \equiv x \geq 1$.
 
 
-#### Gomory and Hermite cuts
+#### Gomory and Hermite cuts { #sec-cuts }
 The arithmetic solver produces Gomory cuts from rows where the basic variables are non-integers after
 the non-basic variables have been pushed to the bounds. It also incorporates algorithms from [@DilligDA09;@ChristH15]
 to generate cuts after the linear systems have been transformed

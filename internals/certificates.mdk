@@ -14,7 +14,7 @@ SAT solvers produce mainly DRUP proofs. The DRAT format
 (RAT = Reverse Asymmetric Tautology, while RUP = Reverse Unit Propagation, and D = with _Deletion_)
 is widely adopted for certifying proofs of SAT solvers. Z3 extends the DRUP format for SMT.
 It uses an extension of the SMTLIB2 format to record proof traces.
-We describe it by an example
+We introduce it by an example using EUF.
 
 From SMTLIB:
 
@@ -108,60 +108,69 @@ propositional abstraction of the SMT formula. The proof steps produced by the SA
 and `del` (clause deletion) steps.
 
 * Assumptions: input assumptions are clauses that are based on the input formula. If Z3 uses pre-processing simplifications, then the assumptions
-are obtained from the original input by a sequence of pre-processing steps. Pre-processing can be turned off or justified separately using the
-legacy proof format.
+are obtained from the original input by a sequence of pre-processing steps. Pre-processing can be turned off or justified separately using the legacy proof format. A tight integration of proofs from pre-processing and proof logs is currently not available.
 
-* Theory inferences: Theory inferences are logged as infererences that are justified by theory axioms. Each theory supports its own set of theory axioms
-and the format for how theory axioms are justified is theory dependent. The solver for EUF combines inferences from theories using equality propagation. 
+* Theory inferences: Theory inferences are logged as infererences that are justified by theory axioms.
+Each theory supports its own set of theory axioms
+and the format for how theory axioms are justified is theory dependent.
+The solver for EUF combines inferences from theories using equality propagation.
+
 
 
 
 #### EUF Solver core
+
+~ MathDefs
+\newcommand{\Justificaiton}{\mathcal{J}}
+\newcommand{\EUF}{\mathrm{EUF}}
+\newcommand{\Equality}{\mathcal{E}}
+~
 
 The core of the CDCL(T) solver is a core based on EUF reasoning.
 It works as a dispatch between theory solvers and manages shared equalities.
 
 The CDCL core integrates with the EUF solver when resolving conflicts using the following function.
 
-
-```
-explain : Literal -> Literal* 
-```
+~ Math
+\mathit{explain}: \Literal \rightarrow \Literal^*
+~
 
 It takes a literal that is assigned to true.
 The literal can also be $\bot$ (or false), in which case the state of the theory solvers is conflicting.
 
-The requirement is that
+The requirement is that for a literal $\ell$:
 
-```
-And(explain(L)) => L is valid modulo all theories
-```
+~ Math
+  \bigwedge \mathit{explain}(\ell) \implies \ell \ \ \mbox{is valid modulo background theories}
+~ 
 
-It returns a list of literals, assigned by the CDCL core that caused the assignment.
-The literal is associated with a
+The explain function returns a list of literals, assigned by the CDCL core that justify the propagation of $\ell$.
+The literal $\ell$ is associated with a
 reference to a theory justificadtion or an EUF justification.
 
-```
-justification : Literal -> Justification + EUF
-```
+
+~ Math
+\mathit{justification} : \Literal \rightarrow \Justification \mid \EUF
+~
 
 Each theory solver also implements a `explain` specific for the theories.
 The internal signature for `explain`:
 
-```
-theory-explain : Justification -> Literal* x Equality* x ThJustification
-```
+~ Math
+\mathit{theory{-}explain}: \Justification \rightarrow \Literal^* \times \Equality^* \times \mathit{ThJustification}
+~
 
 where
-```
-Equality ::= Expr x Expr
-```
+
+~ Math
+ \Equality ::= \mathit{Expr} \times \mathit{Expr}
+~
 
 The E-graph is used to explain equalities, or explain conflicts.
 
-```
-euf-explain: Equality + { false } -> Literal* x (Justification x Equality)* x Congruence*
-```
+~ Math
+\mathit{euf{-}explain}: \Equality \cup \{ \bot \} \rightarrow \Literal^* \times (\Justification \times \Equality)^* \times \mathit{Congruence}^*
+~
 
 The list of constraints and equalities have their own justifications. The dependencies on equalities
 is well-founded so applying `explain` recursively produces just a list of literals.
@@ -176,7 +185,6 @@ It produces hint to justify the clauses
 
 The version of explain that is exposed to the SAT core is as follows:
 ```
-
 explain(L) =
   match justification(L) with
   | EUF -> explain(false)
@@ -216,9 +224,11 @@ proof(jst) =
 ```
 
 We introduced a new function
-```
-literal : Justification -> Literal
-```
+
+~ Math
+\mathit{literal} : \Justification \rightarrow \Literal
+~
+
 that produces either a literal propagation or conflict (where the literal is $\bot$).
 
 Equalities that are propagated by theory propagation satisfy `euf-explain(eq) = ([], [(eq,jst)], [])`.
@@ -250,7 +260,10 @@ There is only one kind of axiom for EUF inferences. The example indicated that E
 The idea is that the conjunction equalities implies the negated equality by taking the equivalence class of terms
 listed as equalities and under `cc`. Furthermore, each equality under a `cc` is justified from all previous equalities
 and `cc` terms before it by a single application of the congruence rule. Thus, if a `cc` equality is of the
-form `cc(f(x,y) == f(z,y))`, then `x`, `z` are equal modulo the previous seen equalities.
+form `cc(f(x,y) == f(z,y))`, then `x`, `z` are equal modulo the previous seen equalities, and therefore $f(x,y)$ is equal to $f(z,y)$.
+A variant of `cc`, called `comm`, is used for congruence of binary functions that are commutative.
+For example, `comm(f(x,y) == f(y,z))` is justified if `f` is commutative and the equality `x == z` (and `y == y`) was justified.
+
 
 A validator for equality axioms can check that each equality and disequality under the `euf` justification corresponds
 to a literal in the clause that is inferred from the theory axiom. It can then check that the clause is a tautology for EUF
@@ -258,22 +271,88 @@ by creating equivalence classes of the equalities and congruences it is supplied
 of a congruence is well-formed (the arguments to `f` are equivalent), and then it can check that the left and right side
 of the disequality are in the same equivalence class.
 
+
+~ Example
+
+Consider the inferece
+
+```python
+infer(euf(Not(f(f(f(f(f(f(x)))))) == x),
+          f(f(f(x))) == x,
+          cc(f(x) == f(f(f(f(x))))),
+          cc(f(f(f(f(f(x))))) == f(f(x))),
+          cc(f(f(f(f(f(f(x)))))) == f(f(f(x))))),
+      f(f(f(f(f(f(x)))))) == x)
+```
+
+The conclusion is `f(f(f(f(f(f(x)))))) == x` and it is based on the unsatisfiability of
+`And(Not(f(f(f(f(f(f(x)))))) == x), f(f(f(x))) == x)` and that `Not(f(f(f(x))) == x)` is a unit literal.
+To justify the unsatisfiability of `And(Not(f(f(f(f(f(f(x)))))) == x), f(f(f(x))) == x)` consider first the
+equality `f(f(f(x))) == x` and three applications of congruence closure to establish
+`f(f(f(f(f(f(x)))))) == f(f(f(x))))`. By transitivity of equality, it follows that `f(f(f(f(f(f(x)))))) == x`
+and therefore the negated equality is conflicting.
+
+~
+
 ### Arithmetic Axioms
 
 Arithmetic solver produces (so far) theory axioms of the form
 
 ```
-    <rule> (<num> <literal>)*
+    <rule> (<numeral> <literal>)*
 ```
 
-where `<rule>` is one of `farkas`, `implied-eq`, `bound`, `cut`.
+where `<rule>` is one of `farkas`, `implied-eq`, `bound`, `cut`, `nla`.
 
 A `<literal>` is an equality, inequality. For the `implied-eq` rule, the last literal is a disequality (negated equality).
 
-The rules are assumed to be checkable using basic inferences
+The rules are assumed to be checkable using basic inferences. They are implemented within Z3 as part of a self-validator.
 
 * `farkas`: The set of inequalities are multiplied by the numeral coefficients and added to form a single inequality. The equalities are solved by Gauss-Jordan elimination and the resulting solution is substituted into the inequality. The resulting inequality is expected to be infeasible.
 
 * `bound`: all but the last inequality are treated similar to the Farkas rule. Then the resulting inequality is subjected to a cut rule and the last inequality is checked to be contradicotry with the reduced inequality.
 
 * `implied-eq`: the last literal is a negated equality. The equalities are solved using Gauss-Jordan elimination, and the inequalities are assumed to imply equalties. These implied equalities can be retrieved by applying exhaustive Fourier-Motzkin elimination. The resulting set of equalities obtained from the inequalities are then solved using Gauss-Jordan elimination. The solution is substituted into the last negated equality which should simplify to false.
+
+There is currently no self-validator for `cut` and `nla` rules.
+There are a few sources for `cut` rules: Z3 applies a Gomoroy-Chvatal cut as described in
+the technical report associated with [@DutertreM06], and cuts based on [@ChristH15] (see [#sec-cuts]),
+as well as a GCD filter [#sec-gcd-consistency]. We leave it to future work to establish self-validators for cuts.
+It is noteworthy that SMTInterpol's proof format does not directly have to deal with cuts. The SMTInterpol solver
+does not assert inequalities that come from cuts but instead creates a fresh atom. When the cut formula is created from a
+tableau where non-basic variables are at their bounds it can only have one truth assignment; the existing proof rules are sufficient to establish this.
+There are several sources for `nla` rules and an elaboration into
+certificates that are efficient to check is left to future work.
+
+~ Example
+
+The inference 
+```python
+farkas(1, 0 == y + -1*z, 1, y + -1*u <= 0, 1, z + -1*u >= 1)
+```
+
+Justifies the clause
+```python
+[Not(y + -1*u <= 0), Not(z + -1*u >= 1), Not(0 == y + -1*z)]
+```
+
+because normalizing the inequalities to `- y + u >= 0, z - u >= 1` (multiplying both by 1)
+and adding them produces `z - y >= 1`. However, applying Gauss-Jordan elimination to
+the equations produces a solution where `z` and `y` are equated and therefore the inequality `z - y >= 1`
+simplifies to `0 >= 1`.
+
+The inference 
+```python
+implied-eq(1,0 == y + -1*u, 1, 0 == y + -1*u,  1, Not(y == u))
+```
+
+Justifies the clause
+
+```python
+[Not(0 == y + -1*u), Not(0 == y + -1*u), y == u]
+```
+
+because Gauss-Jordan elimination applied to the set of equality premises produces a solution that equates `y` and `u`.
+
+~
+
