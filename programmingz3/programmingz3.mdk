@@ -987,7 +987,7 @@ Total Linear orders:
 
 # use instead:
 
-  R = TotalLinearOrder(A, 0)
+  R = LinearOrder(A, 0)
 ```
 
 Tree-like orderings:

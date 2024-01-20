@@ -276,6 +276,7 @@ the search space for instantiation terms is finite. This is the case for several
 EPR, UFBV, Array property fragment, Essentially UF.
 MBQI can also be combined with a set of templates to search over instantiation terms.
 
+
 ### EPR
 
 Effectively Propositional Reasoning, also known as Bernays-Schoenfinkel-Ramsey class comprises
@@ -414,6 +415,32 @@ The set $\mathcal{I}$ is a _sufficient set of instances_ for $\varphi$, if
   MBQI is a decision procedure for the array and map property fragments by using the
   instantiation sets computed from the formulas.
 ~
+
+Instantiations based on $\mathcal{I}$ are sufficient for establishing unsatisfiability.
+To establish satisfiability, MBQI updates models that are based on how uninterpreted functions
+evaluate on arguments in $\mathcal{I}$ to how they evaluate on all integers.
+Models are updated in ways that do not change the interpretation of quantifier-free formulas.
+This is accomplished by keeping interpretation of ground terms the same, but adjusting the interpretations
+of functions for values that are not in the ground interpretation.
+For arithmetic and bit-vectors it updates functions to be piecewise constant between values from $\mathcal{I}$.
+In other words, suppose $\mathcal{I} = \{ c_1, c_2, \ldots, c_k \}$, and the set happens to be sorted such that
+$\mathcal{M}(c_1) \leq \mathcal{M}(c_2) \leq \ldots \leq \mathcal{M}(c_k)$, and suppose $f$ is a function from integers to integers.
+The ground model $\mathcal{M}$ interprets $f(c_1), \ldots, f(c_k)$ and has some dummy interpretation for $f$ for values outside of
+$\{ \mathcal{M}(c_1), \mathcal{M}(c_2), \ldots, \mathcal{M}(c_k) \}$. Model fixing changes the dummy interpretation of $f$
+to a piecewise constant interpretation by using the values from this set. For $x < \mathcal{M}(c_1)$ it sets the interpretation of
+$f(x) = \mathcal{M}(f(c_1))$. For $x$ between $\mathcal{M}(c_i)$ and $\mathcal{M}(c_{i+1})$ it has the option to set the
+the interpretation of $f(x)$ to either $\mathcal{M}(f(c_i))$ or $\mathcal{M}(f(c_{i+1}))$.
+
+Z3 represents the updated interpretations to the function $f$ using _projection functions_.
+In other words, it uses the original interpretation of $f$ as an interpretation to a fresh function $f_{aux}$,
+and then interprets $f(x)$ as $f_{aux}(f_\pi(x))$, where $f_\pi$ is a projection function. The projection
+function maps an integer $x$ to the bound $c_i$ or $c_{i+1}$, where $\mathcal{M}(c_i) \leq x \leq \mathcal{M}(c_{i+1})$.
+
+Models are also updated by detecting macro patterns in quantified formulas.
+For example, a quantified formula $\forall x \ . \ f(x) = t$, where $f$ is not used in $t$ defines $f$ as a macro.
+The interpretation of $f(x)$ is a function of $t$. Z3 uses several techniques to extract macro interpretations from
+quantified formulas. After exhausting the search for macro interpretations it fixes the models for remaining functions
+to be piecewise constant.
 
 ### Essentially Uninterpreted Fragment [@GeM09]
 

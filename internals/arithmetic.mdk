@@ -129,7 +129,7 @@ Variables that satisfy these two criteria must be equal.
 
 The mixed integer linear solver consists of several layers. 
 
-#### GCD consistency
+#### GCD consistency { #sec-gcd-consistency }
 Each row is first normalized by multiplying it with the least common multiple of the denominators of each coefficient.
 For each row, it assembles a value from the fixed variables. 
 A variable $x_j$ is fixed if the current values $lo_j$, $hi_j$ are equal. 
@@ -141,13 +141,44 @@ Then it checks that the gcd of the coefficients to variables divide the fixed va
 ~ End Example
 
 
+This GCD test is extended to as follows. For each row
+$a x + b y + c = 0$, where
+
+* $x, y, a, b, c$ are vectors of constants and variables, respectively.
+* the coefficients in $a$ are all the same and smaller than the coefficients in $b$
+* the variables $x$ are bounded
+
+Let $l := a\cdot lb(x), u := a \cdot ub(x)$.
+That is, the lower and upper bounds for $a\cdot x$ based on the bounds for $x$.
+
+
+Let $ll := \lceil  \frac{l}{\gcd(b,c)} \rceil$,
+$uu := \lfloor \frac{u}{\gcd(b,c)} \rfloor$.
+If $uu > ll$, there is no solution for $x$ within the bounds for $x$.
+
+<!---
+Accumulative:
+    For each row a*x + b*y - c = 0, where |a| = 1 < |b|, and x is a single variable,
+    (it could also be a group of variables) accumulate constraint x = c mod b
+
+    If there are row gcd constraints, such that 
+    - x = c1 mod b1, from rows R1
+    - x = c2 mod b2, from rows R2
+    
+    - If c1 mod gcd(b1,b2) != c2 mod gcd(b1,b2) report conflict for the rows involved.
+   
+    - Otherwise accumulate x = (c1 * lcm(b1,b2) / b2) + (c2 * lcm(b1,b2) / b1) mod lcm(b,b2)
+      and accumulate the rows from R1, R2
+--->
+
 
 #### Patching
-Following [@MouraB08], the integer solver moves non-basic variables away from their bounds in order to ensure that
-basic, integer, variables are assigned integer values. The process examines each non-basic variable and checks every row where it occurs
-to estimate a safe zone where its value can be changed without breaking any bounds. If the safe zone is sufficiently large to patch
-a basic integer variable, it performs an update. This heuristic is highly incomplete, but is able to locally patch several variables
-without resorting to more expensive analyses.
+
+When a tableau with integer variables is feasible, all non-basic variables can be assumed to be integers:
+Dual simplex moves non-basic variables to their bounds and the bounds are integers.
+Only the basic variables could be non-integral (they are still within their bounds).
+Patching seeks changing values to non-basic values to move as many basic variables to integers.
+
 
 ~ Begin Example
 Suppose we are given a tableau of the form
@@ -161,6 +192,55 @@ $\beta(z) = 1$. But neither $y$ nor $z$ is close to their bounds. We can move $x
 Thus, the freedom interval for $x$ is the range $[3,8]$ and within this range there is a solution,
 $x = 6$, where $y, z$ are integers and within their bounds.
 ~ End Example
+
+Z3 patching works by shifting a non-basic variable by $\delta$ to make a dependent basic variable integral.
+
+```python
+   for \($x_b$\) in basic variables, such that \($\beta(x_b) \not\in Z$\):
+       for \($\alpha y$\) in row of \($x_b$\) with \($\alpha \not\in Z$\):
+           find \($\delta$\) such that the update \($\beta(y) := \beta(y) + \delta$\)
+	        is feasible and fixes more basic variables than it breaks 
+```
+
+
+Given a row $x_b + \alpha y + r = 0$, where
+$x_b$ is a basic variable, $y$ is non-basic variable multiplied by the fraction $\alpha$,
+and $r$ is the remainding of the row, the shift amount $\delta$ is computed based on the
+following analysis.
+
+Take first the fractional parts of $\beta(x_b)$ and $\alpha$:
+
+* $f_x := x_1/x_2 := \mathrm{frac}(\beta(x_b))$, s.t. $0 < x_1 < x_2$, and $x_1, x_2$ are mutually prime.
+* $f_\alpha := a_1/a_2 := \mathrm{frac}(\alpha)$, s.t. $0 < a_1 < a_2$, and $ a_1, a_2 $ are mutually prime.
+
+The goal is to compute integers
+
+* $\min \delta^+ > 0 \ . \ \mathrm{frac}(\alpha\delta^+) = 1 - f_x$,
+* $\max \delta^- < 0 \ . \ \mathrm{frac}(\alpha\delta^-) = 1 - f_x$.
+
+These two integers are the minimal amount to move the value $\beta(y)$ to make the value of $\beta(x_b)$ integral.
+
+Let $Z$ be the set of integers.
+We solve for $\delta \in Z$ such that $L := \frac{x_1}{x_2}+\frac{a_1}{a_2}\delta \in Z$ too. 
+If $L \in Z$ then $a_2 \frac{x_1}{x_2}+ a_1\delta$ is also an integer. Therefore $a_2 \frac{x_1}{x_2} \in Z$. 
+That means $a_2 := t x_2$ for some $t \in Z$, because $x_1$ and $x_2$ are coprime. 
+By substituting $a_2$ with $x_2 t$ we get $L:= \frac{x_1}{x_2}+\frac{a_1}{x_2 t}\delta$ and $L x_2 := x_1+\frac{a_1}{t}\delta \in Z$.
+Since $t \uparrow a_2$, and $a_2$ and $a_1$ are coprime, $t \uparrow \delta$. Therefore, we search for $\delta$ in form $\delta :=m t$, $m \in Z$.
+ We obtain $L:=  \frac{x_1}{x_2}+\frac{a_1}{x_2 t} m t = \frac{x_1+m a_1}{x_2}$. 
+ From $L \in Z$ follows $x_2 k = x_1 + m a_1$ for some $k \in Z$. We can rewrite the 
+ last equality as $x_1 =  a_1 m - x_2 k$. Because $x_2 \uparrow a_2$, and $a_1$ and $a_2$ are coprime, $x_2$ and $a_1$ are mutually prime too. That means that for some $u, v$ we have 
+ $1 = a_1 u + x_2 v$. We can show that if $\delta := u t x_1$ then $\frac{x_1}{x_2}+\frac{a_1}{a_2}\delta \in Z$. 
+ 
+
+From the other side, for any $\gamma \in Z$ satisfying $\frac{x_1}{x_2}+\frac{a_1}{a_2}\gamma \in Z$
+holds $\frac{a_1(\delta - \gamma)}{a_2} \in Z$. 
+Since $a_1$ and $a_2$ are coprime, $a_2 \uparrow (\delta - \gamma)$, and $\gamma := \delta \mod a_2$. We conclude that $\delta^+ = \delta \mod a_2$, and $\delta^{-} = \delta^+ - a_2$.
+
+
+
+
+
+
 
 #### Cubes
 An important factor in solving more satisfiable integer arithmetic instances is
@@ -206,7 +286,7 @@ of integer variables if the dual simplex solver fails to assign them integer val
 $x \leq 0$ and $\neg(x \leq 0) \equiv x \geq 1$.
 
 
-#### Gomory and Hermite cuts
+#### Gomory and Hermite cuts { #sec-cuts }
 The arithmetic solver produces Gomory cuts from rows where the basic variables are non-integers after
 the non-basic variables have been pushed to the bounds. It also incorporates algorithms from [@DilligDA09;@ChristH15]
 to generate cuts after the linear systems have been transformed
