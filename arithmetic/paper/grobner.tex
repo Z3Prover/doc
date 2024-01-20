@@ -1,0 +1,131 @@
+\subsection{Gr{\"o}bner reduction}
+
+Z3 uses a best effort Gr\"obner basis reduction to find inconsistencies, cheaply, 
+and propagate consequences. While Gr{\"o}bner basis heuristics are not new to Z3,
+they have evolved and to our knowledge the integration is unique among SMT solvers.
+Recall that reduced Gr{\"o}bner basis for a set of polynomial equations $p_1 = 0, \ldots, p_k = 0$
+is a set $q_1 = 0, \ldots, q_m = 0$, such that every $p_i$ is a linear sum of $q_j$'s,
+and the leading monomials of every pair $q_i, q_j$, $i \neq j$, have no common factors.
+Since Z3 uses completion as a heuristic to make partial inferences, it does not seek to compute
+a basis.
+The Gr\"obner module performs a set of partial completion steps, preferring
+to eliminate variables that can be isolated, and expanding a bounded number of super-position
+steps (reductions by S-polynomials).
+
+Z3 first adds equations $m = x_1\ldots x_k$ for monomial definitions that are violated.
+It then traverses the transitive cone of influence of Simplex rows that contain one of the added variables
+from monomial definitions. It only considers rows where the basic variable is bounded.
+Rows where the basic variable is unbounded are skipped
+because the basic variable can be solved for over the reals.
+Fixed variables are replaced by constants, and the bounds constraints that fixes the variables
+are recorded as dependencies with the added equation. Thus, the equations handled by the
+Gr{\"o}bner basis reduction are of the form $\langle p_i: xy + 3z + 3 = 0, d_i: \{3 \leq u \leq 3\} \rangle$, where $p_i$
+is a polynomial and $d_i$ is a set of dependencies corresponding to fixed variables that were replaced
+by constants in $p_i$. In the example, we replaced $u$ by $3$ and the definition $\langle m = xy, \emptyset\rangle$ resolved $m$ by $xy$.
+Dependencies are accumulated when two polynomials are resolved to infer a new derived equality.
+Generally, when $\langle xy + p_1 = 0, d_1\rangle, \langle xz + p_2 = 0, d_2 \rangle$ are two polynomial equations,
+then $\langle zp_1 - yp_2 = 0, d_1 \cup d_2\rangle$ can be derived accumulating the premises $d_1, d_2$.
+
+Finally, equations are pre-solved if they are linear and can be split
+into two groups, one containing a single variable that has a
+lower (upper) bound, the other with more than two variables
+with upper (lower) bounds. This avoids losing bounds information
+during completion.
+
+After (partial) completion, the derived equations are post-processed:
+\begin{description}
+
+\item[Constant propagation]
+For equalities of the form $x = 0$ or $ax + b = 0$. If the current assignment to $x$ does not
+satisfy the equation, then the equality is propagated as a lemma.
+
+\item[Linear propagation]
+As a generalization of constant propagation, if the completion contains linear equations that
+evaluate to false under the current assignment, then these linear equations are added to the
+Simplex Tableau. Example~\ref{ex:yoav} illustrates a use where this propagation is useful.
+
+\item[Factorization] Identify factors of the
+form $x y p \simeq 0$ where $x, y$ are variables an $p$ is linear. We infer 
+the clause $x y p \simeq 0 \implies x \simeq 0 \lor y \simeq 0 \lor p \simeq 0$.
+
+\end{description}
+
+\begin{example}[Combining Gr{\"o}bner completion and Linear Solving]
+\label{ex:yoav}
+We include an example obtained from Yoav Rodeh at Certora.
+The instance was not solvable prior to adding simplex propagation.
+To solve it, Certora relied on treating multiplication as an uninterpreted function and
+including selected axioms for modular arithmetic and multiplication that were instantiated by E-matching.
+The distilled example is:
+
+\[
+   L \leq x \cdot y \leq U \land 1 \leq x \land m_r \leq U \land x \cdot y \neq m_r
+\]
+where $L = N \idiv 2, U = 1 + L$, $m_r = (x \cdot (\mathit{ite}(y \geq 0, y, N + y))) \mod N$.
+We assume $N$ is even, such as $N = 2^{256}$.
+The solver associates a variable $m$ with $x \cdot y$ and $m'$ with $x \cdot y'$ and $y'$ with $\mathit{ite}(y \geq 0, y, N + y)$
+and includes the constraints $0 \leq m_r < N, m_q \cdot N + m_r = m'$, where $m_q$ is an integer variable.
+The most interesting case is where $y < 0$, so $y' = y + N$. Gr{\"o}bner basis completion
+then allows to derive $m_q N + m_r = m' = x(y + N) = xy + xN = m + xN$, which by integer linear arithmetic reasoning (the extended GCD test)
+contradicts $m \neq m_r$ because the absolute value of both variables is below $N$.
+\end{example}
+
+Our extraction of linear constraints represents a partial integration of linear programming and polynomial arithmetic,
+that favors only including linear inequalities over variables and monomials that are already present. Our implementation
+does not include any variables for new monomials produced by completion.
+In comparison, the approach in~\cite{DBLP:journals/pacmpl/KincaidKZ23} proposes a domain for abstract interpretation that populates a linear
+solver with all equations produced by a completion. We have not experimented in depth with extending our approach with a full basis,
+or use it as a starting point for finding lemmas based on Positivstellensatz or other extension mechanisms~\cite{DBLP:conf/csl/Tiwari05}.
+
+
+
+
+
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+
+\tikzstyle{block} = [rectangle, draw, text centered, rounded corners, minimum height=2em]
+\tikzstyle{line} = [draw, -latex']
+
+\begin{wrapfigure}{r}{0.4\textwidth} 
+  \begin{center}
+    \begin{tikzpicture}[node distance = 3em, scale = 0.2]
+  \node [circle, draw] (xroot) {$x$};
+  \node [circle, below of = xroot, left of= xroot, draw] (xnext) {$x$};
+  \node [circle, below of = xnext, left of= xnext, draw] (y1) {$y$};
+  \node [circle, below of = xnext, right of = xnext] (yempty) {};
+  \node [circle, right of= yempty, draw] (y2) {$y$};
+  \node [circle, below of = y1, left of = y1] (t1) {$5$};
+  \node [circle, below of = y1, right of = y1] (t2) {$0$};
+  \node [circle, right of = t2] (t3) {$1$};
+  \node [circle, below of = y2, right of = y2] (t4) {$1$};
+  \path [line] (xroot.west) -- (xnext.north);
+  \path [line] (xroot.east) -- (y2.north);
+  \path [line] (xnext.west) -- (y1.north);
+  \path [line] (xnext.east) -- (y2.north);
+  \path [line] (y1.west) -- (t1.north);
+  \path [line] (y1.east) -- (t2.north);
+  \path [line] (y2.west) -- (t3.north);
+  \path [line] (y2.east) -- (t4.north);
+
+\end{tikzpicture}
+
+  \end{center}
+  \vspace{1pt}
+  \caption{PDD representation of $5x^2y + xy + y + x + 1$\label{fig:pdd}}
+\end{wrapfigure}
+We use an adaptation of ZDD (Zero suppressed decision diagrams~\cite{Minato93,NishinoYMN16}) to represent polynomials.
+The representation has the advantage that polynomials are stored in a shared data-structure and operations
+over polynomials are memorized. A polynomial over the real is represented as an acyclic graph, where 
+nodes are labeled by variables and edges are labeled by coefficients. Figure~\ref{fig:pdd} shows a polynomial stored
+in a polynomial decision diagram, PDD.
+
+
+The root node labeled by $x$ represents the polynomial $x\cdot l + r$, 
+where $l$ is the polynomial of the left sub-graph and $r$ the polynomial
+of the right sub-graph. The left sub-graph is allowed to be labeled again by $x$, 
+but the right sub-graph may only have nodes labeled by variables that are smaller
+in a fixed ordering. The fixed ordering used in this example sets $x$ above $y$.
+Then the polynomial for the right sub-graph is $y + 1$, and the polynomial with the
+left sub-graph is $5xy + (y + 1)$.
+

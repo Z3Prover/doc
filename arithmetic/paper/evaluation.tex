@@ -1,0 +1,25 @@
+\section{Evaluation}
+\label{sec:eval}
+
+To get an idea of how the new solver compares and how the individual features of the new solver weigh on performance
+we conducted a set of measurements. They are based on three benchmark sets: {\tt QF\_LIA}, SMTLIB2 benchmarks for the theory of quantifier-free integer linear arithmetic,
+{\tt QF\_NIA}, SMTLIB2 benchmarks for the theory of quantifier-free non-linear integer arithmetic, and {\tt benchmark-submission}, a smaller set of verification
+conditions obtained from Certora.
+Data associated with the measurements summarized in this Section are available from~\cite{z3data}.
+The measurements are listed in Appendix~\ref{app:eval}.
+We ran the solvers for 600s and measured how many problems are solved within 600s
+We compared default settings of the solvers
+with CVC5~\cite{DBLP:conf/tacas/BarbosaBBKLMMMN22,DBLP:conf/cade/KremerRBT22,cvc5tool},
+MathSat5~\cite{DBLP:conf/tacas/CimattiGSS13,mathsattool}, and Yices2~\cite{DBLP:conf/cav/Dutertre14,yicestool}, and Z3's legacy arithmetic solver,
+which is available by setting the option {\tt smt.arith.solver=2}. The advances relative to the legacy solver are noticable. Compared to other solvers,
+Yices2 and MathSat5 shine as fast out of the gates solving relatively more problems within 1s,
+but are mainly limited by the set of features it supports, such as lack of support for algebraic data-types.
+
+The feature-wise evaluation suggests that using NLSat to eagerly close branches comes with a steep cost for easy benchmarks.
+It can likely be tuned in future versions of Z3. The eager use of NLSat still provides an overall benefit. Z3 also uses \emph{tactics} that run
+a few strategies with a 5 second resource bounds early on to find models using SAT encodings and selected branch-and-bound strategies. They are also
+a cause of relatively slow startup. The default tactics can be overridden. The overall biggest impact feature is incremental
+linearization. While it is run after gcd tests, bounds propagation and Gr{\"o}bner saturation, it has a significant effect. Other features have each a
+relative minor effect in isolation. The solver relies on their cummulative effect.
+
+

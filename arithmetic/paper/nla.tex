@@ -1,0 +1,97 @@
+\section{Non-Linear Arithmetic}
+\label{sec:nla}
+
+Similar to solving for integer feasibility, the arithmetic solver
+solves constraints over polynomials using a waterfall model for non-linear
+constraints.
+At the basis it maintains, for every monomial 
+term $x \cdot x \cdot y$, a definition
+$m = x \cdot x \cdot y$, where $m$ is a variable
+that represents the monomial $x \cdot x \cdot y$.
+The module for non-linear arithmetic then collects the monomial
+definitions that are violated by the current evaluation,
+that is $\eval{m} \neq \eval{x} \cdot \eval{x} \cdot \eval{y}$. It  attempts to 
+establish a valuation $\beta'$ where $\beta'(m) = \beta'(x) \cdot \beta'(x) \cdot \beta'(y)$, 
+or derive a consequence that no such evaluation exists.
+
+
+
+\subsection{Patch Monomials}
+
+A \emph{patch} for a variable $x$ is \emph{admissible} if the update $\eval{x} := v$
+does not break any integer linear constraints and $x$ does not occur in monomial
+equations that are not already false under $\beta$.
+
+\begin{itemize}
+\item Set $\eval{m} := \eval{x} \cdot \eval{x} \cdot \eval{y}$ and check if the patch of $m$ is admissible.
+\item Try to set $\eval{y} := \eval{m} / (\eval{x} \cdot \eval{x})$, provided $\beta{x}$ is not 0,
+  and check that the patch for $x$ is admissible.
+\item When $\eval{m} = r^2$ for a rational and $m := x \cdot x$ try patching $x$ by setting $\eval{x} := \pm r$.
+\end{itemize}
+
+
+\subsection{Bounds propagation}
+A relatively inexpensive step is to propagate and check bounds based 
+on non-linear constraints. For example, for $y \geq 3$, then $m = x\cdot x\cdot y \geq 3$,
+if furthermore $x \leq -2$, we have the strengthened bound $m \geq 12$.
+Bounds propagation can also flow from bounds on $m$ to bounds on the 
+variables that make up the monomial, such that when $m \geq 8, 1 \leq y \leq 2, x \leq 0$, 
+then we learn the stronger bound $x \leq -2$ on $x$. It uses an interval arithmetic abstraction,
+that understands bounds propagation over squares. Thus, if $-2 \leq x \leq 2$, then $0 \leq x^2 \leq 4$
+instead of $-4 \leq x^2 \leq 4$.
+
+The solver also performs Horner expansions of polynomials to derive stronger bounds.
+For example, if $x \geq 2, y \geq -1, z \geq 2$, then $y + z \geq 1$ 
+and therefore $x\cdot (y + z) \geq 2$, but we would not be
+able to deduce this fact if combining bounds individually for $x\cdot y$ 
+and $x \cdot z$ because no bounds can be inferred for $x \cdot y$ in isolation.
+The solver therefore attempts different re-distribution of multiplication
+in an effort to find stronger bounds.
+
+
+\subsection{Adding bounds}
+Non-linear bounds propagation only triggers if all variables are either bounded from above or below or occur with an even power.
+The solver includes a pass where it adds a bound $x \geq 0$ to variables $x$ where $lo_x = -\infty, hi_x = +\infty$.
+The added bound may help trigger bounds propagation, such as detecting conflicts on $xy > 0, xz > 0, y > 0 > z$.
+
+
+\input{grobner}
+
+
+\subsection{Incremental linearization}
+Following~\cite{CimattiGIRS18} we incrementally linearize monomial definitions that
+currently evaluate to false.
+For example, we include lemmas of the form $x = 0 \rightarrow m = 0$
+and $x = 1 \rightarrow m = y$, for $m = x^2y$.
+Incremental linearization proceeds by first applying linearizations that are considered cheap,
+such as case splitting on whether variables take values 0, 1, -1, when these boundary conditions
+are exhausted, instantiates lemmas based on monotonicity of multiplication and tangents.
+It is possible that there are overlapping monomial definitions, such as $m' = x \cdot y$.
+Then incremental linearization takes into account that the definition for $m$ can be
+\emph{factored} into $m' \cdot x$. It also uses specialized congruence closure reasoning,
+recognizing equalities modulo signs, such that when $m = x \cdot y, m' = z \cdot y$ and
+$x = -z$ in the current context, then $m \sim -m'$.
+
+% LN, not sure if it is a good place, and 
+To find all factorizations of monomial $m = \prod_{i \in A}{x_i} $ as $m = m_0 \cdot m_1$, we choose $a \in A$ and enumerate over all proper subsets $B$ of $A$ containing $a$. For each $B$ we check that $m_0 = \prod_{i \in B}{x_i}$ and $m_1 = \prod_{i \in A \setminus B}{x_i}$ are monomials.
+
+To support floating point arithmetic reasoning
+we also include incremental linearization lemmas for special
+cases of exponentiation~\cite{DBLP:journals/tocl/CimattiGIRS18}. 
+We also added rules for incremental linearization of divisibility operations. 
+The front-end to the core arithmetic solver axiomatizes integer and real division operations using multiplication and addition,
+so that the solver does not have to reason about division. Nevertheless, we found use cases for
+axioms of the form $y > 0 \land x > z \implies x/y > z/y$, bypassing indirect reasoning around constraints created by axioms.
+
+
+
+\subsection{NLSat}
+As an end-game attempt, the solver attempts to solver the non-linear constraints using a complete solver
+for Tarski's fragment supported by the NLSat solver~\cite{JovanovicM12}. NLSAT is complete for non-linear arithmetic
+and includes branch-and-bound to handle cases of integer arithmetic. It can therefore sometimes be used to solve
+goals, bypassing the partial heuristics entirely. The solver therefore includes selected calls to NLSat with a small
+resource bound to close branches before attempting incomplete heuristics such as incomplete linearization.
+The results in Section~\ref{sec:eval} suggests that our use of NLSat with a resource bound currently incurs
+significant overhead on easy problems, but overall is an advantage. We found that it is sometimes the case that turning off NLSat
+all-together can speed up the solver significantly, but is overall a disadvantage.
+

@@ -1,0 +1,7 @@
+\section{Shared Equalities}
+Z3 uses model-based theory combination~\cite{MouraB08} for sharing equalities between theories. 
+In the context of arithmetic it means that in a satisfiable state 
+shared variables where $\eval{x} = \eval{y}$ it also holds that the literal $x \simeq y$ is assigned to true.
+For larger benchmarks we observed that there can be a significant overhead in checking whether a term occurs in a shared context
+because it relies on properties of which parent terms it occurs. We therefore introduced a way to cache the property of being shared 
+in the E-nodes. The property gets invalidated when the a new parent E-node is added or the congruence class of the E-node is merged.

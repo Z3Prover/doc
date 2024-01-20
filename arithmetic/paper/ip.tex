@@ -1,0 +1,135 @@
+\section{Integer Linear Arithmetic}
+\label{sec:ip}
+
+The mixed integer linear solver consists of several layers that first attempt to \emph{patch} integer variables
+form solutions over reals to solutions over integers. Then, if patching fails to correct all integer variables,
+it checks for integer infeasibility by checking light-weight Diophantine feasibility criteria and then resort to variants of
+Gomory Cuts and Branch and Bound.
+
+
+\subsection{Patching}
+
+
+In a feasible tableau we can assume that all non-basic variables are at their bounds
+and therefore if they have integer sort they are assigned integer values.
+Only the basic variables could be assigned non-integer values.
+Patching seeks changing values of non-basic values in order to assign integer values to basic variables.
+A related method, that diversifies values of variables using \emph{freedom} intervals was
+described in~\cite{MouraB08}, but we found it does not preserve integral assignments.
+
+Thus, we patch rows with basic variables $x_b \not\in\Int$.
+We use a process that seeks a $\delta$, such that $|\delta|$ is minimal
+and the row with $x_b$ is of the form $x_b + \alpha y + \alpha'x' = 0$,
+where $\alpha \not\in \Int$,
+such that the update $\eval{y} := \eval{y} + \delta$ is within the bounds of $y$,
+$x_b$ is assigned an integer value and such that $x_b$ becomes integer without 
+breaking any bounds in the tableau.
+We describe details of the patching method in Appendix~\ref{app:ip-patching}.
+
+
+\begin{example}
+  Suppose we are given a tableau of the form
+  $
+ y - \frac{1}{2} x = 0, \ 
+ z - \frac{1}{3} x  = 0
+$
+where $y, z$ are basic variables and $x$ has bounds $[3,10]$, $y$ has bounds $[-3,4]$, $z$ has bounds $[-5,12]$.
+The variable $x$ is initially assigned at the bound $\eval{x} = 3$. Then $\eval{y} = \frac{3}{2}$ and
+$\eval{z} = 1$. But neither $y$ nor $z$ is close to their bounds. We can move $x$ to $8$
+without violating the bound for $y$ because of $y - \frac{1}{2} x = 0$.
+Thus, the freedom interval for $x$ is the range $[3,8]$ and within this range there is a solution,
+$x = 6$, where $y, z$ are integers and within their bounds.
+\end{example}
+
+
+
+\subsection{Cubes}
+An important factor in solving more satisfiable integer arithmetic instances is
+a method by Bromberger and Weidenbach~\cite{BrombergerW16,BrombergerW17}.
+It allows detecting feasible inequalities over integer variables 
+by solving a stronger linear system.
+Their method relies on the following property: The inequalities $Ax \leq b$
+are integer feasible, for matrix $A$ and vectors $x, b$, if
+$Ax \leq b - \frac{1}{2}\onenorm{A}$ has a solution over the reals.
+We use the 1-norm $\onenorm{A}$ of a matrix
+as a column vector, such that each entry $i$ is the sum of the absolute
+values of the elements in the corresponding row $A_i$.
+
+\begin{example}
+Suppose we have $3x + y \leq 9 \wedge - 3y \leq -2$ and wish to find an integer solution. 
+By solving $3x + y \leq 9 - \frac{1}{2}(3 + 1) = 7, -3y \leq -2 - \frac{1}{2}3 = -3.5$ we find
+a model where $y = \frac{7}{6}, x = 0$. After rounding $y$ to $1$ and maintaining $x$ at $0$ we obtain an
+integer solution to the original inequalities.
+\end{example}
+
+Z3 includes a twist relative to~\cite{BrombergerW17} that allows to avoid strengthening on selected inequalities~\cite{Vampire17Theorem}.
+First, we note that \emph{difference} inequalities of the form $x - y \leq k$, where $x, y$ are integer variables
+and $k$ is an integer offset need not be strengthened: they have a solution over reals if and only if they have a solution over integers.
+For octagon constraints $\pm x \pm y \leq k$,
+there is a boundary condition: they need only require strengthening if $x, y$ are assigned at mid-points
+between integral solutions. For example, if $\eval{x} = \frac{1}{2}$ and $\eval{y} = \frac{3}{2}$, for $x + y \leq 2$.
+
+
+\subsection{GCD consistency}\label{sec:gcd-consistency}
+A basic test for integer infeasibility is by enforcing divisibility constraints.
+\begin{example}
+  Assume we are given a row $5/6x + 3/6y + z + 5/6u = 0$, where $x, y$ are fixed at $2 \leq x \leq 2$, $-1 \leq u \leq -1$, and $z$ is the base variable.
+  Then it follows that $5 + 3(y + 2z) = 0$ which has no solution over the integers:
+  The greatest common divisor of coefficients to the non-fixed variables ($3$) does not divide the constant offset from the fixed variables ($5$).
+\end{example}
+The basic test is extended as follows. For each row $a x + b y + c = 0$, where
+\begin{itemize}
+  \item $a, b, c$ and $x, y$ are vectors of integer constants and variables, respectively.
+  \item the coefficients in $a$ are all the same and smaller than the coefficients in $b$
+  \item the variables $x$ are bounded
+\end{itemize}
+Let $l := a\cdot lb(x), u := a \cdot ub(x)$.
+That is, the lower and upper bounds for $a\cdot x$ based on the bounds for $x$.
+If $\lfloor \frac{u}{\gcd(b,c)} \rfloor > \lceil  \frac{l}{\gcd(b,c)} \rceil$, then
+there is no solution for $x$ within the bounds for $x$.
+
+
+
+\subsection{Branching}
+Similar to traditional MIP branch-and-bound methods, 
+the solver creates somewhat eagerly case splits on bounds 
+of integer variables if the dual simplex solver fails to assign them integer values. For example, Simplex may assign an integer variable $x$, the value $\frac{1}{2}$, in which case z3 creates a literal $x \leq 0$ that triggers two branches
+$x \leq 0$ and $\neg(x \leq 0) \equiv x \geq 1$.
+
+
+\subsection{Cuts}\label{sec:cuts}
+The arithmetic solver produces Gomory cuts from rows where the basic variables are non-integers after
+the non-basic variables have been pushed to the bounds. Z3 implements Chv{\'a}tal-Goromy cuts described in~\cite{DutertreM06}.
+It also implements algorithms from~\cite{DilligDA09,ChristH15}
+to generate cuts after the linear systems have been transformed into Hermitian matrices.
+It is a long-standing and timely challenge~\cite{DBLP:conf/nips/BalcanPSV22} to harness the effectiveness of selecting cuts.
+While the solver takes~\cite{DutertreM06} as starting point, it incorporates a few heuristics and enhancements.
+
+Recall that a row $\sum_{j=0}^{k} a_j\cdot x_j + x_b = 0$ 
+from the tableau is called a Gomory row, and is eligible for Gomory cut, if $x_b$ is a basic variable and $x_j$ are non-basic variables,
+$x_b$ is an integral variable, but $\eval{x_b}$ is not integral, and for each $x_j$ we have $\eval{x_j} = lo_j$ or $\eval{x_j} = hi_j$,
+and the bounds are not strict. 
+
+We use a relaxed definition of Gomory rows. For a non-basic integral variable $x_j$ we allow for value $\eval{x_j}$ to be not at a bound when $\eval{x_j}$, and $a_j$ are both integers: Let us call such $x_j$ \emph{row integral}. We provide further justification for
+this relaxed definition in Appendix~\ref{app:row-integral}.
+
+
+To select a cut variable, our main heuristic sorts all Gomory rows from the tableau by the distance of $\eval{x_b}$ from the nearest integer, that is $\min \{ {\eval{x_b}-\lfloor \eval{x_b} \rfloor, \lceil \eval{x_b} \rceil - \eval{x_b}} \}$, and pick a few of them having the minimal distance to produce the cuts. We break the ties by preferring the variables that are used in more terms.
+Heuristics used previously relied on distances to bounds.
+
+We also look for the case when $x_b$ is at an extremum. For example, if for all $x_j$ we have $\eval{x_j} = lo_j$,
+and $a_j > 0$ then $x_b$ is at the maximum, and we deduce $x_b \leq \lfloor \eval{x_b} \rfloor$.
+The explanations of the Gomory term do not include constraints on $x_j$ for $j \in A$ from the relaxed definition,
+but in case of an extremum these constraints should be added.
+
+% NSB: does not make sense: if $\eval{x_b} = -\eval{\sum_{j=0}^{k} a_j\cdot x_j}$, then $\eval{x_b}$ will also have to be integral.
+%Another consideration is the case of an empty Gomory term:
+%it happens when $\sum_{j=0}^{k} a_j\cdot x_j$ is always integral. We report a conflict in this situation.
+
+Cuts are consequences of the current bounds. By default the solver adds new rows to the Dual Simplex tableau corresponding to cuts,
+but makes an exception when the new rows include large numerals.
+In analogy the solver avoids bounds propagation, Section~\ref{sec:bounds-propagation},
+when computation of bounds relies on big-num arithmetic.
+Similarly, cuts that involve large coefficients are first added to a temporary scope where the tableau is checked for feasibility.
+The cuts are only re-added within the main scope if the temporary tableau is infeasible.
+

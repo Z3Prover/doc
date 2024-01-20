@@ -1,0 +1,20 @@
+\section{Design Goals and Implementation Choices}
+
+The SMT formalism for arithmetic in many cases subsumes formalisms used by mixed integer, MIP, solvers.
+However, there are several fundamental differences between the workloads we have tuned the arithmetic
+solver for compared to workloads seen by MIP solvers.
+Z3 uses infinite precision ``big-num'' numeral representations, in contrast to using floating points.
+The drawback is that the arithmetic solver is impractical on linear programming optimization problems,
+but the engine avoids having to compensate for rounding errors and numerical instability.
+The solver uses a sparse matrix representation
+for the Dual Simplex tableau.
+We also created a version that uses an LRU decomposition and floating
+point numbers but found that extending this version with efficient backtracking was not practical
+compared to the straight-forward sparse matrix format.
+Finally, the solver remains integrated within a CDCL engine that favors an eager case split strategy
+leaving it to conflict analysis to block infeasible branches. This contrasts mainstream MIP designs
+that favor a search tree of relatively few branches where the engine performs significant analysis before case splits.
+
+%The arithmetic solver reduces operations such as integer modulus, remainder, and division into equations.
+%It eagerly compiles bounds axioms of the form $x \geq 3 \implies x \geq 2$ for atomic formulas $x \geq 3, x\geq 2$.
+

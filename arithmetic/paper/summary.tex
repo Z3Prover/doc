@@ -1,0 +1,28 @@
+\section{Summary and Discussion}
+
+We presented the architecture and a cross-cut of system innovations in a new arithmetic solver in Z3.
+It it show to provide good advances relative to the legacy arithmetic solver,
+and our evaluation suggests it compares very well with other state-of-art SMT solvers.
+The new solver enabled us to addresses some design choices with the previous solver that limited extensibility.
+Notably, the new solver separates its representation of arithmetic constraints from terms shared by other solvers through an E-graph.
+We noticed that limitation of using shared terms is that the boundary for when to treat a sub-term as a variable or a polynomial is inherently
+ambiguous. The legacy solver is also highly incomplete for non-linear
+reasoning (over the reals). 
+
+Many avenues for further innovations and tuning remain. Another important aspect is trust.
+Implementing the many features of the arithmetic solver is inherently a complex task.
+Many bugs get uncovered by fuzzing~\cite{DBLP:conf/sat/BrummayerLB10,DBLP:conf/sigsoft/MansurCWZ20,winterer-zhang-su-oopsla2020,winterer-zhang-su-pldi2020,DBLP:journals/pacmpl/ParkWZS21,DHuang,Maolin23} both in the legacy and new solver, 
+bearing witness to the difficulty of creating a correct solver. The solver therefore supports a number of ways to validate results.
+The easiest validation is for satisfiable formulas, where the satisfiable formula is model checked against the returned model.
+The main difficulty with satisfiable models is to correctly track interpretations of under-specified operations, such as division by 0.
+To check that consequences produced by the solver are valid, there is a self-validator 
+enabled by the {\tt smt.arith.validate=true}. It uses the legacy arithmetic solver
+to check lemmas and propagations. 
+There is also a mechanism for creating certificates that can be processed offline or online.
+With each theory axiom and propagation produced by the solver, it produces a certificate object that can be used to validate
+inferences by the arithmetic solver. The certificates are exposed in proof objects~\cite{MouraB08b} and also as annotations in proof logs~\cite{z3prooflogs}.
+Z3 contains a built-in proof checker for proof logs. The proof checker for arithmetic certificates validates
+conflicts that can be justified by using Farkas lemma and bounds propagations that use cuts. It currently falls back to invoking
+Z3 on lemmas (using the legacy arithmetic solver) for non-linear lemmas and other cases not covered by the built-in checker.
+Certificates created for {\tt QF\_LRA} are fully handled, while self-contained or independent proof checking for more expressive fragments
+of arithmetic is future work.

@@ -1,0 +1,223 @@
+% !TEX TS-program = pdflatex
+% !TEX encoding = UTF-8 Unicode
+
+% This is a simple template for a LaTeX document using the "article" class.
+% See "book", "report", "letter" for other types of document.
+
+\documentclass{llncs}
+              
+\usepackage[utf8]{inputenc} % set input encoding (not needed with XeLaTeX)
+
+%%% Examples of Article customizations
+% These packages are optional, depending whether you want the features they provide.
+% See the LaTeX Companion or other references for full information.
+
+%%% PAGE DIMENSIONS
+\usepackage{geometry} % to change the page dimensions
+\geometry{a4paper} % or letterpaper (US) or a5paper or....
+% \geometry{margin=2in} % for example, change the margins to 2 inches all round
+% \geometry{landscape} % set up the page for landscape
+%   read geometry.pdf for detailed page layout information
+
+\usepackage{graphicx} % support the \includegraphics command and options
+
+% \usepackage[parfill]{parskip} % Activate to begin paragraphs with an empty line rather than an indent
+
+%%% PACKAGES
+\usepackage{booktabs} % for much better looking tables
+\usepackage{array} % for better arrays (eg matrices) in maths
+\usepackage{paralist} % very flexible & customisable lists (eg. enumerate/itemize, etc.)
+%\usepackage{proof}
+\usepackage{verbatim} % adds environment for commenting out blocks of text & for better verbatim
+\usepackage{subfig} % make it possible to include more than one captioned figure/table in a single float
+\usepackage{xcolor}
+%\usepackage{amsmath}
+%\usepackage{amssymb}
+%\usepackage{amsthm}
+\usepackage{algpseudocode}
+\usepackage{enumerate}
+\usepackage{bussproofs}
+\usepackage{algorithm}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+\usepackage{flowchart}
+\usepackage{hyperref}
+\usepackage{wrapfig}
+
+\tikzstyle{startstop} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!30]
+\tikzstyle{process} = [rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=orange!30]
+\tikzstyle{decision} = [diamond, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=green!30]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+
+% These packages are all incorporated in the memoir class to one degree or another...
+
+%%% HEADERS & FOOTERS
+\usepackage{fancyhdr} % This should be set AFTER setting up the page geometry
+\pagestyle{fancy} % options: empty , plain , fancy
+\renewcommand{\headrulewidth}{0pt} % customise the layout...
+\lhead{}\chead{}\rhead{}
+\lfoot{}\cfoot{\thepage}\rfoot{}
+
+%%% SECTION TITLE APPEARANCE
+\usepackage{sectsty}
+\allsectionsfont{\sffamily\mdseries\upshape} % (See the fntguide.pdf for font help)
+% (This matches ConTeXt defaults)
+
+%%% END Article customizations
+
+
+\definecolor{darkblue}{rgb}{0,0,0.6}
+\definecolor{darkgreen}{rgb}{0,0.6,0}
+\usepackage{listings}
+\lstnewenvironment{smtlib}
+{\lstset{language=Lisp,
+    basicstyle=\ttfamily,
+    commentstyle=\color{darkgreen},
+    stringstyle=\color{red},
+    keywordstyle=\color{darkblue}\bfseries,
+    showstringspaces=false,
+    morekeywords={set-logic,declare-fun,assert,declare-const,or,and},
+    escapeinside={@}{@}}}
+{}
+
+
+\newcommand{\implies}{\Rightarrow}
+\newcommand{\Int}{\mathcal{Z}}
+\newcommand{\Core}{\mathcal{C}}
+\newcommand{\Clause}{C}
+
+\newcommand{\forward}{\mathit{forward}}
+\newcommand{\papercomment}[1]{}
+
+\newcommand{\mod}{\ \mbox{mod}\ }
+\newcommand{\constraint}{sc}
+\newcommand{\overmul}[2]{\Omega^*(#1,#2)}
+\newcommand{\overmuls}[2]{\Omega_s^*(#1,#2)}
+\newcommand{\overadd}[2]{\Omega^+(#1,#2)}
+\newcommand{\binop}{\mathit{binop}}
+\newcommand{\conflictlevel}[1]{\mathit{level}(#1)}
+\newcommand{\assignment}[2]{\langle #1, #2 \rangle}
+\newcommand{\parity}[1]{\mathit{parity}(#1)}
+\newcommand{\polysat}{\textsc{PolySAT}}
+\newcommand{\stp}{\textsc{STP}}
+\newcommand{\cvcfive}{\textsc{cvc5}}
+\newcommand{\boolector}{\textsc{Boolector}}
+\newcommand{\bitwuzla}{\textsc{Bitwuzla}}
+\newcommand{\uclid}{\textsc{uclid}}
+\newcommand{\mathsat}{\textsc{MathSAT}}
+\newcommand{\wombit}{\textsc{Wombit}}
+\newcommand{\yicestwo}{\textsc{Yices2}}
+\newcommand{\zthree}{\textsc{Z3}}
+
+\newcommand{\sat}{\mathsf{Sat}}
+\newcommand{\unsat}{\mathsf{Unsat}}
+
+% object-level equality
+\newcommand{\eql}{\simeq}
+\newcommand{\neql}{\not\eql}
+
+\newcommand{\concat}{\mathbin{+\!\!\!+}}
+\newcommand{\bvshl}{\mathbin{<\!\!\!<}}
+\newcommand{\bvshr}{\mathbin{>\!\!\!>}}
+\newcommand{\bvand}{\mathbin{\&}}
+\newcommand{\bvor}{\mathbin{|}}
+\newcommand{\bvnot}{{\sim}}
+
+%\newcommand{\rem}{\operatorname{rem}}
+\newcommand{\rem}[2]{#1 \perc #2}
+\newcommand{\bit}[2]{#1[#2]}
+\newcommand{\divop}[2]{#1 \mathbin{/} #2}
+\newcommand{\inv}[1]{\operatorname{inv}(#1)}
+\newcommand{\modop}{\operatorname{mod}}
+\newcommand{\bor}[2]{#1 \bvor #2}
+\newcommand{\bnot}[1]{{\bvnot}#1}
+\newcommand{\extract}[3]{#1[#2{:}#3]}   % \extract{x}{hi}{lo}       x[hi:lo]
+\newcommand{\msb}[2]{#1[{:}#2]}         % \msb{x}{lo}               x[:lo]
+\newcommand{\lsb}[2]{#1[#2{:}]}         % \lsb{x}{hi}               x[hi:]
+\newcommand{\rshiftop}[2]{#1 \bvshr #2}
+\newcommand{\lshiftop}[2]{#1 \bvshl #2}
+
+\newcommand\rulename[1]{\textsc{#1}}
+\newcommand{\UnsatRule}{\rulename{Unsat}\xspace}
+\newcommand{\SatRule}{\rulename{Sat}\xspace}
+\newcommand{\BooleanDecideRule}{\rulename{BoolDec}\xspace}
+\newcommand{\BooleanPropagateRule}{\rulename{BoolProp}\xspace}
+\newcommand{\BooleanConflictRule}{\rulename{BoolConf}\xspace}
+\newcommand{\TheoryPropagateRule}{\rulename{TheoryProp}\xspace}
+\newcommand{\TheoryConflictRule}{\rulename{TheoryConf}\xspace}
+\newcommand{\ValueDecideRule}{\rulename{ValueDec}\xspace}
+\newcommand{\ValuePropagateRule}{\rulename{ValueProp}\xspace}
+\newcommand{\EvaluateRule}{\rulename{Evaluate}\xspace}
+\newcommand{\EvaluateTopRule}{\rulename{Evaluate}$_\top$\xspace}
+\newcommand{\EvaluateBottomRule}{\rulename{Evaluate}$_\bot$\xspace}
+\newcommand{\ViableConflictRule}{\rulename{ViableConf}\xspace}
+\newcommand{\ValueConflictRule}{\rulename{ValueConf}\xspace}
+\newcommand{\BooleanResolutionRule}{\rulename{BoolRes}\xspace}
+\newcommand{\ValueResolutionRule}{\rulename{ValueRes}\xspace}
+\newcommand{\LemmaRule}{\rulename{Lemma}\xspace}
+\newcommand{\LearnRule}{\rulename{Learn}\xspace}
+\newcommand{\BackjumpRule}{\rulename{Backjump}\xspace}
+\newcommand{\SaturateRule}{\rulename{Saturate}\xspace}
+\newcommand{\SkipRule}{\rulename{Skip}\xspace}
+\newcommand{\ReplayRule}{\rulename{Replay}\xspace}
+\newcommand\myeq{\mkern1.5mu{=}\mkern1.5mu}
+
+\newcommand{\Eval}[2]{\mathit{Eval}(#1;#2)}
+\newcommand{\EvalN}{\mathit{Eval}}
+\newcommand{\search}[2]{#1 \mid #2}
+\newcommand{\conflict}[4]{#1 \mid #2 \mid #3 \mid #4}
+\newcommand{\Viable}{\mathit{Viable}}
+\newcommand{\onenorm}[1]{|\!|#1|\!|_1}
+
+% See also https://tex.stackexchange.com/a/326251 if we need a resizable version (using \DeclarePairedDelimiterX)
+\newcommand{\interval}[2]{\ensuremath{\mathopen[{#1};{#2}\mathclose[}}
+% interval closed-closed
+\newcommand{\intervalcc}[2]{\ensuremath{\mathopen[{#1};{#2}\mathclose]}}
+
+\newcommand{\Zmod}[1]{\mathbb{Z}/{#1}\mathbb{Z}}
+\newcommand{\idiv}{\;\mathrm{div}\;}
+\newcommand{\eval}[1]{\beta(#1)}
+
+%%% The "real" document content comes below...
+
+\title{Arithmetic Solving in Z3}
+\author{Nikolaj Bj\o{}rner\and
+  Lev Nachmanson}
+\institute{Microsoft}
+
+\newcommand{\NB}[1]{{\color{orange}NB: #1}}
+\newcommand{\LEV}[1]{{\color{red}LN: #1}}
+
+
+\begin{document}
+\maketitle
+
+\input{abstract}
+\input{introduction}
+\input{design}
+\input{lp}
+\input{ip}
+\input{nla}
+\input{eqs}
+\input{evaluation}
+\input{summary}
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\appendix
+\input{appendix-ip}
+\input{appendix-evaluation}
+
+\end{document}
+
+
+
+
+
+
+
+
+
+

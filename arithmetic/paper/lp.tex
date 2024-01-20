@@ -1,0 +1,111 @@
+\section{Linear Real Arithmetic}
+\label{sec:lp}
+The solver first determines whether arithmetic constraints are feasibility over the reals.
+It also attempts to propagate equalities eagerly for shared variables and infer stronger bounds of variables.
+
+\subsection{Linear Solving}
+
+Based on~\cite{DutertreM06} the solver for real linear inequalities uses a dual simplex solver.
+It partitions the variables into \emph{basic} and \emph{non-basic} variables, and maintains
+a global set of equalities of the form $x_{bi} + \sum_j a_{ij}x_j = 0$,
+where $i$ refers to the $i$'th row, $x_{bi}$ is basic and $x_j$ range over non-basic variables.
+It also maintains an evaluation
+$\beta$, such that $\eval{x_{bi}} + \sum_j a_{ij}\eval{x_j}= 0$ for each row $i$.
+Each variable $x_j$ is assigned lower and upper bounds during search.
+The solver then checks whether $lo_j \leq \eval{x_j} \leq hi_j$, for bounds
+$lo_j, hi_j$ that are dynamically added and removed by Boolean decisions $x_j \leq hi_j$, $x_j \geq lo_j$.
+If the bounds are violated, it updates the evaluation and pivots if necessary.
+We recall the approach using an example.
+
+\begin{example}
+
+For the following formula
+\[
+ y \geq 0 \land (x + y \leq 2 \lor x + 2y \geq 6) \land (x + y \geq 2 \lor x + 2y > 4)
+\]
+the solver introduces auxiliary variables $s_1, s_2$ and represents the formula as
+\[
+  x + y - s_1 = 0, x + 2y - s_2 = 0, \
+  x \geq 0, (s_1 \leq 2 \vee s_2 \geq 6), (s_1 \geq 2 \vee s_2 > 4)
+\]
+
+Only bounds (e.g., $s_1 \leq 2$) are asserted during search.
+The slack variables $s_1, s_2$ are initially basic (dependent) and $x, y$ are non-basic.
+In dual Simplex tableaux, values of a non-basic variable
+$x_j$ can be chosen between $lo_j$ and $hi_j$.
+The value of a basic variable is a function of non-basic variable values.
+Pivoting swaps basic and non-basic variables and moves basic variables within their bounds to bounds violations.
+For example, assume we start with a set of initial values
+$x = y = s_1 = s_2 = 0$
+and bounds $x \geq 0, s_1 \leq 2, s_1 \geq 2$. 
+Then $s_1$ has to be 2 and it is made non-basic. 
+Instead, $y$ becomes basic:
+$
+{y} + x - s_1 = 0, \ {s_2} + x - 2s_1 = 0.
+$
+The new tableau updates the assignment of variables to
+$x = 0, s_1 = 2, s_2 = 4, y = 2$. The resulting assignment
+is a model for the original formula.
+
+\end{example}
+
+\subsection{Finding equal variables - cheaply}
+It is useful to have the arithmetic solver propagate implied equalities when arithmetic is used in combination with other theories, or even when
+it solves non-linear arithmetic constraints. Equality propagation is disabled for pure arithmetic theories, such as {\tt QF\_LIA, QF\_LRA}~\cite{SMTLIB2}.
+Z3 originally used a method based on storing \emph{offset} equalities in a hash table.
+An offset equality is of the form $x_i = y + k$, where $k$ is a numeric constant.
+Offset equalities are extracted from rows that contain $x_i$ as a basic variable, and contains
+only one other non-fixed variable $y$, while other variables are fixed and their lower
+(upper) bounds add up to $k$. It turns out that computing $k$ is
+expensive when the tableau contains large numeric constants. Hash table operations
+contribute with additional overhead. It turns out that neither the offset hash-table, nor computing $k$,
+is really necessary. We describe our new method, using an example.
+We first described the method for avoiding to compute offsets in~\cite{DBLP:conf/sbmf/BjornerN20}.
+The description there relies on building a tree data-structure for connecting variables and fails to leverage that the dual simplex tableau can be
+used directly.
+
+
+\begin{example}
+
+From equalities $x + 1 = y, y - 1 = z$ infer that $x = z$. Based on the tableau form, the solver is presented with the original equality atoms via slack variables
+\[
+    s_1 = x + u - y, s_2 = y - u - z, 1 \leq u \leq 1
+    \]	
+The tableau can be solved by setting $x = 0, y = 0, z = 0, s_1 = 1, s_2 = -1, u = 1$.
+The slack variables are bounded when the equalities are asserted
+\[
+    s_1 = x + u - y, s_2 = y - u - z, 1 \leq u \leq 1, 0 \leq s_1 \leq 0, 0 \leq s_2 \leq 0
+    \]
+The original solution is no longer valid, the values for $s_1, s_2$ are out of bounds.
+Pivoting re-establishes feasibility using a different solution, for example
+\[
+    x = z - u - s_1, y = z - u - s_2, 1 \leq u \leq 1, 0 \leq s_1 \leq 0, 0 \leq s_2 \leq 0
+    \]
+with assignment $z = 0, x = y = -1$. The variables $x$ and $y$ have the same value,
+but must they be equal under all assignments? We can establish this directly by subtracting the
+right-hand sides $z - u - s_1$ and $z - u - s_2$ from another and by factoring in the constant bounds to obtain
+the result $0$. But subtraction is generally expensive if there are many bounded constants in the rows.
+Such arithmetical operations are not required to infer that $x = y$.
+
+\end{example}
+
+Z3 uses the following conditions to infer an equality between variables $x, y$ having the same values in the current assignment:
+\begin{itemize}
+    \item $x$ is basic, and the tableau has row $x - y + \alpha = 0$,
+    \item $x, y$ are connected through a non-basic variable $z$ in a pair of the tableau rows in one of the following forms
+	(1) $x - z + \alpha = 0, y - z + \alpha' = 0$, (2) $x + z + \alpha = 0, y + z + \alpha' = 0$, 	
+\end{itemize}
+where $\alpha, \alpha'$ are linear combinations of fixed variables.
+
+We experimented with generalizing the connection between equal variables to
+allow non-unit coefficients on $z$, but it did not result in measurable improvements.
+
+
+\subsection{Bounds Propagation}
+\label{sec:bounds-propagation}
+It is not uncommon that SMT formulas contain different bounds for the same variable, such as one atom $x \geq 2$ and another atom $x \geq 3$.
+When the atom $x \geq 3$ is assigned to true, the solver can directly propagate $x \geq 3$. Bounds can also be inferred indirectly.
+With a row $x - 2y = 0$ and bound $y \geq 1$, it follows that $x \geq 2$. To implement direct bounds propagation, the solver
+maintains an index that maps each variable to the set of bounds atoms where it occurs. To implement indirect bounds propagation,
+the solver queries updated rows for whether they imply bounds that are stronger than the currently asserted bounds. If so, these
+stronger bounds are used by the index for direct bounds propagation.

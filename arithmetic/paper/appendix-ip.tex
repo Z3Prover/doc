@@ -1,0 +1,52 @@
+\section{Integers}
+\label{app:ip}
+
+\subsection{Patching}
+\label{app:ip-patching}
+
+We here outline the method for patching in more detail.
+
+Given a row $x_b + \alpha y + r = 0$, where
+$x_b$ is a basic variable, $y$ is non-basic variable multiplied by the fraction $\alpha$,
+and $r$ is the remainding of the row, the shift amount $\delta$ is computed based on the
+following analysis.
+
+Take first the fractional parts of $\eval{x_b}$ and $\alpha$:
+
+\begin{itemize}
+\item $f_x := x_1/x_2 := \mathrm{frac}(\eval{x_b})$, s.t. $0 < x_1 < x_2$, and $x_1, x_2$ are mutually prime.
+\item $f_\alpha := a_1/a_2 := \mathrm{frac}(\alpha)$, s.t. $0 < a_1 < a_2$, and $ a_1, a_2 $ are mutually prime.
+\end{itemize}
+
+The goal is to compute integers
+
+\begin{itemize}
+\item $\min \delta^+ > 0 \ . \ \mathrm{frac}(\alpha\delta^+) = 1 - f_x$,
+\item $\max \delta^- < 0 \ . \ \mathrm{frac}(\alpha\delta^-) = 1 - f_x$.
+\end{itemize}
+These two integers are the minimal amount to move the value $\eval{y}$ to make the value of $\eval{x_b}$ integral.
+
+Let $\Int$ be the set of integers.
+We solve for $\delta \in \Int$ such that $L := \frac{x_1}{x_2}+\frac{a_1}{a_2}\delta \in \Int$ too. 
+If $L \in \Int$ then $a_2 \frac{x_1}{x_2}+ a_1\delta$ is also an integer. Therefore $a_2 \frac{x_1}{x_2} \in \Int$. 
+That means $a_2 := t x_2$ for some $t \in \Int$, because $x_1$ and $x_2$ are coprime. 
+By substituting $a_2$ with $x_2 t$ we get $L:= \frac{x_1}{x_2}+\frac{a_1}{x_2 t}\delta$ and $L x_2 := x_1+\frac{a_1}{t}\delta \in \Int$.
+Since $t \uparrow a_2$, and $a_2$ and $a_1$ are coprime, $t \uparrow \delta$. Therefore, we search for $\delta$ in form $\delta :=m t$, $m \in \Int$.
+ We obtain $L:=  \frac{x_1}{x_2}+\frac{a_1}{x_2 t} m t = \frac{x_1+m a_1}{x_2}$. 
+ From $L \in \Int$ follows $x_2 k = x_1 + m a_1$ for some $k \in \Int$. We can rewrite the 
+ last equality as $x_1 =  a_1 m - x_2 k$. Because $x_2 \uparrow a_2$, and $a_1$ and $a_2$ are coprime, $x_2$ and $a_1$ are mutually prime too. That means that for some $u, v$ we have 
+ $1 = a_1 u + x_2 v$. We can show that if $\delta := u t x_1$ then $\frac{x_1}{x_2}+\frac{a_1}{a_2}\delta \in \Int$. 
+ 
+
+From the other side, for any $\gamma \in \Int$ satisfying $\frac{x_1}{x_2}+\frac{a_1}{a_2}\gamma \in \Int$
+holds $\frac{a_1(\delta - \gamma)}{a_2} \in \Int$. 
+Since $a_1$ and $a_2$ are coprime, $a_2 \uparrow (\delta - \gamma)$, and $\gamma := \delta \mod a_2$. We conclude that $\delta^+ = \delta \mod a_2$, and $\delta^{-} = \delta^+ - a_2$.
+
+\subsection{Row Integral Variables}
+\label{app:row-integral}
+
+To show our reasoning we represent the set of non-basic row indices as the union of two disjoint subsets $A \cup B$, where $\{x_j:j \in A\}$ is the set of all row integral variables and $B$ is the rest of non-basic indices.
+The row then can be written as $\sum_{j \in A} a_j\cdot x_j + \sum_{j \in B} a_j\cdot x_j + x_b = 0$, that is equivalent to $\sum_{j \in A} a_j\cdot x_j + x_b = -\sum_{j \in B} a_j\cdot x_j$. 
+
+By choice of $A$ and the fact that $x_b$ is integral, the left-hand side has to be integral, but currently the fractional part of the left side value is equal to $\eval{x_b} - \lfloor \eval{x_b} \rfloor$, called $f_0$ in~\cite{DutertreM06}. Further on we can repeat all the steps of the proof of the Gomory inequality from~\cite{DutertreM06}, starting from the observation that the right-hand side value change should be either greater than or equal to $1 - f_0$, or smaller than or equal to $-f_0$, for the left-hand side to become integral.
+
