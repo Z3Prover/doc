@@ -1,0 +1,33 @@
+Structure of artifact
+---------------------
+
+The artifact is an executable called "z3"
+
+Included are directories, QF_LIA, QF-nia-small, and certora with data used in the submission.
+
+Instructions to extract artifact
+--------------------------------
+
+unzip a file z3-4.12.5-* that corresponds to your platform
+
+
+Replication
+-----------
+
+Run z3 with timeout -T:600 on files under benchmark sets.
+
+For example in the highly unlikely case you use cmd
+
+echo off
+for /R %%F in (*.smt2) do (call :TIME %%F)
+goto :EOF
+
+:TIME
+   echo %1
+   /mydirectory/z3 %1 -T:600 -st
+   goto :EOF
+
+
+Test
+----
+The versions of tools used for comparisons (Yices2, Mathsat5, CVC5) are listed in the paper.
