@@ -214,6 +214,7 @@
 \item We are not preparing a docker image given that z3 is released in binary format for various platforms and we believe the existing release process provides for a more accessible evaluation. It may be that evaluating on Linux ARM64 would require building from scratch, but we take this platform is still not very standard.
 \item The current version of Z3 is 4.13.0. The most notable difference to the submitted version is a fix to a very long standing bug in nlsat,
   \url{https://github.com/Z3Prover/z3/issues/7114}.
+  \item A specialized version of z3 was used to selectively disable features. It is not integrated with a release. It can be retrieved from \url{https://github.com/Z3Prover/z3/tree/test_g}.
 \item Criteria: Reproducble, artifact available, runnable.
 \end{itemize}
 
