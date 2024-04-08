@@ -1,0 +1,23 @@
+(set-info :smt-lib-version 2.6)
+(set-logic QF_LIA)
+(set-info :source |
+Alberto Griggio
+
+|)
+(set-info :category "crafted")
+(set-info :status unsat)
+(declare-fun v0 () Int)
+(declare-fun v1 () Int)
+(declare-fun v2 () Int)
+(declare-fun s_0 () Int)
+(declare-fun o_0 () Int)
+(declare-fun s_1 () Int)
+(declare-fun o_1 () Int)
+(declare-fun o_2 () Int)
+(declare-fun s_3 () Int)
+(declare-fun o_3 () Int)
+(declare-fun A_itev1 () Int)
+(declare-fun A_itev2 () Int)
+(assert (let ((?v_25 (- A_itev2)) (?v_4 (* v2 2)) (?v_23 (* A_itev2 2)) (?v_13 (* v1 2)) (?v_1 (<= 16 v2))) (let ((?v_8 (not ?v_1)) (?v_7 (= A_itev2 A_itev1)) (?v_6 (= (+ ?v_25 ?v_4) 0)) (?v_5 (<= 8 v2)) (?v_0 (+ (- A_itev1) ?v_4))) (let ((?v_3 (= ?v_0 16)) (?v_2 (= ?v_0 32)) (?v_24 (* s_0 (- 8)))) (let ((?v_9 (+ ?v_24 v1)) (?v_14 (* s_0 (- 16)))) (let ((?v_11 (+ (+ ?v_13 v0) ?v_14)) (?v_15 (* o_0 (- 16)))) (let ((?v_10 (+ ?v_11 ?v_15)) (?v_12 (+ (* s_1 (- 4)) v2)) (?v_17 (+ (+ (+ (+ (+ ?v_13 (* v2 4)) v0) (* s_1 (- 16))) ?v_14) ?v_15))) (let ((?v_16 (+ (* o_1 (- 16)) ?v_17)) (?v_19 (+ (* o_2 (- 16)) v1))) (let ((?v_18 (+ ?v_19 A_itev2)) (?v_20 (+ (+ (* s_3 (- 8)) ?v_19) A_itev2)) (?v_22 (+ (+ (+ (* o_2 (- 32)) ?v_13) (* s_3 (- 16))) v0))) (let ((?v_21 (+ (+ (* o_3 (- 16)) ?v_22) ?v_23))) (and (and (and (and (and (and (or ?v_2 ?v_8) (or ?v_3 ?v_1)) (or ?v_2 ?v_3)) (or ?v_5 ?v_6)) (or (not ?v_5) ?v_7)) (or ?v_6 ?v_7)) (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (<= 0 v0) (not (<= 16 v0))) (and (<= 0 v1) (not (<= 16 v1)))) (and (<= 0 v2) ?v_8)) (and (not (<= 2 s_0)) (<= 0 s_0))) (and (<= 0 ?v_9) (not (<= 8 ?v_9)))) (= (<= 1 s_0) (not (<= v1 8)))) (and (<= 0 o_0) (<= o_0 1))) (and (<= 0 ?v_10) (not (<= 16 ?v_10)))) (= (not (<= ?v_11 16)) (= o_0 1))) (and (not (<= 4 s_1)) (<= 0 s_1))) (and (<= 0 ?v_12) (not (<= 4 ?v_12)))) (= (<= 1 s_1) (not (<= v2 4)))) (and (<= 0 o_1) (<= o_1 1))) (and (<= 0 ?v_16) (not (<= 16 ?v_16)))) (= (not (<= ?v_17 16)) (= o_1 1))) (and (<= 0 o_2) (<= o_2 1))) (and (<= 0 ?v_18) (not (<= 16 ?v_18)))) (= (not (<= (+ A_itev2 v1) 16)) (= o_2 1))) (and (not (<= 2 s_3)) (<= 0 s_3))) (and (<= 0 ?v_20) (not (<= 8 ?v_20)))) (= (<= 1 s_3) (not (<= ?v_18 8)))) (and (<= 0 o_3) (<= o_3 1))) (and (<= 0 ?v_21) (not (<= 16 ?v_21)))) (= (not (<= (+ ?v_22 ?v_23) 16)) (= o_3 1))) (not (= (+ (+ (+ (+ (+ (+ (+ (+ (* o_2 16) ?v_4) (* s_3 8)) (* o_3 8)) (* s_1 (- 8))) ?v_24) (* o_0 (- 8))) (* o_1 (- 8))) ?v_25) 0))))))))))))))
+(check-sat)
+(exit)

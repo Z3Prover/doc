@@ -1,0 +1,22 @@
+(set-info :smt-lib-version 2.6)
+(set-logic QF_LIA)
+(set-info :source |
+Alberto Griggio
+
+|)
+(set-info :category "crafted")
+(set-info :status unsat)
+(declare-fun v0 () Int)
+(declare-fun v1 () Int)
+(declare-fun v2 () Int)
+(declare-fun s_0 () Int)
+(declare-fun o_0 () Int)
+(declare-fun s_1 () Int)
+(declare-fun o_1 () Int)
+(declare-fun s_2 () Int)
+(declare-fun o_2 () Int)
+(declare-fun s_3 () Int)
+(declare-fun o_3 () Int)
+(assert (let ((?v_4 (* v1 2)) (?v_13 (* v2 4)) (?v_0 (+ (* s_0 (- 128)) v1)) (?v_5 (* s_0 (- 256)))) (let ((?v_2 (+ (+ ?v_4 v0) ?v_5)) (?v_6 (* o_0 (- 256)))) (let ((?v_1 (+ ?v_2 ?v_6)) (?v_3 (+ (* s_1 (- 64)) v2)) (?v_8 (+ (+ (+ (+ (+ ?v_4 ?v_13) v0) (* s_1 (- 256))) ?v_5) ?v_6))) (let ((?v_7 (+ (* o_1 (- 256)) ?v_8)) (?v_9 (+ (* s_2 (- 128)) v2)) (?v_11 (+ (+ (* s_2 (- 256)) (* v2 2)) v1))) (let ((?v_10 (+ ?v_11 (* o_2 (- 256))))) (let ((?v_12 (+ (* s_3 (- 128)) ?v_10)) (?v_15 (+ (+ (+ (+ (+ (* s_2 (- 512)) ?v_13) ?v_4) (* o_2 (- 512))) (* s_3 (- 256))) v0))) (let ((?v_14 (+ (* o_3 (- 256)) ?v_15))) (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (<= 0 v0) (not (<= 256 v0))) (and (<= 0 v1) (not (<= 256 v1)))) (and (<= 0 v2) (not (<= 256 v2)))) (and (not (<= 2 s_0)) (<= 0 s_0))) (and (<= 0 ?v_0) (not (<= 128 ?v_0)))) (= (<= 1 s_0) (not (<= v1 128)))) (and (<= 0 o_0) (<= o_0 1))) (and (<= 0 ?v_1) (not (<= 256 ?v_1)))) (= (not (<= ?v_2 256)) (= o_0 1))) (and (not (<= 4 s_1)) (<= 0 s_1))) (and (<= 0 ?v_3) (not (<= 64 ?v_3)))) (= (<= 1 s_1) (not (<= v2 64)))) (and (<= 0 o_1) (<= o_1 1))) (and (<= 0 ?v_7) (not (<= 256 ?v_7)))) (= (not (<= ?v_8 256)) (= o_1 1))) (and (not (<= 2 s_2)) (<= 0 s_2))) (and (<= 0 ?v_9) (not (<= 128 ?v_9)))) (= (<= 1 s_2) (not (<= v2 128)))) (and (<= 0 o_2) (<= o_2 1))) (and (<= 0 ?v_10) (not (<= 256 ?v_10)))) (= (not (<= ?v_11 256)) (= o_2 1))) (and (not (<= 2 s_3)) (<= 0 s_3))) (and (<= 0 ?v_12) (not (<= 128 ?v_12)))) (= (<= 1 s_3) (not (<= ?v_10 128)))) (and (<= 0 o_3) (<= o_3 1))) (and (<= 0 ?v_14) (not (<= 256 ?v_14)))) (= (not (<= ?v_15 256)) (= o_3 1))) (not (= (+ (+ (+ (+ (+ (+ (+ (* o_2 2) (* s_2 2)) s_3) o_3) (- s_1)) (- s_0)) (- o_0)) (- o_1)) 0)))))))))))
+(check-sat)
+(exit)

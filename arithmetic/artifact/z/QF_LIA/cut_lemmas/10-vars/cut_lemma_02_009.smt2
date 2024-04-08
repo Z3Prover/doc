@@ -1,0 +1,21 @@
+(set-info :smt-lib-version 2.6)
+(set-logic QF_LIA)
+(set-info :source |
+Alberto Griggio
+
+|)
+(set-info :category "crafted")
+(set-info :status unsat)
+(declare-fun x0 () Int)
+(declare-fun x1 () Int)
+(declare-fun x2 () Int)
+(declare-fun x3 () Int)
+(declare-fun x4 () Int)
+(declare-fun x5 () Int)
+(declare-fun x6 () Int)
+(declare-fun x7 () Int)
+(declare-fun x8 () Int)
+(declare-fun x9 () Int)
+(assert (let ((?v_2 (- x0)) (?v_1 (- x8)) (?v_0 (- x7))) (and (and (and (and (and (and (and (and (and (and (<= (- 1) (+ (+ (+ x6 x9) (* x2 2)) x8)) (<= (+ (+ (+ (* x1 2) x0) x5) ?v_0) 0)) (<= (- x4 x9) (- 1))) (<= (+ (+ ?v_1 (* x5 2)) ?v_0) 1)) (<= (- 1) (+ (+ (+ (- x6) x9) (* x8 2)) ?v_0))) (<= 0 (+ (+ (- x2) x1) ?v_0))) (<= (+ (+ (+ (+ ?v_2 x6) x5) x8) ?v_0) (- 1))) (<= 0 (+ (+ (+ (- x5) x2) ?v_1) x3))) (<= 0 (+ (+ (+ (+ x9 x4) x6) ?v_2) x2))) (<= 1 (+ x8 x1))) (not (>= (+ (* x0 (- 8)) (+ (* x1 (- 8)) (+ (* x5 (- 16)) (+ (* x9 16) (+ (* x2 8) (* x8 24)))))) (- 8))))))
+(check-sat)
+(exit)
