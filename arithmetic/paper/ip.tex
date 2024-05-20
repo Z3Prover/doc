@@ -24,7 +24,7 @@ where $\alpha \not\in \Int$,
 such that the update $\eval{y} := \eval{y} + \delta$ is within the bounds of $y$,
 $x_b$ is assigned an integer value and such that $x_b$ becomes integer without 
 breaking any bounds in the tableau.
-We describe details of the patching method in Appendix~\ref{app:ip-patching}.
+%We describe details of the patching method in Appendix~\ref{app:ip-patching}.
 
 
 \begin{example}
@@ -110,8 +110,9 @@ from the tableau is called a Gomory row, and is eligible for Gomory cut, if $x_b
 $x_b$ is an integral variable, but $\eval{x_b}$ is not integral, and for each $x_j$ we have $\eval{x_j} = lo_j$ or $\eval{x_j} = hi_j$,
 and the bounds are not strict. 
 
-We use a relaxed definition of Gomory rows. For a non-basic integral variable $x_j$ we allow for value $\eval{x_j}$ to be not at a bound when $\eval{x_j}$, and $a_j$ are both integers: Let us call such $x_j$ \emph{row integral}. We provide further justification for
-this relaxed definition in Appendix~\ref{app:row-integral}.
+We use a relaxed definition of Gomory rows. For a non-basic integral variable $x_j$ we allow for value $\eval{x_j}$ to be not at a bound when $\eval{x_j}$, and $a_j$ are both integers: Let us call such $x_j$ \emph{row integral}.
+%We provide further justification for
+%this relaxed definition in Appendix~\ref{app:row-integral}.
 
 
 To select a cut variable, our main heuristic sorts all Gomory rows from the tableau by the distance of $\eval{x_b}$ from the nearest integer, that is $\min \{ {\eval{x_b}-\lfloor \eval{x_b} \rfloor, \lceil \eval{x_b} \rceil - \eval{x_b}} \}$, and pick a few of them having the minimal distance to produce the cuts. We break the ties by preferring the variables that are used in more terms.
