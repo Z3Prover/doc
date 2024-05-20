@@ -79,7 +79,7 @@ The slack variables are bounded when the equalities are asserted
 The original solution is no longer valid, the values for $s_1, s_2$ are out of bounds.
 Pivoting re-establishes feasibility using a different solution, for example
 \[
-    x = z - u - s_1, y = z - u - s_2, 1 \leq u \leq 1, 0 \leq s_1 \leq 0, 0 \leq s_2 \leq 0
+    x = y - u - s_1, y = z - u - s_2, 1 \leq u \leq 1, 0 \leq s_1 \leq 0, 0 \leq s_2 \leq 0
     \]
 with assignment $z = 0, x = y = -1$. The variables $x$ and $y$ have the same value,
 but must they be equal under all assignments? We can establish this directly by subtracting the

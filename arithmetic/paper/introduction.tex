@@ -12,12 +12,14 @@ We assume familiarity of basics of SMT solving using CDCL(T), e.g.,~\cite{z3inte
 While make an effort to cover all features for completeness,
 we devote attention to highlight a selection that to our knowledge are unique for arithmetic solvers.
 These highlights include
-(1) how the new solver patches linear real programming solutions to find solutions to integer variables,
+(1) how the solver patches linear real programming solutions to find solutions to integer variables,
 (2) heuristics that are new in how the solver finds Gomory cuts, and
 (3) the solver's integration of Gr{\"o}bner basis computation for solving non-linear constraints.
 User pain points around SMT have to our experience centered dominantly
 around quantifiers and non-linear arithmetic. A complete (for non-linear reals) solver that integrates
-with other theories and quantifier reasoning becomes relevant.
+with other theories and quantifier reasoning becomes relevant. The new arithmetic solver that we describe here
+was first integrated in version 4.8.8 of z3, turned on as default in the next release,
+and subjected to later significant revisions.
 To evaluate the contribution of each feature we use benchmarks drawn
 from SMTLIB benchmark sets~\cite{SMTLIB2} and benchmarks supplied by a user, 
 Certora~\cite{bench-submission}.

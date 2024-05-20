@@ -51,8 +51,8 @@ in an effort to find stronger bounds.
 
 \subsection{Adding bounds}
 Non-linear bounds propagation only triggers if all variables are either bounded from above or below or occur with an even power.
-The solver includes a pass where it adds a bound $x \geq 0$ to variables $x$ where $lo_x = -\infty, hi_x = +\infty$.
-The added bound may help trigger bounds propagation, such as detecting conflicts on $xy > 0, xz > 0, y > 0 > z$.
+The solver includes a pass where it adds a bound case split $x \geq 0$ to variables $x$ where $lo_x = -\infty, hi_x = +\infty$.
+The added case split may help trigger bounds propagation, such as detecting conflicts on $xy > 0, xz > 0, y > 0 > z$.
 
 
 \input{grobner}
@@ -81,7 +81,8 @@ cases of exponentiation~\cite{DBLP:journals/tocl/CimattiGIRS18}.
 We also added rules for incremental linearization of divisibility operations. 
 The front-end to the core arithmetic solver axiomatizes integer and real division operations using multiplication and addition,
 so that the solver does not have to reason about division. Nevertheless, we found use cases for
-axioms of the form $y > 0 \land x > z \implies x/y > z/y$, bypassing indirect reasoning around constraints created by axioms.
+instantiating axioms of the form $y > 0 \land x > z \implies x/y > z/y$ (when the input contains terms $x/y, z/y$)
+bypassing indirect reasoning around constraints created by axioms.
 
 
 
