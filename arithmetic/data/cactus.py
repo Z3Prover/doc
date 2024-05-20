@@ -1,3 +1,4 @@
+import sys
 import os
 import sys
 import csv
@@ -47,8 +48,11 @@ class Stats:
                         col2index[w] = index
                         index += 1
                     continue
-                t_cpu = float(row[col2index["T_wc"]])
-                self.times.append(t_cpu)
+                is_sat = int(row[col2index["# SAT"]])
+                is_unsat = int(row[col2index["# UNSAT"]])
+                if is_sat or is_unsat:
+                    t_cpu = float(row[col2index["T_wc"]])
+                    self.times.append(t_cpu)
  
     def draw_cactus_plot(self):
         sorted_times = sorted(self.times)
@@ -56,13 +60,21 @@ class Stats:
         
         
  
-def create_stats():    
+def create_stats(args):    
     for f in os.listdir("."):
-        if f.endswith("csv"):
+        if f.endswith("csv") and include(args, f):
             print(f"processing {f}")
             yield Stats(f)
 
+import itertools
+
 compare_pat = re.compile(r"compare-([^-]+)-(.+)\.*")
+
+def include(args, f):
+    if len(args) == 1:
+        return True
+    else:
+        return any(arg.lower() in f.lower() for arg in itertools.tail(args))
 
 def split_solver(benchmark):
     if "compare" in benchmark:
@@ -79,7 +91,7 @@ def draw_cactus_plots(stats):
             st.draw_cactus_plot()
         plt.xlabel('Time (seconds)')
         plt.ylabel('Number of instances solved')
-        plt.title(key)
+        # plt.title(key)
         plt.legend()
         plt.grid(True)
         plt.savefig(key+'.png')
@@ -97,4 +109,14 @@ def draw_cactus_plots(stats):
         draw_table(key, sts)    
     print("tables " + str(len(tables)))   
     
-draw_cactus_plots(create_stats())
+
+import sys
+
+def main(args):
+    draw_cactus_plots(create_stats(args))
+
+import sys
+
+
+if __name__ == "__main__":
+    main(sys.argv)  # sys.argv[0] is the script name itself and is generally ignored
