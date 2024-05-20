@@ -39,6 +39,7 @@ class Stats:
                     self.feature = row[1].split('=',1)[0]
                     self.feature = remove_prefix(self.feature)
                     self.feature = self.feature.replace("_","-")                                        
+                    self.feature = self.feature.replace(", 1000","")                                        
                     continue
                 if count == 1:
                     index = 0
@@ -50,7 +51,7 @@ class Stats:
                     continue
                 is_sat = int(row[col2index["# SAT"]])
                 is_unsat = int(row[col2index["# UNSAT"]])
-                if is_sat or is_unsat:
+                if is_sat==1 or is_unsat==1:
                     t_cpu = float(row[col2index["T_wc"]])
                     self.times.append(t_cpu)
  
@@ -66,15 +67,13 @@ def create_stats(args):
             print(f"processing {f}")
             yield Stats(f)
 
-import itertools
-
 compare_pat = re.compile(r"compare-([^-]+)-(.+)\.*")
 
 def include(args, f):
     if len(args) == 1:
         return True
     else:
-        return any(arg.lower() in f.lower() for arg in itertools.tail(args))
+        return any(arg.lower() in f.lower() for arg in args[1:])
 
 def split_solver(benchmark):
     if "compare" in benchmark:
