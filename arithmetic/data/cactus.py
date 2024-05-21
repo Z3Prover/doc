@@ -39,7 +39,9 @@ class Stats:
                     self.feature = row[1].split('=',1)[0]
                     self.feature = remove_prefix(self.feature)
                     self.feature = self.feature.replace("_","-")                                        
-                    self.feature = self.feature.replace(", 1000","")                                        
+                    self.feature = self.feature.replace(", 1000","")
+                    self.feature = self.feature.replace("enable-gcd","gcd")
+                                                            
                     continue
                 if count == 1:
                     index = 0
@@ -53,7 +55,8 @@ class Stats:
                 is_unsat = int(row[col2index["# UNSAT"]])
                 if is_sat==1 or is_unsat==1:
                     t_cpu = float(row[col2index["T_wc"]])
-                    self.times.append(t_cpu)
+                    if t_cpu < 600:
+                        self.times.append(t_cpu)
  
     def draw_cactus_plot(self):
         sorted_times = sorted(self.times)
