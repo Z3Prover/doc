@@ -12,20 +12,21 @@ with CVC5~\cite{DBLP:conf/tacas/BarbosaBBKLMMMN22,DBLP:conf/cade/KremerRBT22,cvc
 MathSat5~\cite{DBLP:conf/tacas/CimattiGSS13,mathsattool}, and Yices2~\cite{DBLP:conf/cav/Dutertre14,yicestool}, and Z3's legacy arithmetic solver,
 which is available by setting the option {\tt smt.arith.solver=2}. The advances relative to the legacy solver are noticable. Compared to other solvers,
 Yices2 and MathSat5 shine as fast out of the gates solving relatively more problems within 1s.
-The are mainly limited by the set of supported feature, such as lack of support for algebraic data-types.
+The are mainly limited by the set of supported features, such as lack of support for algebraic data-types.
+We compare how many instances the solvers handle within
+1s, within 1-10s, 10-100s, and 10-600s. We also list
+timeouts and cases where the solver returns unknown because of incompleteness,
+and cases where benchmarks are unhandled, either because the solver runs out of allocated virtual memory set to 2GB,
+or due to unsupported features. The version of Z3 used for the experiments correponds to 4.12.5.
 
-A feature-wise evaluation suggests that using NLSat to eagerly close branches comes with a steep cost for easy benchmarks.
+Figure~\ref{fig:features} shows results of evaluating z3 when disabling selected features.
+It suggests that using NLSat to eagerly close branches comes with a steep cost for easy benchmarks.
 It can likely be tuned in future versions of Z3. The eager use of NLSat still provides an overall benefit. Z3 also uses \emph{tactics} that run
 a few strategies with a 5 second resource bounds early on to find models using SAT encodings and selected branch-and-bound strategies. They are also
 a cause of relatively slow startup. The default tactics can be overridden. The feature with overall biggest impact is incremental
 linearization. While it is run after gcd tests, bounds propagation and Gr{\"o}bner saturation, it has a significant effect.
 Other features have each a relative minor effect in isolation. The solver relies on their cummulative effect.
 
-We compare how many instances the solvers handle within
-1s, within 1-10s, 10-100s, and 10-600s. We also list
-timeouts and cases where the solver returns unknown because of incompleteness,
-and cases where benchmarks are unhandled, either because the solver runs out of allocated virtual memory set to 2GB,
-or due to unsupported features. The version of Z3 used for the experiments correponds to 4.12.5.
 
 
 \begin{figure}[htbp]
@@ -85,23 +86,19 @@ or due to unsupported features. The version of Z3 used for the experiments corre
   }
   \label{fig:comparison}
 \end{figure}
+
+
+ \begin{figure}[htbp]
+   \centering
+   \begin{tabular}{cc}
+    \includegraphics[width=0.45\textwidth]{figures/compare-benchmark-submission.png} &
+    \includegraphics[width=0.45\textwidth]{figures/qf-nia-small.png} \\
+      (a) Certoral benchmarks &
+    (b) Sample of 2313 QF-NIA benchmarks
+    \end{tabular}
+   \caption{Impact of selected features turned off\label{fig:features}}
+ \end{figure}
  
-\begin{figure}[htbp]
-  \centering
-  \begin{tabular}{cc}
-    \includegraphics[width=0.45\textwidth]{../data/benchmark-submission.png} &
-    \includegraphics[width=0.45\textwidth]{../data/qf-lia.png} \\
-    (a) Disabling features on Certora Benchmarks &
-    (b) Disabling features on QF-LIA \\
-    \multicolumn{2}{c}{
-      \includegraphics[width=0.45\textwidth]{../data/qf-nia-small.png}
-    } \\
-    \multicolumn{2}{c}{
-      (c) Disabling features on a subset of QF-NIA
-    } \\
-  \end{tabular}
- 
-\end{figure}
 
 \papercomment{
 \begin{table}
