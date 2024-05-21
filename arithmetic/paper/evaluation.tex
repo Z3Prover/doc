@@ -28,14 +28,16 @@ and cases where benchmarks are unhandled, either because the solver runs out of 
 or due to unsupported features. The version of Z3 used for the experiments correponds to 4.12.5.
 
 
-\begin{table}
-  \begin{tabular}{|l|c|c|c|c|c|c|c|}
-    \hline
-    Solver & $<$ 1s & 1 to 10s & 10 to 100s & 100 to 600s & $>$ 600s & unknown/unhandled & solved \\
-    \hline
-    CVC5 & 3082 & 4564 & 3578 & 1693 & 10959 & 0/0 & 12917 \\
-    \hline
-    MathSat5 & 3304 & 6022 & 3894 & 2047 & 8607 & 0/2 & 15267 \\
+\begin{figure}[htbp]
+  \centering
+  \subfloat[Comparison among solvers on QF\_NIA \label{tab:compare-qf-nia}]{
+    \begin{tabular}{|l|c|c|c|c|c|c|c|}
+      \hline
+      Solver & $<$ 1s & 1 to 10s & 10 to 100s & 100 to 600s & $>$ 600s & unknown/unhandled & solved \\
+      \hline
+      CVC5 & 3082 & 4564 & 3578 & 1693 & 10959 & 0/0 & 12917 \\
+      \hline
+      MathSat5 & 3304 & 6022 & 3894 & 2047 & 8607 & 0/2 & 15267 \\
     \hline
     Yices2 & 6372 & 6284 & 2176 & 852 & 8192 & 0/0 & 15684 \\
     \hline
@@ -44,23 +46,15 @@ or due to unsupported features. The version of Z3 used for the experiments corre
     z3legacy & 3504 & 6881 & 4081 & 1577 & 6923 & 891/19 & 16043 \\
     \hline
     \end{tabular}
-  \caption{Comparison among solvers on QF\_NIA \label{tab:compare-qf-nia}}
-\end{table}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.99\textwidth]{../data/compare-qf-nia.png}
-  \caption{Compare solvers on QF-NIA }
-  \label{fig:compare-qf-nia}
-\end{figure}
-
-\begin{table}
-  \begin{tabular}{|l|c|c|c|c|c|c|c|}
-    \hline
-    Solver & $<$ 1s & 1 to 10s & 10 to 100s & 100 to 600s & $>$ 600s & unknown/unhandled & solved \\
-    \hline
-    CVC5 & 1540 & 1071 & 529 & 416 & 3391 & 0/0 & 3556 \\
-    \hline
+  }
+  
+  \subfloat[Comparison among solvers on QF\_LIA \label{tab:compare-qf-lia}]{
+    \begin{tabular}{|l|c|c|c|c|c|c|c|}
+      \hline
+      Solver & $<$ 1s & 1 to 10s & 10 to 100s & 100 to 600s & $>$ 600s & unknown/unhandled & solved \\
+      \hline
+      CVC5 & 1540 & 1071 & 529 & 416 & 3391 & 0/0 & 3556 \\
+      \hline
     MathSat5 & 2995 & 1065 & 1124 & 1184 & 577 & 0/2 & 6368 \\
     \hline
     Yices2 & 3638 & 2001 & 276 & 120 & 909 & 0/3 & 6035 \\
@@ -70,24 +64,16 @@ or due to unsupported features. The version of Z3 used for the experiments corre
     z3legacy & 2714 & 1059 & 1619 & 702 & 851 & 0/2 & 6094 \\
     \hline
     \end{tabular}
-  \caption{Comparison among solvers on QF\_LIA \label{tab:compare-qf-lia}}
-\end{table}
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.99\textwidth]{../data/compare-qf-lia.png}
-  \caption{Compare solvers on QF-LIA }
-  \label{fig:compare-qf-lia}
-\end{figure}
-
-
-\begin{table}
-  \begin{tabular}{|l|c|c|c|c|c|c|c|}
-    \hline
-    Solver & $<$ 1s & 1 to 10s & 10 to 100s & 100 to 600s & $>$ 600s & unknown/unhandled & solved \\
-    \hline
-    CVC5 & 11 & 23 & 54 & 33 & 183 & 4/0 & 121 \\
-    \hline
-    MathSat5 & 147 & 17 & 19 & 32 & 70 & 0/23 & 215 \\
+  }
+  
+  \subfloat[Comparison among solvers on Certora Benchmarks \label{tab:compare-benchmark-submission}]{
+    \begin{tabular}{|l|c|c|c|c|c|c|c|}
+      \hline
+      Solver & $<$ 1s & 1 to 10s & 10 to 100s & 100 to 600s & $>$ 600s & unknown/unhandled & solved \\
+      \hline
+      CVC5 & 11 & 23 & 54 & 33 & 183 & 4/0 & 121 \\
+      \hline
+      MathSat5 & 147 & 17 & 19 & 32 & 70 & 0/23 & 215 \\
     \hline
     Yices2 & 13 & 21 & 16 & 12 & 90 & 0/156 & 62 \\
     \hline
@@ -96,13 +82,25 @@ or due to unsupported features. The version of Z3 used for the experiments corre
     z3legacy & 36 & 69 & 55 & 8 & 133 & 7/0 & 168 \\
     \hline
     \end{tabular}
-  \caption{Comparison among solvers on Certora Benchmarks \label{tab:compare-benchmark-submission}}
-\end{table}
+  }
+  \label{fig:comparison}
+\end{figure}
+ 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.99\textwidth]{../data/compare-benchmark-submission.png}
-  \caption{Compare solvers on Certora Benchmarks
-  \label{fig:compare-benchmark-submission}}
+  \begin{tabular}{cc}
+    \includegraphics[width=0.45\textwidth]{../data/compare-benchmark-submission.png} &
+    \includegraphics[width=0.45\textwidth]{../data/compare-qf-lia.png} \\
+    (a) Compare solvers on Certora Benchmarks &
+    (b) Compare solvers on QF-LIA \\
+    \multicolumn{2}{c}{
+      \includegraphics[width=0.45\textwidth]{../data/compare-qf-nia.png}
+    } \\
+    \multicolumn{2}{c}{
+      (c) Compare solvers on QF-NIA
+    } \\
+  \end{tabular}
+ 
 \end{figure}
 
 \papercomment{
