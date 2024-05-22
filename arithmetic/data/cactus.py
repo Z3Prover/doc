@@ -58,10 +58,9 @@ class Stats:
                     if t_cpu < 600:
                         self.times.append(t_cpu)
  
-    def draw_cactus_plot(self):
+    def draw_cactus_plot(self, ls = "-"):
         sorted_times = sorted(self.times)
-        plt.plot(sorted_times, range(1, len(sorted_times) + 1), label=self.feature)
-        
+        plt.plot(sorted_times, range(1, len(sorted_times) + 1), ls,label=self.feature)
         
  
 def create_stats(args):    
@@ -85,12 +84,16 @@ def split_solver(benchmark):
         return "compare-" + m.group(2), m.group(1)
     return benchmark, "z3"
 
+line_styles = [ '-', '--', '-.', ':', 
+               '-o', '--o', '-.o', ':o', 
+               '-s', '--s', '-.s', ':s', 
+               '-*', '--*', '-.*', ':*']
 def draw_cactus_plots(stats):
     
     def draw_table(key, sts):
         plt.figure(figsize=(10, 6))
-        for st in sts:
-            st.draw_cactus_plot()
+        for i, st in enumerate(sts):
+            st.draw_cactus_plot(ls=line_styles[i % len(line_styles)])  # Use different line styles for each plot
         plt.xlabel('Time (seconds)')
         plt.ylabel('Number of instances solved')
         # plt.title(key)
