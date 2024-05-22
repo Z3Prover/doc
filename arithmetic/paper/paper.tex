@@ -70,6 +70,10 @@
 \definecolor{darkblue}{rgb}{0,0, 0.6}
 \definecolor{darkgreen}{rgb}{0,0.6,0}
 \usepackage{listings}
+%\usepackage{showframe} % print page margins, remove when positioning is satisfying
+\usepackage{graphicx} % necessary for inserting .pdfs
+\usepackage{hyperref} % "available" badge is a link to the actual DOI
+\usepackage[firstpage]{draftwatermark} % free badge placement
 \lstnewenvironment{smtlib}
 {\lstset{language=Lisp,
     basicstyle=\ttfamily,
@@ -169,6 +173,7 @@
 \newcommand{\conflict}[4]{#1 \mid #2 \mid #3 \mid #4}
 \newcommand{\Viable}{\mathit{Viable}}
 \newcommand{\onenorm}[1]{|\!|#1|\!|_1}
+
 
 % See also https://tex.stackexchange.com/a/326251 if we need a resizable version (using \DeclarePairedDelimiterX)
 \newcommand{\interval}[2]{\ensuremath{\mathopen[{#1};{#2}\mathclose[}}
