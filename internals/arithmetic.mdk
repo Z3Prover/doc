@@ -213,15 +213,9 @@ Take first the fractional parts of $\beta(x_b)$ and $\alpha$:
 * $f_x := x_1/x_2 := \mathrm{frac}(\beta(x_b))$, s.t. $0 < x_1 < x_2$, and $x_1, x_2$ are mutually prime.
 * $f_\alpha := a_1/a_2 := \mathrm{frac}(\alpha)$, s.t. $0 < a_1 < a_2$, and $ a_1, a_2 $ are mutually prime.
 
-The goal is to compute integers
+The goal is to compute two values for $\delta$, one negative, one positive, of minimal absolute values, such that $ \\beta(x_b) + \delta \in Z$, 
+where $Z$ is the set of integers. Rewriting, we have $L := \frac{x_1}{x_2}+\frac{a_1}{a_2}\delta \in Z$. 
 
-* $\min \delta^+ > 0 \ . \ \mathrm{frac}(\alpha\delta^+) = 1 - f_x$,
-* $\max \delta^- < 0 \ . \ \mathrm{frac}(\alpha\delta^-) = 1 - f_x$.
-
-These two integers are the minimal amount to move the value $\beta(y)$ to make the value of $\beta(x_b)$ integral.
-
-Let $Z$ be the set of integers.
-We solve for $\delta \in Z$ such that $L := \frac{x_1}{x_2}+\frac{a_1}{a_2}\delta \in Z$ too. 
 If $L \in Z$ then $a_2 \frac{x_1}{x_2}+ a_1\delta$ is also an integer. Therefore $a_2 \frac{x_1}{x_2} \in Z$. 
 That means $a_2 := t x_2$ for some $t \in Z$, because $x_1$ and $x_2$ are coprime. 
 By substituting $a_2$ with $x_2 t$ we get $L:= \frac{x_1}{x_2}+\frac{a_1}{x_2 t}\delta$ and $L x_2 := x_1+\frac{a_1}{t}\delta \in Z$.
@@ -229,7 +223,7 @@ Since $t \uparrow a_2$, and $a_2$ and $a_1$ are coprime, $t \uparrow \delta$. Th
  We obtain $L:=  \frac{x_1}{x_2}+\frac{a_1}{x_2 t} m t = \frac{x_1+m a_1}{x_2}$. 
  From $L \in Z$ follows $x_2 k = x_1 + m a_1$ for some $k \in Z$. We can rewrite the 
  last equality as $x_1 =  a_1 m - x_2 k$. Because $x_2 \uparrow a_2$, and $a_1$ and $a_2$ are coprime, $x_2$ and $a_1$ are mutually prime too. That means that for some $u, v$ we have 
- $1 = a_1 u + x_2 v$. We can show that if $\delta := u t x_1$ then $\frac{x_1}{x_2}+\frac{a_1}{a_2}\delta \in Z$. 
+ $1 = a_1 u + x_2 v$. We can show that if $\delta := - u t x_1$ then $\frac{x_1}{x_2}+\frac{a_1}{a_2}\delta \in Z$. 
  
 
 From the other side, for any $\gamma \in Z$ satisfying $\frac{x_1}{x_2}+\frac{a_1}{a_2}\gamma \in Z$
