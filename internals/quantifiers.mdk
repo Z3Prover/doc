@@ -278,7 +278,7 @@ When formulas are parsed and asserted, they are converted into clauses. Quantifi
 and treated as if they are propositional atoms. It is only when quantified formulas are asserted, either at base level during search or during backtracking, that
 E-matching kicks in.
 
-The E-matching engine reacts to two classes of updates:
+The E-matching engine reacts to the following updates to the state during search:
 
 * A universally quantified formula $\forall x, \pi(x) \ . \ \varphi$ with pattern $\pi$ is assigned to true. In this case, the pattern $\pi(x)$ is compiled into a
 sequence of matching instructions and the instructions are inserted into the current code-tree. Upon backtracking, when the formula $\forall x, \pi(x) \ . \ \varphi$
@@ -286,10 +286,12 @@ is no longer assigned to true, the instructions from the pattern $\pi$ are remov
 * When a term $f(t)$ becomes relevant, the matching engine triggers a lookup on the function $f$ to determine if $f(t)$ can potentially trigger a new match.
 * When two equivalence classes (of relevant terms) are merged by congruence closure, the E-matching engine examines whether the equivalence class merge can trigger a match.
 
+Note that all state updates are reversed during backtracking. Only lemmas that were created as a side-effect of conflicts
+survive backtracking and become the seeds for what quantifiers, terms and equivalences that survive.
+
 When E-matching triggers a quantifier instantiation it creates a formula $((\forall x \ . \ \varphi[x]) \implies \varphi[t])$, which is universally valid.
 The formula is asserted as an axiom. The formula is never garbage collected as long as search stays within the backtracking scope of where the instance was created.
-It gets garbage collected during backtracking if the instantiation happens within a nested search level. Only lemmas that were created as a side-effect of conflicts
-survive backtracking.
+It gets garbage collected during backtracking if the instantiation happens within a nested search level. 
 
 
 ### Prioritizing Quantifier Instantiation
