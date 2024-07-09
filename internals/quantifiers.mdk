@@ -214,6 +214,83 @@ and occurs as a second position of $f$.
 Z3 pre-computes an index based on $f, g$ pairs like these and check if it is triggered 
 for some $f, g$ pair and pattern when nodes $n_1, n_2$ are merged.
 
+### Relevance Propagation
+
+Z3 uses _relevance propagation_ to harness quantifier instantiation.
+Relevance propagation attempts to emulate semantic tableau rules on top of the CDCL(T) engine.
+In a semantic tableau, a formula is decomposed based on top-level connectives. Depending on the connectives, it creates
+one or more branches. Different branches then contain only atomic subformulas that are relevant to establishing that
+the formula in the root is true. We list tableau rules for a minimal set of logical connectives as inference rules:
+
+~~ Math
+\begin{array}{ccc}
+    \AxiomC{$\bigvee_{i=1}^k \phi_i$}
+    \RightLabel{$\vee$}
+    \UnaryInfC{$\phi_1 \mid \ldots \mid \phi_k$}
+    \DisplayProof
+& & 
+    \AxiomC{$\neg \bigvee_{i=1}^k \phi_i$}
+    \RightLabel{$\neg \vee$}
+    \UnaryInfC{$\neg \phi_1, \ldots, \neg \phi_k$}
+    \DisplayProof    
+\\
+&
+\AxiomC{$\neg\neg\varphi$}
+\RightLabel{$\neg\neg$}
+\UnaryInfC{$\varphi$}
+\DisplayProof
+&
+\\
+\AxiomC{$\varphi\leftrightarrow \psi$}
+\RightLabel{$\leftrightarrow$}
+\UnaryInfC{$\varphi,\psi \mid \neg\varphi, \neg\psi$}
+\DisplayProof
+& &
+\AxiomC{$\neg(\varphi\leftrightarrow \psi)$}
+\RightLabel{$\leftrightarrow$}
+\UnaryInfC{$\varphi,\neg\psi \mid \neg\varphi, \psi$}
+\DisplayProof
+\\
+\AxiomC{$\mathit{ite}(\varphi,\psi,\theta)$}
+\RightLabel{$\mathit{ite}$}
+\UnaryInfC{$\varphi,\psi \mid \neg\varphi,\theta$}
+\DisplayProof
+& &
+\AxiomC{$\mathit{ite}(\varphi,\psi,\theta)$}
+\RightLabel{$\neg\mathit{ite}$}
+\UnaryInfC{$\varphi,\theta \mid \neg\varphi,\psi$}
+\DisplayProof
+\end{array}
+~~
+
+The rules are read top-down: To establish satisfiability of the formula at the root tableau rules create branches, separated by $\mid$. A branch is closed
+if it contains a pair of complementary sub-formulas (one is the negation of the other). Otherwise a branch is open.
+
+Relevancy propagation follows the flow of the inference rules:
+
+* Let $\phi$ be shorthand for $\bigvee_{i} \phi_i$. If $\phi$ is assigned true and is marked as relevant, then the first child $\phi_i$ that gets assigned true is marked relevant. If $\phi$ is assigned false and is marked as relevant, then all children are marked relevant.
+* Let $\psi$ be shorthand for $(\phi_1 \leftrightarrow \phi_2)$. If $\psi$ is marked as relevant, then both $\phi_1$ and $\phi_2$ are marked as relevant.
+* Let $\theta$ be $ite(\theta_1, \theta_2, \theta_3)$. If $\theta$ is marked as relevant, then if $\theta_1$ is assigned to true (false), then $\theta_2$ ($\theta_3$) is marked as relevant.
+
+### The life-cycle of E-matching.
+
+When formulas are parsed and asserted, they are converted into clauses. Quantified formulas are treated as atomic formulas. They are opaque relative to the CDCL(T) engine
+and treated as if they are propositional atoms. It is only when quantified formulas are asserted, either at base level during search or during backtracking, that
+E-matching kicks in.
+
+The E-matching engine reacts to two classes of updates:
+
+* A universally quantified formula $\forall x, \pi(x) \ . \ \varphi$ with pattern $\pi$ is assigned to true. In this case, the pattern $\pi(x)$ is compiled into a
+sequence of matching instructions and the instructions are inserted into the current code-tree. Upon backtracking, when the formula $\forall x, \pi(x) \ . \ \varphi$
+is no longer assigned to true, the instructions from the pattern $\pi$ are removed.
+* When a term $f(t)$ becomes relevant, the matching engine triggers a lookup on the function $f$ to determine if $f(t)$ can potentially trigger a new match.
+* When two equivalence classes (of relevant terms) are merged by congruence closure, the E-matching engine examines whether the equivalence class merge can trigger a match.
+
+When E-matching triggers a quantifier instantiation it creates a formula $((\forall x \ . \ \varphi[x]) \implies \varphi[t])$, which is universally valid.
+The formula is asserted as an axiom. The formula is never garbage collected as long as search stays within the backtracking scope of where the instance was created.
+It gets garbage collected during backtracking if the instantiation happens within a nested search level. Only lemmas that were created as a side-effect of conflicts
+survive backtracking.
+
 
 ### Prioritizing Quantifier Instantiation
 

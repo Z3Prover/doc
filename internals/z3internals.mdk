@@ -22,10 +22,10 @@ Bib style     : plainnat
 Bibliography  : example
 Logo          : True
 Package       : fullpage
-Package       : url
 Package       : amssymb
-Package       : [curve]xypic
+Package       : url
 Package       : tikz
+Package       : [curve]xypic
 Package       : algorithm2e
 Package       : bussproofs
 ~Exercise     : @h1-exercise=lower-case @h1-exercise label="@h1@h1-exercise"
