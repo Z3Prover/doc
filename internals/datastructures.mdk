@@ -131,6 +131,25 @@ and $v_{n'}$ that are indices to the array and broadcast $v_{n} \simeq v_{n'}$. 
 from the theory solver's array, together with other attributes of $n, n'$ that are specific to the theory solver.
 For example, the array solver maintained several attributes, such as the select terms where an array node occurs.
 
+## Theory Lemmas, Axioms and Propagations
+
+Theory solvers generate theory lemmas, axioms and unit propagations.
+Theory axioms follow the following life-time contract:
+
+* Axioms are _never_ garbage collected within the current scope.
+* Axioms are _always_ garbage collected when the current scope is popped.
+
+* Lemmas are _possibly_ garbage collected within the current scope.
+* Lemmas that survive garbage collected are re-asserted with lower scopes if they
+  * contain atoms that were created above the base level, or
+  * trigger a conflict or unit propagation.
+
+Theory propagations are not replayed.
+The solver also behaves differently when relevancy propagation is set to 2:
+then theory lemmas that would otherwise correspond to binary clauses whose atomic formulas have been
+internalized at the base level (so they do not have to be re-created during backtracking)
+are added to the watch lists directly without creating a clause. The watch list is not garbage collected so they persist.
+
 
 ## Model-based theory combination { #sec-mbtc }
 
