@@ -1,0 +1,1 @@
+# This directory contains data associated with the description of local search modulo theories in Z3

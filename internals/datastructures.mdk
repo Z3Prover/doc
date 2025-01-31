@@ -219,7 +219,8 @@ The E-matching and MBQI methods for instantiating quantifiers, and the methods f
 rely on essentially checking constraints that a satisfying model must meet. The number of quantifier
 instantiations and axiom instantiations grows with the number of constraints and they are often more harmful,
 as they increase the search space, than of use.
-Z3 uses _relevancy filtering_ to filter the Boolean assignments that are made visible to the theory solvers.
+Z3 uses [_relevancy filtering_](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2007-140.pdf) 
+to filter the Boolean assignments that are made visible to the theory solvers.
 It is inspired by search in semantic Tableau, where establishing satisfiability of a disjunction is
 split into separate branches that process the disjuncts in isolation. 
 
