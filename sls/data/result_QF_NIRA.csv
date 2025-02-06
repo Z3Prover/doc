@@ -1,0 +1,4 @@
+path,vanilla-10 result,vanilla-10 time,vanilla-10 memory,hybrid-10-clausal-lookahead result,hybrid-10-clausal-lookahead time,hybrid-10-clausal-lookahead memory,hybrid-10-lookahead result,hybrid-10-lookahead time,hybrid-10-lookahead memory
+/home/ceisenhofer/SMTLIB/BenchMin/QF_NIRA/UltimateAutomizer/test_union_cast-1_true-unreach-call.i.smt2,UNSAT,10,18410,UNSAT,11,18430,UNSAT,9,18430
+/home/ceisenhofer/SMTLIB/BenchMin/QF_NIRA/LCTES/miniflight.smt2,UNSAT,4531,120730,UNSAT,4708,158270,UNKNOWN,10011,158650
+/home/ceisenhofer/SMTLIB/BenchMin/QF_NIRA/LCTES/miniflight.nosummaries.smt2,UNKNOWN,10011,451470,UNKNOWN,10015,451490,UNKNOWN,10013,451490
