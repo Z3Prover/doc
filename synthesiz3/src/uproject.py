@@ -142,8 +142,8 @@ class Umbp:
                 core = self.not_phi_solver.unsat_core()
                 if LOG_UPROJECT: print("implicant", core)
                 return And(core), model
-            phi_model = self.grow_mss(literals)
-            #phi_model = self.grow_basic(literals)
+            #phi_model = self.grow_mss(c_literals)
+            phi_model = self.grow_basic(literals)
             false_literals = [l for l in self.all_literals if is_false(phi_model.eval(l))] 
             if LOG_UPROJECT: print("Adding correction set:", [self.cs_disj] + false_literals)
             self.csolver.add(Or(self.cs_disj, Or(false_literals)))

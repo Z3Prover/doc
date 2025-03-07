@@ -8,88 +8,6 @@ def generate_all_lists(set_sets):
     return list(itertools.product(*set_sets))
 
 # Class to implement stubborn embpr from the paper
-class EMBPRold:
-    def __init__(self, phi, y, solver, computable):
-        self.phi = phi                 # formula to project on.
-        self.y = y                     # variable to project
-        self.solver = solver           # satisfiable solver state
-        self.model = solver.model()    # model from solver
-        self.computable = computable   # computable signature
-
-    def simple_project(self, model):
-        proj, map = model.project_with_witness([self.y], self.phi)
-        if self.y in map.keys():
-            r = map[self.y]
-            proj = substitute(self.phi, [(self.y, r)])
-            return r, proj
-        return None, None
-
-    #
-    # Algorithm EMBPR
-    # A basic unoptimized version:
-    # We side-step computing repr (this is done in implied_eq)
-    # instead of over-approximate repr by iterating over all possible type compatible terms
-    # 
-    def project(self):
-        if not contains(self.phi, self.y):
-            return Const('any', self.y.sort()), self.phi
-        r, proj = self.simple_project(self.model)
-        if r is not None:
-            return r, proj
-
-        #
-        # at this point traverse equivalence classes in phi that are type compatible with y
-        # check if we can retain the equivalences and still merge y with a class such
-        # that project_with_witness succeeds.
-        # The solver state gives access to equivalence classes:
-        #  solver.root(t), solver.next(t)
-        # By MBQI we can assume the model satisfies the same equalities for shared terms.
-        #   
-        
-        roots = set()
-        sort2terms = {}
-        for t in subterms(self.phi):
-            if t.sort().eq(self.y.sort()):
-                roots |= { self.solver.root(t) }
-            # PH: I added the following if, as it seems we don't want to have y in sort2terms. Please check.
-            if contains(t, self.y):
-                continue
-            if t.sort() in sort2terms:
-                sort2terms[t.sort()] += [t]
-            else:
-                sort2terms[t.sort()] = [t]
-
-        for r in roots:
-            is_sat = self.solver.check(self.y == r)
-            if is_sat == sat:
-                r, proj = self.simple_project(self.solver.model())
-                if r is not None:
-                    return r, proj
-        #
-        # A last resport, build terms that are based on 
-        # self.computable but not congruent to terms
-        #
-        for f in self.computable:
-            # PH: I added these four lines instead of the following commented out one,
-            # as before it crashed for test_embpr_ws_computable1(). Please check.
-            sorts = [f.domain() if isinstance(f, ArrayRef) else f.sort()]
-            if not all(s in sort2terms for s in sorts):
-                continue
-            set_of_args = [sort2terms[s] for s in sorts]
-            #set_of_args = [sort2terms[s] for s in f.domain()]
-            all_args = generate_all_lists(set_of_args)
-            print(set_of_args, all_args)
-            for args in all_args:
-                r = f.decl()(args)
-                is_sat = self.solver.check(self.y == r)
-                if is_sat == sat:
-                    r, proj = self.simple_project(self.solver.model())
-                    if r is not None:
-                        return r, proj
-                
-        return None, None
-
-# Class to implement stubborn embpr from the paper
 class EMBPR:
     def __init__(self, phi, y, solver, computable):
         assert self.is_literal_or_conjunction(phi)
@@ -257,7 +175,6 @@ def string_equiv(f1, f2):
     return res
 
 def get_lits_corresponding_to_model(phi, model):
-    #print(phi)
     atoms = AtomicFormulas().atoms(phi)
     res = set()
     for lit in atoms:
@@ -413,7 +330,6 @@ def test_embpr_two_ys():
 
 
 if __name__ == "__main__":
-    # Passing:
     test_embpr_ws_from_paper()
     test_embpr_from_wy()
     test_embpr_from_wy_and_diseq()
@@ -422,8 +338,8 @@ if __name__ == "__main__":
     test_embpr_fa_a_solvable()
     test_embpr_ws_artificial()
     test_embpr_binary_f()
+    test_embpr_two_ys()
 
     # Test in a loop until there are no more possible answers
     test_embpr_ws_computable()
 
-    test_embpr_two_ys()

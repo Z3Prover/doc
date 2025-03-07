@@ -69,8 +69,15 @@ def test_qy_or_aby():
     phi = Or(q[y], And(a == b, b == y))
     run_synthesis(phi, [a, b], [y], [q])
 
+def test_u_is_a():
+    print("u=a => u=y")
+    a, y, u = Consts('a y u', IntSort())
+    phi = Implies(u == a, u == y)
+    run_synthesis(phi, [a], [y], [u])
+
 
 if __name__ == "__main__":
+    # Examples from the paper
     test_workshop()
     test_fu_is_a()
     test_half_partial()
@@ -78,3 +85,5 @@ if __name__ == "__main__":
     test_max(5)
     test_knapsack(2)
     test_qy_or_aby()
+    # Auxiliary example
+    test_u_is_a()
