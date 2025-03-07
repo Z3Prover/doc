@@ -31,6 +31,12 @@ def contains(t, x):
             return True
     return False
 
+def signed_atom2literal(a, sign):
+    if not sign:
+        return Not(a)
+    else:
+        return a
+
 class AtomicFormulas:
     def __init__(self):
         pass
