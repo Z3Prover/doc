@@ -1,0 +1,41 @@
+(set-logic LIA)
+
+(synth-fun res1 ((i1 Int) (i2 Int) (i3 Int) (i4 Int) (i5 Int) (capacity Int)) Int)
+(synth-fun res2 ((i1 Int) (i2 Int) (i3 Int) (i4 Int) (i5 Int) (capacity Int)) Int)
+(synth-fun res3 ((i1 Int) (i2 Int) (i3 Int) (i4 Int) (i5 Int) (capacity Int)) Int)
+(synth-fun res4 ((i1 Int) (i2 Int) (i3 Int) (i4 Int) (i5 Int) (capacity Int)) Int)
+(synth-fun res5 ((i1 Int) (i2 Int) (i3 Int) (i4 Int) (i5 Int) (capacity Int)) Int)
+
+(declare-var i1 Int)
+(declare-var i2 Int)
+(declare-var i3 Int)
+(declare-var i4 Int)
+(declare-var i5 Int)
+(declare-var capacity Int)
+(declare-var u1 Int)
+(declare-var u2 Int)
+(declare-var u3 Int)
+(declare-var u4 Int)
+(declare-var u5 Int)
+
+(assume (and (>= capacity 0) (>= i1 0) (>= i2 0) (>= i3 0) (>= i4 0) (>= i5 0)))
+(assume (and
+    (or (= u1 i1) (= u1 0))
+    (or (= u2 i2) (= u2 0))
+    (or (= u3 i3) (= u3 0))
+    (or (= u4 i4) (= u4 0))
+    (or (= u5 i5) (= u5 0))
+    (<= (+ u1 u2 u3 u4 u5) capacity)
+  ))
+
+(constraint (and
+    (or (= (res1 i1 i2 i3 i4 i5 capacity) i1) (= (res1 i1 i2 i3 i4 i5 capacity) 0))
+    (or (= (res2 i1 i2 i3 i4 i5 capacity) i2) (= (res2 i1 i2 i3 i4 i5 capacity) 0))
+    (or (= (res3 i1 i2 i3 i4 i5 capacity) i3) (= (res3 i1 i2 i3 i4 i5 capacity) 0))
+    (or (= (res4 i1 i2 i3 i4 i5 capacity) i4) (= (res4 i1 i2 i3 i4 i5 capacity) 0))
+    (or (= (res5 i1 i2 i3 i4 i5 capacity) i5) (= (res5 i1 i2 i3 i4 i5 capacity) 0))
+    (<= (+ (res1 i1 i2 i3 i4 i5 capacity) (res2 i1 i2 i3 i4 i5 capacity) (res3 i1 i2 i3 i4 i5 capacity) (res4 i1 i2 i3 i4 i5 capacity) (res5 i1 i2 i3 i4 i5 capacity)) capacity)
+    (<= (+ u1 u2 u3 u4 u5) (+ (res1 i1 i2 i3 i4 i5 capacity) (res2 i1 i2 i3 i4 i5 capacity) (res3 i1 i2 i3 i4 i5 capacity) (res4 i1 i2 i3 i4 i5 capacity) (res5 i1 i2 i3 i4 i5 capacity)))
+  ))
+(check-synth)
+

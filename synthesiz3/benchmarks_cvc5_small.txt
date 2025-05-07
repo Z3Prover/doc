@@ -1,0 +1,14 @@
+benchmarks/sl/between_total1.sl
+benchmarks/sl/between_total_strict1.sl
+benchmarks/sl/equation_total1.sl
+benchmarks/sl/knapsack1.sl
+benchmarks/sl/lower_nonstrict2.sl
+benchmarks/sl/lower_strict2.sl
+benchmarks/sl/max2.sl
+benchmarks/sl/sygus-jmbl_fg_array_search_2.sl
+benchmarks/sl/sygus-jmbl_fg_array_sum_2_5.sl
+benchmarks/sl/sygus-jmbl_fg_fivefuncs.sl
+benchmarks/sl/UF_total_fu_is_a.sl
+benchmarks/sl/UF_total_u_is_a.sl
+benchmarks/sl/UF_total_workshop_allcomputable.sl
+benchmarks/sl/UF_total_workshop.sl
