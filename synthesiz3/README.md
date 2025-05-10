@@ -2,19 +2,20 @@
 
 This is the artifact for the FMCAD submission "Synthesiz3 This: an SMT-Based Approach for Synthesis with Uncomputable Symbols" [1].
 
-The artifact consists of the code (files `*.py`), benchmarks (directory `benchmarks`), lists of benchmarks (files `*.txt`), and results (directory `results`) TODO, a `LICENSE` file, and this `README`.
+The artifact consists of the code (files `*.py`), benchmarks (directory `benchmarks`), lists of benchmarks (files `*.txt`), a `LICENSE` file, and this `README`.
 
 ## System requirements
 
 The artifact was tested on an 8-core machine with 1.60GHz CPU and 16 GB RAM, however, running it requires only 1 core.
 
-Reproducing the full results takes approximately TODO minutes.
 
 Installation and running requires standard Python 3.+, and some additional Python packages (see section "Installation").
 
 ## Installation
 
-TODO
+use pip or uv to install
+- z3-solver - version 4.15.0.0
+- sexpdata
 
 ## Benchmarking
 
@@ -68,7 +69,6 @@ python run_benchmarking.py -bl benchmarks_vampire_small.txt -t 60 -s vampire
 python run_benchmarking.py -bl benchmarks_cvc5_small.txt -t 60 -s cvc5
 ```
 
-Running benchmarking on **all benchmarks** takes **around TODO minutes**:
 
 ```
 python run_benchmarking.py -bl benchmarks_vampire_all.txt -t 60 -s vampire 
