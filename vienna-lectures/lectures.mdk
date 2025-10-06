@@ -1,0 +1,160 @@
+[INCLUDE=presentation]
+Title         : Internals of SMT with Z3
+Sub Title     : TU Wien Guest Lectures, October 2025, 
+                Laura Kovacs limited production
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Email         : nbjorner\@microsoft.com
+Reveal Theme  : solarized
+Beamer Theme  : singapore
+Bibliography  : refs.bib
+muZ           : $\mu{Z}$
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+Package       : bussproofs
+Embed         : 1024
+Tex Header    : \usetikzlibrary{shapes,snakes}
+Css Header:
+    .reveal p, .reveal li, .reveal .bibitem, .reveal dd, .reveal dt {
+      text-align: left !important;
+      data-transition: none 
+    }
+
+.Math-Inline,.Math-Display,~Math,~MathPre: 
+    replace=//<-/\leftarrow//->/\rightarrow//=>/\Rightarrow//!=/\mathop{\neq}//g 
+    replace=//AA/\forall//EE/\exists//g
+
+
+~ MathDefs
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\twodpstate}[2]{#1  \dbar #2}
+\newcommand{\compl}[1]{\overline{#1}}
+\newcommand{\Model}{M}
+\newcommand{\nodefinition}{}
+\newcommand{\Mbp}{Mbp}
+\newcommand{\Queue}{\mathcal{Q}}
+\newcommand{\Init}{\mathit{Init}}
+\newcommand{\Safe}{\mathit{Safe}}
+\newcommand{\true}{\textsf{true}}
+\newcommand{\false}{\textsf{false}}
+\newcommand{\cF}{{\mathcal{F}}}
+\newcommand{\phidown}{\varphi_{\downarrow}}
+\newcommand{\psidown}{\psi_{\downarrow}}
+\newcommand{\phiup}{\varphi^{\uparrow}}
+\newcommand{\router}[1]{R_{#1}}
+\newcommand{\mustsummary}[3]{
+\langle #1 \stackrel{\mathtt{must}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\notmaysummary}[3]{
+\langle #1 \stackrel{\neg\mathtt{may}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\querysummary}[3]{
+\langle #1 \stackrel{?}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\dst}{\mathit{dst}}
+\newcommand{\src}{\mathit{src}}
+\newcommand{\unk}[1]{{\color{blue}{#1}}}
+\newcommand{\basicvars}{{\mathcal B}}
+\newcommand{\nonbasicvars}{{\mathcal N}}
+\newcommand{\mulvars}{{\mathcal M}}
+\newcommand{\PP}{$(C \lor p) \quad (D \lor \neg p)$}
+\newcommand{\QQ}{$C \lor D$}
+\newcommand{\PB}{$(q \lor t \lor p) \quad (q \lor r \lor \neg p)$}
+\newcommand{\QB}{$(q \lor t \lor r)$}
+\newcommand{\onenorm}[1]{|\!|#1|\!|_1}
+\newcommand{\idiv}{\;\mbox{\rm div}\;}
+~
+
+<style>
+.invariant {
+  font-style: oblique;
+  before: "[Invariant ]{.invariant-before}"
+}
+</style>
+
+[TITLE]
+
+# Lectures
+
+1.  Introduction to SMT/Z3
+2.  Fundamental Search Algorithms - CDCL, CDCL(T), PDR, Saturation
+3.  Core Theories: EUF, Characters, Finite Sets
+4.  Core Theories: Arrays, Datatypes
+5.  Core Theories: Arithmetic
+6.  Programming Z3
+7.  Theory Combination
+8.  Quantifiers for theories
+9.  Optimization Modulo Theories
+10. Topics. co-engines, local search, nlsat, mcsat, saturation
+
+# Live development of a new solver in z3
+
+* The theory of finite sets, with cardinality constraints
+* Well-known decision procedures, BAPA (Boolean Algebras and Presburger Arithmetic)
+* Partially by using arrays, but not for finite sets
+* It will provide a tour of several aspects of supporting a theory:
+  * Define signature
+  * Rewriting simplification
+  * Global pre-processing simplification
+  * Axiom schemas
+  * Theory Solver
+  * Non-disjoint theory combinations, conservative extensions from decidable base theories
+  * Quantifier satisfiability and elimination
+  * Surfacing API 
+
+# Lecture 1
+
+* What is Satisfiability Modulo Theories, SMT?
+* What are SMT solvers good for?
+* Fundamental SMT algorithms and heuristics.
+* Coding SMT solvers.
+
+# Lecture 2 - Fundamental Search
+
+* CDCL(T) - Conflict Driven Clause Learning - a core engine for SMT.
+* PDR (Property Driven Reachability)
+* Horn Saturation
+
+# Lecture 3-4 - Theory Solvers
+
+* Congruence Closure
+* Arrays
+* Datatypes
+
+# Lecture 4-5 - Arithmetic Theory Solving
+
+* Linear Real, Integer Arithmetic
+* Non-linear Real, Integer Arithmetic
+* Special Arithmetic Theories
+
+# Lecture 6 - Programming with Z3
+
+* Solver state management
+* API functionality
+* Encoding into Z3
+
+# Lecture 7 - Combining Decision Procedures
+
+* Theory combination history
+* Model-based theory combination
+* Refined notions of theory combinations
+
+# Lecture 8 - Quantifiers
+
+* E-matching
+* Model-based Quantifier Instantiation
+* QSAT
+* Constrained Horn Clauses using SPACER
+
+# Lecture 9 - Optimization Modulo Theories
+
+* Optimization domains: integers, bit-vectors and Pseudo-Booleans
+* MaxSAT with cores, correction sets, and branch and bound
+* Pseudo-Boolean constraints
+* Lex and Box objectives
+* Optimization using User Propagators
+
+# Lecture 10 - Topics
+
+* Co-engines: local search, nlsat, mcsat, saturation
+* Incremental pre-processing 

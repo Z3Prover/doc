@@ -1,0 +1,1241 @@
+[INCLUDE=presentation]
+Title         : Quantified Satisfiability Modulo Theories
+Sub Title     : TU Wien Guest Lectures October 2025
+                https://z3prover.github.io/slides/guest/
+                A Laura Kovacs guest lecture production
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Email         : nbjorner\@microsoft.com
+Reveal Theme  : solarized
+Beamer Theme  : singapore
+Bibliography  : refs.bib
+Cite Style    : natural
+muZ           : $\mu{Z}$
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+Embed         : 1024
+Tex Header    : \usetikzlibrary{shapes,snakes}
+Css Header:
+    .reveal p, .reveal li, .reveal .bibitem, .reveal dd, .reveal dt {
+      text-align: left !important;
+    }
+
+.Math-Inline,.Math-Display,~Math,~MathPre: 
+    replace=//<-/\leftarrow//->/\rightarrow//=>/\Rightarrow//!=/\mathop{\neq}//g 
+    replace=//AA/\forall//EE/\exists//g
+
+
+~ MathDefs
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\twodpstate}[2]{#1  \dbar #2}
+\newcommand{\compl}[1]{\overline{#1}}
+\newcommand{\Model}{M}
+\newcommand{\nodefinition}{}
+\newcommand{\Mbp}{Mbp}
+\newcommand{\Queue}{\mathcal{Q}}
+\newcommand{\Init}{\mathit{Init}}
+\newcommand{\Safe}{\mathit{Safe}}
+\newcommand{\true}{\textsf{true}}
+\newcommand{\false}{\textsf{false}}
+\newcommand{\cF}{{\mathcal{F}}}
+\newcommand{\phidown}{\varphi_{\downarrow}}
+\newcommand{\psidown}{\psi_{\downarrow}}
+\newcommand{\phiup}{\varphi^{\uparrow}}
+\newcommand{\router}[1]{R_{#1}}
+\newcommand{\mustsummary}[3]{
+\langle #1 \stackrel{\mathtt{must}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\notmaysummary}[3]{
+\langle #1 \stackrel{\neg\mathtt{may}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\querysummary}[3]{
+\langle #1 \stackrel{?}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\dst}{\mathit{dst}}
+\newcommand{\src}{\mathit{src}}
+\newcommand{\unk}[1]{{\color{blue}{#1}}}
+~
+
+<style>
+.invariant {
+  font-style: oblique;
+  before: "[Invariant ]{.invariant-before}"
+}
+</style>
+
+[TITLE]
+
+# Contents
+
+[TOC]
+
+
+# Quantifier Engines in Z3
+
+* [@MouraB07] E-matching
+\
+\
+
+* [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13] Model-based Quantifier Instantiation (MBQI)
+\
+\
+
+* [@BjornerAbstract10;@PhanBM12;@BjornerJ15] Quantifier Elimination and Satifiability
+\
+\
+
+* [@HoderB12;@BjornerMR13] Horn Clauses
+\
+\
+
+* Deprecated: [@PiskacMB10] EPR using relational algebra, [@MouraB08a] Superposition, see also [VampireZ3]
+
+
+[VampireZ3]: https://vprover.github.io "VampireZ3"
+
+~ Begin Vertical
+
+# E-matching and Pattern based quantifier instantiation [@MouraB07]
+
+* $\underbrace{(\forall x \ . \ f(g(x,c)) = a)}_{p_\varphi}$
+* {.fragment} $\land b = c \land g(c,b) = c \land f(b) \neq a$
+
+  * {.fragment} Smallest subterm containing $x$: $f({\color{red}g(x,c)}) = a$
+  * {.fragment} Use ground equality $b = c$ to match ${\color{red}g(x,c)}$ with $g(c,b)$.
+* {.fragment} $\land (p_{\varphi} \rightarrow f(g(b,c)) = a)$
+* {.fragment} Formulas are ground unsatisfiable.
+
+
+## E-matching - efficiency
+
+* Secret sauce is to find instantiations 
+   * quickly,
+   * across large sets of terms, and 
+   * incrementally.
+
+## E-matching - basic algorithm
+
+Takes 
+
+* a ground _term_, 
+* a _pattern_ that may contain variables, and 
+* a congruence closure structre _cc_ that for each ground term 
+represents an equivalence class of terms that are congruet 
+in the current context.
+
+## E-matching - a primer on congruence closure
+
+* Let $\mathcal{T}$ be a set of terms and $\mathcal{E}$ set of equalities over $\mathcal{T}$.
+
+* A congruence closure over $\mathcal{T}$ modulo $\mathcal{E}$ is the finest a partition of $\mathcal{T}$, cc, such that:
+
+  * if $s = t \in \mathcal{E}$, then $s, t$ are in the same partition in cc.
+
+  * for $s := f(s_1, \ldots, s_k), t := f(t_1, \ldots, t_k) \in \mathcal{T}$, 
+     * if $s_i,t_i$ are in same partition of cc for each $i = 1, \ldots k$, then
+     * $s, t$ are in the same partition under cc.
+
+  * Convention: $cc: \mathcal{T} \rightarrow 2^{\mathcal{T}}$, maps term to its equivalence class.
+
+## E-matching - basic algorithm, code
+
+
+```python    
+def match(pattern, term, \($\theta$\), cc):
+    pattern = pattern\($\theta$\)
+    if pattern == term:
+       yield \($\theta$\)
+    elif is_var(pattern):
+       yield \($\theta[$\)pattern\($\mapsto$\) term\($]$\)
+    else:
+       f(patterns) = pattern
+       for f(terms) in cc(term):  
+          # e.g., with same head function symbol f
+          for \($\theta'$\) in matches(patterns, terms, \($\theta$\), cc):
+            yield \($\theta'$\)
+
+def matches(patterns, terms, \($\theta$\), cc):
+    if not patterns:
+       yield \($\theta$\)
+       return
+    for \($\theta'$\) in match(patterns[0], terms[0], \($\theta$\), cc):
+        for \($\theta''$\) in matches(patterns[1:], terms[1:], \($\theta'$\), cc):
+            yield \($\theta''$\)
+```
+
+## E-matching - basic algorithm, equational form
+
+~MathPre
+
+ match(x, t, S)     &  =    & \{ \theta[x \mapsto t] \;\mid\; \theta \in S, x \not\in \theta \} 
+                    &       & \cup  \{ \theta \;\mid\; \theta \in S, x \in \theta, \theta(x) \in cc(t) \}
+ match(c, t, S)     &  =    & \emptyset\                 \mathsf{if} c \not\in cc(t)
+ match(c, t, S)     &  =    & S                 \mathsf{if} c \in cc(t)
+ match(f(ps), t, S) &  =    & \bigcup_{f(ts) \in cc(t)} match(ps_n, ts_n, \ldots, 
+                    &       &                                 match(ps_1, ts_n, S))
+~
+
+## E-matching - beyond the basic algorithm
+
+* Match is invoked for every pattern in database. 
+* To avoid common work: 
+  * Compile set of patterns into instructions. 
+    * By partial evaluation of naive algorithm 
+  * Instruction sequences share common sub-terms. 
+  * Substitutions are stored in registers, \
+    backtracking just updates the registers.
+
+## E-matching - code trees (0)
+
+~ Math
+              f(X, g(X,a), h(Y), b)
+~ 
+
+|----------|-------------------------|---------------------------------------------------|
+| PC       | Instruction             |                                                   |
++----------+-------------------------+---------------------------------------------------+
+| $pc_0$   | init(f, $pc_1$)         |    add arguments of $f$ to registers 1-4          |
++----------+-------------------------+---------------------------------------------------|
+| $pc_1$   | check(4,$b$,$pc_2$)     |    check if $reg[4]$ is congruent to $b$          | 
++----------+-------------------------+---------------------------------------------------+
+| $pc_2$   | bind(2, $g$, 5, $pc_3$) |    bind terms in $reg[2]$ with $g$ to $5-6$       |
++----------+-------------------------+---------------------------------------------------+
+| $pc_3$   | compare(1, 5, $pc_4$  ) |    check if $reg[1]$ equals $reg[5]$              |
++----------+-------------------------+---------------------------------------------------+
+| $pc_4$   | check(6, $a$, $pc_5$)   |    check if $reg[6]$ is congruent to $a$          |
++----------+-------------------------+---------------------------------------------------+
+| $pc_5$   | bind(3, $h$, 7, $pc_6$) |    bind terms in $reg[3]$ with $h$ to $7$         |
++----------+-------------------------+---------------------------------------------------+
+| $pc_6$   | yield(1,7)              |    output binding from $reg[1], reg[7]$           |
++----------+-------------------------+---------------------------------------------------+
+
+## E-matching - code trees (1)
+
+~ Math
+              f(X, g(X,a), h(Y), b)
+~ 
+|----------|-------------------------|---|------------------------------------------------|
+| PC       | Instruction             |   | $f(h(a),g(h({\color{red}{c}}), a), h(c),b)$                      |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_0$   | init(f, $pc_1$)         |   | $reg[1:4] \leftarrow h(a), g(h({\color{red}{c}}),a), h(c), b$ |
++----------+-------------------------+---+------------------------------------------------|
+| $pc_1$   | check(4,$b$,$pc_2$)     |   | $reg[4] = b$                                   | 
++----------+-------------------------+---+------------------------------------------------+
+| $pc_2$   | bind(2, $g$, 5, $pc_3$) |   | $reg[5:6] \leftarrow h({\color{red}{c}}), a$                  |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_3$   | compare(1, 5, $pc_4$  ) |   | $reg[1] = h(a) \neq h({\color{red}{c}}) = reg[5]$             |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_4$   | check(6, $a$, $pc_5$)   |                                                   ||
++----------+-------------------------+---------------------------------------------------||
+| $pc_5$   | bind(3, $h$, 7, $pc_6$) |                                                   ||
++----------+-------------------------+---------------------------------------------------||
+| $pc_6$   | yield(1,7)              |                                                   ||
++----------+-------------------------+---------------------------------------------------||
+
+
+## E-matching - code trees (2)
+
+~ Math
+              f(X, g(X,a), h(Y), b)
+~ 
+|----------|-------------------------|---|------------------------------------------------|
+| PC       | Instruction             |   | $f(h(a),g(h({\color{blue}{a}}), a), h(c),b)$      |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_0$   | init(f, $pc_1$)         |   | $reg[1:4] \leftarrow h(a), g(h({\color{blue}{a}}),a), h(c), b$ |
++----------+-------------------------+---+------------------------------------------------|
+| $pc_1$   | check(4,$b$,$pc_2$)     |   | $reg[4] = b$                                   | 
++----------+-------------------------+---+------------------------------------------------+
+| $pc_2$   | bind(2, $g$, 5, $pc_3$) |   | $reg[5:6] \leftarrow h({\color{blue}{a}}), a$                  |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_3$   | compare(1, 5, $pc_4$  ) |   | $reg[1] = h(a) = h({\color{blue}{a}}) = reg[5]   $             |
++----------+-------------------------+---+------------------------------------------------+
+| $pc_4$   | check(6, $a$, $pc_5$)   |   | $reg[6] = a$                                   |
++----------+-------------------------+---+------------------------------------------------|
+| $pc_5$   | bind(3, $h$, 7, $pc_6$) |   | $reg[7] \leftarrow c$                          |
++----------+-------------------------+---+------------------------------------------------|
+| $pc_6$   | yield(1,7)              |   | $X \leftarrow h(a) = reg[1], Y \leftarrow c = reg[7]$ |
++----------+-------------------------+---+------------------------------------------------|
+
+## E-matching abstract machine
+
+![mam]
+
+[mam]: images/mam.JPG "E-matching abstract machine" 
+
+## E-matching abstract machine - NB
+
+* Patterns that share common (top-down) term structure can share code sequences.
+
+  * {.fragment} This saves on common work.
+
+  * {.fragment} Use the choice instruction to branch when patterns end up having different sub-terms.
+
+* {.fragment} Other instructions are possible, 
+
+   * {.fragment} forward pruning: lookahead multiple function symbols in immediate subterms before diving into any subterm.
+
+   * {.fragment} to deal with _multi-patterns_, when maching more than one pattern at a time.
+
+## Inverted path indexing
+
+* During search, congruence classes are merged.
+
+* {.fragment} __Q__: Which merges could enable pattern to be matched?
+
+* {.fragment} __A__: When pattern contains term $f(\ldots, g(\ldots),\ldots)$, and
+
+  * {.fragment} a node $n_1$ is in in the same class as a node labeled by $g$,
+
+  * {.fragment} a node $n_2$ is an argument of $f$ in the same position as $g$,
+
+  * {.fragment} $n_1$, $n_2$ are merged
+
+* {.fragment} __Idea__: Build an index of all $\langle f, g\rangle$ pairs from patterns. 
+  
+  * {.fragment} during a merge with $n_1, n_2$ look for matches in index.
+
+~ End Vertical
+
+~ Begin Vertical
+
+# Model-based Quantifier Instantiation [@GeM09;@MouraB10;@BonacinaLM11;@WintersteigerHM13]
+
+
+Check $\psi \land \forall x \ . \ \varphi[{x}]$\
+
+__while__ $\psi$ is SAT with model $M$:\
+\ \  __if__  $\neg \varphi^M[{x}]$ is UNSAT __return__ SAT\
+\ \  $M \leftarrow $ model for $\neg \varphi^M[{x}]$ \
+\ \  find $t$, such that $x \not\in t, t^M = x^M$.\
+\ \  $\psi \leftarrow \psi \land \varphi[t]$\
+__return__ UNSAT\
+\
+
+where $t^M$ is $t$ partially evaluated using interpretation $M$.
+
+## Partial model evaluation
+
+* $t^M$ is $t$ partially evaluated using interpretation $M$.
+
+Example:
+
+* $M := [y \mapsto 3, f(x) \mapsto \mathit{if}\ x = 1\ \mathit{then}\ 3\ \mathit{else} \ 5]$
+
+* $t :=  y + f(y) + f(z)$
+
+* $t^M = 3 + 5 + \mathit{if}\ z = 1\ \mathit{then}\ 3\ \mathit{else} \ 5$
+
+## Model-based Quantifier Instantiation - scope
+
+Quite powerful when search space for instantiation terms is finite\
+
+  * EPR, UFBV, Array property fragment, Essentially UF
+  * Combine with template space
+  * See also CEGIS
+
+
+## EPR
+
+~MathPre
+EPR & ::= \exists e_1\ldots e_n \forall u_1\ldots u_m F
+F   & ::= \bigwedge_i C_i
+C   & ::= \bigvee_j L_i
+L   & ::= A | \neg A
+A   & ::= p(\vec{V}) | V = V'
+V   & ::= e_i | u_j
+~
+
+Also known as Bernays-Schoenfinkel-Ramsey class.
+
+Same complexity as DQBF.
+
+## EPR Example
+
+```smt
+(declare-sort T) 
+
+(declare-fun subtype (T T) Bool)
+
+;; subtype is reflexive
+(assert (forall ((x T)) (subtype x x)))
+
+;; subtype is antisymmetric
+(assert (forall ((x T) (y T))  (=> (and (subtype x y) (subtype y x)) (= x y))))
+
+;; subtype is transitive
+; ...
+
+;; subtype has the tree-property
+(assert (forall ((x T) (y T) (z T)) 
+  (=> (and (subtype x z) (subtype y z)) (or (subtype x y) (subtype y x)))))
+
+;; we have an additional axiom: every type is a subtype of obj-type
+(declare-const obj-type T) ....
+(assert (forall ((x T)) (subtype x obj-type)))
+
+(assert (subtype int-type real-type))
+(assert (subtype real-type complex-type))
+(assert (not (subtype string-type real-type)))
+```
+
+## EPR Example - online
+
+<div>
+<iframe 
+  allowtransparency="false" 
+  frameborder="0" 
+  style="width:1500px;height:800px" 
+  src="https://microsoft.github.io/z3guide/docs/logic/Quantifiers">
+</iframe>
+</div>
+
+
+## EPR decidability
+
+* Skolemize 
+  * $\forall u_1\ldots u_m F$, the $e_1, \ldots, e_n$ are free constants
+* Instantiate 
+  * $\bigwedge_{\theta} F\theta$ 
+  * where $\theta$ ranges over all bindings of $u_i$ to $e_j$.
+* Check ground SAT
+* Ground SAT implies finite model of size at most $n$.
+
+## EPR using MBQI
+
+* Skolemize
+  * $\forall u_1\ldots u_m F$, the $e_1, \ldots, e_n$ are free constants
+
+* Models for $\neg F$ bind variables $u_1, \ldots, u_m$ to free constants
+
+* The number of possible such models is bounded by $m^n$.
+
+
+## UFBV [@WintersteigerHM13]
+
+~ MathPre
+F   & ::= \exists e : bv[n] . F | \exists u : bv[n] . F | F \wedge F | C
+C   & ::= \bigvee_j L_i
+L   & ::= A | \neg A
+A   & ::= p(\vec{T}) | T = T' | \mathtt{bvle}(T, T') | \ldots
+T   & ::= f(\vec{T}) | u | v | \mbox{bit-vector expression}
+bv[n] & ::= \mbox{bit-vector of length $n$}
+~
+
+## UFBV Example
+
+```smt
+(set-option :smt.mbqi true)
+(define-sort Char () (_ BitVec 8))
+
+(declare-fun f  (Char) Char)
+(declare-fun f1 (Char) Char)
+(declare-const a Char)
+
+(assert (bvugt a #x00))
+(assert (= (f1 (bvadd a #x01)) #x00))
+(assert (forall ((x Char)) (or (= x (bvadd a #x01)) (= (f1 x) (f x)))))
+
+(check-sat)
+(get-model)
+```
+
+
+## UFBV decidability
+
+* All variables range over finite domains.
+
+* Quantifier-free fragment is not only NP hard, it is NEXPTIME hard.
+  * QF-UFBV can be encoded into EPR. [@SeidlLB12]
+
+* Quantified fragment is another complexity jump.
+
+* BV - quantifier elimination [@JohnC16;@JohnC13;@JohnC11]
+
+* UFBV using MBQI [@WintersteigerHM13]
+  * Use templates to find general instances
+
+## Map Property Fragment [@BradleyMS06]
+
+~ MathPre
+MP    & ::= \exists \vec{e} . \forall \vec{u} . \bigwedge (G \Rightarrow F)
+G     & ::= G \wedge G | A_G
+A_G   & ::= T[u] \simeq T[u] | T[] \not\simeq T[u]
+T[x]  & ::= x | e
+F     & ::= F \vee F | A_F | \neg A_F
+A_F   & ::= T[a[u]] \simeq T[a[u]] 
+~
+
+## Map Property Fragment - Example
+
+
+* $a$ is equal to $b$ except at index $e$.
+
+* $c$ can only have two values, $e_1$ or $e_2$.
+
+~ MathPre
+  \forall u \ . \ a[u] \simeq e
+  \forall u \ . \ u \not\simeq e \ \Rightarrow a[u] \simeq b[u]
+  \forall u \ . \ c[u] \simeq e_1 \ \vee c[u] \simeq e_2
+~
+ 
+## Array Property Fragment [@BradleyMS06]
+
+~ MathPre
+AP   & ::= \exists \vec{e} . \forall \vec{u} . \bigwedge (G \Rightarrow F)
+G    & ::= G \wedge G | A_G
+A_G  & ::= T_G \geq T_G
+T_G  & ::= u | T[]
+T[x]  & ::= x | e | k\times T[x] | T[x] + T[x]
+F    & ::= F \vee F | A_F | \neg A_F
+A_F  & ::= T_F \geq T_F | R(T_F, \ldots, T_F) 
+T_F  & ::= T[a[u]]
+k    & ::= \mbox{a numeric constant}
+R    & ::= \mbox{a predicate}
+~
+
+## Array Property Example
+
+```smt
+(set-option :smt.mbqi true)
+(set-option :model.compact true)
+
+;; A0, A1, A2, A3, A4 are "arrays" from Integers to Integers.
+(declare-fun A0 (Int) Int) (declare-fun A1 (Int) Int)
+(declare-fun A2 (Int) Int) (declare-fun A3 (Int) Int)
+(declare-fun A4 (Int) Int) 
+(declare-const n Int) (declare-const l Int)
+(declare-const k Int) (declare-const x Int)
+(declare-const y Int) (declare-const w Int)
+(declare-const z Int)
+
+;; A1 = A0[k <- w]
+(assert (= (A1 k) w))
+(assert (forall ((x Int)) (or (= x k) (= (A1 x) (A0 x)))))
+
+;; A2 = A1[l <- x] = A0[k <- w][l <- x]
+(assert (= (A2 l) x))
+(assert (forall ((x Int)) (or (= x l) (= (A2 x) (A1 x)))))
+
+;; A3 = A0[k <- y]
+(assert (= (A3 k) y))
+(assert (forall ((x Int)) (or (= x k) (= (A3 x) (A0 x)))))
+
+;; A4 = A3[l <- z] = A0[k <- y][l <- z] 
+(assert (= (A3 l) z))
+(assert (forall ((x Int)) (or (= x l) (= (A4 x) (A3 x)))))
+
+(assert (and (< w x) (< x y) (< y z)))
+(assert (and (< 0 k) (< k l) (< l n)))
+(assert (> (- l k) 1))
+
+;; A2 is sorted in the interval [0,n-1]
+(assert (forall ((i Int) (j Int))
+                (=> (and (<= 0 i) (<= i j) (<= j (- n 1)))
+                    (<= (A2 i) (A2 j)))))
+
+(check-sat)
+(get-model)
+
+;; A4 is sorted in the interval [0,n-1]
+(assert (forall ((i Int) (j Int))
+                (=> (and (<= 0 i) (<= i j) (<= j (- n 1)))
+                    (<= (A4 i) (A4 j)))))
+
+(check-sat)
+```
+
+## Array property Fragment - sufficient instantiations
+
+* Given formula $\varphi := \forall \vec{u} . \bigwedge (G \Rightarrow F)$ with $\vec{e}$ free.
+
+* Let $\mathcal{I} = \{ c_1, \ldots, c_m \}$ be set of a set of $T[] \cup \{ 0 \}$ from $\varphi$.
+
+~ Definition
+The set $\mathcal{I}$ is a _sufficient set of instances_ for $\varphi$, if
+  
+    $\forall u \ . \ \bigvee_{c \in \mathcal{I}} \bigwedge_{A_G} (A_G \Rightarrow A_G[c/u])$
+ 
+~
+
+* In other words, for every possible instantiation of $u$ there is a $c$
+  that satisfies at least the same combination of guards.
+
+
+## Array Property Fragment - arithmetic
+
+~ Proposition
+  If $\varphi$ admits a finite sufficient set of instances $\mathcal{I}$, it can be evaluated using those.
+~
+
+~ Proposition
+  Formulas in the array and map property fragments admit a sufficient set of instantiations.
+~
+
+~ Proposition
+  MBQI is a decision procedure the array and map property fragments by using the
+  instantiation sets computed from the formulas.
+~
+
+## Essentially Uninterpreted Fragment [@GeM09]
+
+Synthesize generalized instantiation sets using grammar rules.
+
+Applies to winder range of formulas than the syntactic array property fragment.
+
+ * list property fragment by McPeak and Necula
+ * several locally finite theories - Stokkermans et. al.
+
+## Essentially Uninterpreted Example
+
+```smt
+(set-option :smt.mbqi true)
+;; f an g are "streams"
+(declare-fun f (Int) Int)
+(declare-fun g (Int) Int)
+
+;; the segment [a, n + a] of stream f is equal to the segment [0, n] of stream g.
+(declare-const n Int)
+(declare-const a Int)
+(assert (forall ((x Int)) (=> (and (<= 0 x) (<= x n))
+                              (= (f (+ x a)) (g x)))))
+
+;; adding some constraints to a
+(assert (> a 10))
+(assert (>= (f a) 2))
+(assert (<= (g 3) (- 10)))
+
+(check-sat)
+(get-model)
+```
+
+## Instantiation sets and Quantifiers 
+
+* As pursued in [@ReynoldsKK17]
+
+* The notion of instantiation set can be extended along a different dimension of _virtual substitutions_.
+
+* Several theories admit quantifier elimination by virtual substitutions. 
+
+* Example $(2x \geq 3)[(y-\epsilon)/x]$ $\equiv$ $(2(y-\epsilon) \geq 3)$ $\equiv$ $2y > 3$.
+
+* Tricky part: ensure that set of virtual substitutions does not grow unbounded.
+
+~ End Vertical
+
+
+
+~ Begin Vertical
+  
+# QSAT [@BjornerJ15]
+
+## Instantiations from repeated SMT calls [@Monniaux08]
+
+__Goal__: To find a quantifier free $G$, such that $G \equiv \exists \vec{v} \ . \ F$
+\
+\
+
+__Tool__: _project_ that eliminates $\vec{v}$ from a conjunction $M$\
+\ \ \ \ \ \ \ \   that is, project($\vec{v}, M$) $\Rightarrow \ \exists\vec{v} \ . \ M$.
+\
+\
+
+__Initialize__: $G \leftarrow \bot$
+\
+\
+
+__Repeatedly__: find conjunctions $M$ that imply $F \wedge \neg G$
+\
+\
+
+__Update__: $G \leftarrow G \vee $ project($\vec{v}, M$).
+
+
+## Instantiations - Algorithm
+
+```python
+def qe(\($\exists \vec{v} \ . \ F$\)):                   
+    e, a = Solver(), Solver()
+    e.add(\($F$\))                        
+    a.add(\($\neg F$\))
+    \($G$\) = False
+    while sat == e.check():
+       \($M_0$\) = e.model()
+       \($M_1$\) = \($\{ \mbox{literal }\ell \in F \;\mid\; M_0.\mathsf{eval}(\ell) = \true \}$\)  # assume \($F$\) is in negation normal form
+       assert unsat == a.check(\($M_1$\)) 
+       \($M_2$\) = a.unsat_core()
+       \($\pi$\) = project(\($M_2$\), \($\vec{v}$\))
+       \($G$\) = \($G \vee \pi$\)
+       e.add(\($\neg\pi$\))
+    return \($G$\)
+
+```
+
+## From SMT to QBF and back
+
+* The approach we illustrated was used by Monniaux'08 [@Monniaux08].
+\
+\
+
+* QESTO [@JanotaM15] generalizes to nested QBF.
+\
+\
+
+* We generalize QESTO to SMT; improving [@Monniaux08;@MonniauxCAV10;@PhanBM12]
+
+## Example game [@JanotaM15]
+
+~MathPre
+G  =  \forall u_1,u_2 \exists e_1, e_2 \ . \ F \\
+F  =  (u_1 \land u_2 \rightarrow  e_1) \land (u_1 \land \neg u_2 \rightarrow e_2) \land(e_1 \land e_2 \rightarrow \neg u_1)
+~
+
+* {.fragment} $\forall$: starts. $u_1, u_2, \overline{e}_1, \overline{e}_2 \models \neg F$.
+* {.fragment} $\exists$: strikes back. ${\color{blue}{u_1, u_2}}, e_1, \overline{e}_2 \models F$.
+* {.fragment} $\forall$: has to backtrack. Already $u_2, e_1, \overline{e}_2 \models F$.
+* {.fragment} $\forall$: learns $\neg u_2$. 
+* {.fragment} $\forall$: ${\color{red}{\overline{u}_2}}, u_1, \overline{e}_1, \overline{e}_2 \models \neg F$.
+* {.fragment} $\exists$: counters - ${\color{red}{\overline{u}_2}}, {\color{blue}{u_1}}, \overline{e}_1, e_2 \models F$.
+* {.fragment} $\forall$: has lost!. Already ${\color{red}{\overline{u}_2}}, \overline{e}_1, e_2 \models F$.
+
+## Summary of approach
+
+* Two players try to find values
+  * $\forall$ - to satisfy $\neg F$
+  * $\exists$ - to satisfy $F$
+
+* {.fragment} Players control their variables
+  * $\exists x_1 \forall x_2 \exists x_3 \forall x_4 \ldots F$ at round $2$: 
+    * value of $x_1$ is already fixed,
+    * $\forall$ fixes value of $x_2$, 
+    * $\forall$ fixes value of $x_4$, but can change again it at round $4$,
+    * $\forall$ can guess values of of $x_3$ to satisfy $\neg F$.
+
+* {.fragment} Some player loses at round $i + 2$.
+  * Create succinct _no-good_ to strengthen $F$ resp. $\neg F$.
+  * Backjump to round $i$ (or below).
+
+
+
+## Main ingredients: Projection and Strategies
+\
+\
+
+* Projections are added to _learn_ from mistakes.
+  * Player avoids repeating same losing moves.
+\
+\
+
+* Strategies _prune_ moves from opponent. 
+  * Prevent opponent player from moves.
+
+
+## Finding small good _no-goods_
+
+* Player $\forall$ has lost at round $i+2$
+
+  * Player $\exists$ found a model $M$ at round $i+1$, $M \models F$.
+
+  * $M$ induces an evaluation on a subset of literals $\mathcal{L}$ in $F$, such that
+    $\mathcal{L} \models F$.
+
+  * $\mathcal{L}$ is an unsatisfiable core for $\neg F$.
+
+* {.fragment} _Model Based Projection_
+
+  * Find a $\varphi$, such that $\varphi \rightarrow \exists x_{i+1}, x_{i+2}, \ldots \mathcal{L}$.
+    * $\varphi$ should be weak, so $\neg\varphi$ is a strong blocker.
+    * $\varphi$ should be cheap to find and avoid space overhead.
+
+  * Then $\neg \varphi$ can block $\mathcal{L}$.
+
+  * Idea: Use $M$ to find a sufficient $\varphi$.
+
+
+
+## Initialization
+
+~MathPre
+    EE x1, AA x2, EE x3, AA x4, .., Q x_{n} F[x1, x2, \ldots]
+Initialize:
+    F_j             <- F           \mbox{if $j$ is odd}
+    F_j             <- \neg F        \mbox{if $j$ is even}
+~
+
+``` python
+   def level(j,a): return max level of bound variable in atom a of parity j     
+```
+
+~ MathPre
+   level(1, z \geq 0) = level(3, z \geq 0) = 3
+   level(2, z \geq 0) = 0
+   \mbox{for } \exists x \forall y \exists z z \geq 0 \land ((x \geq 0 \land y \geq 0) \vee y + z \leq 1)
+~
+
+## QSAT Algorithm
+
+``` python
+  def strategy(M,j): return \($\bigwedge_{M \neq null, a \in Atoms, level(j, a) < j} sign(M,a) $\)
+  def tailv(j): return \($x_{j-1},x_j,x_{j+1},\ldots$\)
+    
+  j = 1
+  M = null
+  while True:
+    if \($F_{j}\ \ \wedge$\) strategy(M, j) is unsat:
+      if j == 1: 
+        return F is unsat
+      if j == 2:
+        return F is sat
+      C = Core(\($F_j$\), strategy(M, j))
+      J = Mbp(tailv(j), C)
+      j = index of max variable in J \($\cup\ \{ 1, 2 \}$\) of same parity as j      
+      \($F_j$\) = \($F_j \wedge \neg $\)J
+      M = null
+    else:
+      M = current model
+      j = j + 1 
+         
+```
+
+## Projection and Strategies
+\
+\
+
+* Projections _learn_ from mistakes, avoids similar mistakes in future rounds.
+\
+\
+
+* Strategies _prune_ moves from opponent. 
+
+## Model-based projection - Example
+
+* Want to compute small $\exists x \ . \ (2y \leq x \wedge y - z \leq x \wedge x \leq z)$.
+
+* {.fragment} Note 
+  ~ MathPre
+     \exists x \ . \ (2y \leq x \wedge y - z \leq x \wedge x \leq z) \equiv 
+                     (y - z \leq 2y \leq z) \vee (2y \leq y - z \leq z)
+  ~
+
+
+* {.fragment} Say $M = [x \mapsto 3, y \mapsto 1, z \mapsto 6]$
+
+* {.fragment} $\Mbp(M, x, 2y \leq x \wedge y - z \leq x \wedge x \leq z)$
+
+* {.fragment} $2y^M = 2$
+
+* {.fragment} $(y-z)^M = -5$
+
+* {.fragment} So $2y > y - z$ 
+
+* {.fragment} $\Mbp(M, x, 2y \leq x \wedge y - z \leq x \wedge x \leq z) = y - z \leq 2y \leq z$
+
+* {.fragment} $y - z \leq 2y \leq z \ \Rightarrow \ \exists x \ . \ (2y \leq x \wedge y - z \leq x \wedge x \leq z)$
+
+
+## Model-based Projection for LRA
+
+__Eliminate__ $\simeq, \not\simeq$ from conjunction of literals $L$:
+
+~ MathPre
+\Mbp(M, x, x \simeq t \land L) =  L[t/x] \quad\quad    if x \not\in FV(t) 
+\Mbp(M, x, x \not\simeq t \land L)  =  \Mbp(M, x, x > t \land L)   
+                                         \mbox{where}\quad M(x) > M(t) 
+~
+\
+\
+
+__Trick__: Use $\epsilon$ to turn $>$ into $\geq$.
+~ MathPre
+\Mbp(M, x, x > t \land L)  =  \Mbp(M, x, (x \geq t + \epsilon) \land L)
+~
+\
+
+## Model-based Projection for LRA - resolution
+
+Can now assume $x$ occurs only as upper or lower bounds:
+
+~ MathPre
+\Mbp(M, x, \bigwedge_i t_i \leq x \land \bigwedge_j x \leq s_j)  =  \bigwedge_i t_i \leq t_0 \land \bigwedge_j t_0 \leq s_j
+                 \mbox{where} M(t_0) \geq M(t_i) \forall i
+~
+
+## Model-based Projection on formulas
+
+
+~ MathPre
+\Mbp(M, \emptyset, \varphi)        =  \varphi 
+\Mbp(M, \vec{x}, \varphi)         =  \Mbp\left(M, \vec{x}, \bigwedge \{ sign(M, a) \;\mid\; a \in \mbox{Atoms}(\varphi) \}\right) 
+\Mbp(M, x\vec{x}, \varphi)       =  \Mbp(M, x, \Mbp(M, \vec{x}, \varphi)) 
+\Mbp(M, x, \varphi \land \psi)  =  \Mbp(M, x, \varphi) \land \psi   \quad\quad    if x \not\in FV(\psi) 
+~
+
+``` python
+   def sign(M,a): if M(a) return a else return \($\neg$\)a
+```
+
+## Model-based Projection for LIA
+
+
+For LIA, cannot just assume equalities are of the form $t \leq x$ or $x \leq s$.
+Generally, $x$ has a coefficient, that we cannot remove.
+\
+\
+
+__Example__: $3y + z \leq 2x, 3x \leq 7u + v$. 
+\
+\
+
+* {.fragment} What could go wrong if we just reduce to $3\cdot(3y + z) \leq 2 \cdot(7u + v)$? 
+\
+\
+
+* {.fragment} Suppose $3y + z = 3$, $7u + v = 5$. So $3 \leq 2x, 3x \leq 5$.
+\
+\
+
+* {.fragment} Cross-multiplying gives $3\cdot 3 \leq 5 \cdot 2$, which is feasible, but $3 \leq 2x, 3x\leq 5$ is infeasible.
+
+
+## Model-based Projection for LIA - integer resolution
+
+__Solution__: Combine inequalities using _resolution_
+\
+\
+
+~ Math 
+\begin{array}{l}
+\Mbp(M, x, \bigwedge_i t_i \leq a_ix \land \bigwedge_j b_jx \leq s_j)  =  \\
+\quad\quad\quad  \bigwedge_i t_i a_0 \leq t_0 a_i \land \bigwedge_{j} resolve(M, t_0 \leq a_0x, b_j x \leq s_j) \\
+\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad   \mathrm{if}  M(t_0/a_0) \geq M(t_i/a_i), \forall i.
+\end{array}
+~
+
+## Model-based Projection for LIA - resolution [@Pugh91]
+
+$resolve(M, t \leq ax , bx \leq s) = $
+
+* {.fragment} $ bt + (a-1)(b-1) \leq as$\  if $(a-1)(b-1) \leq M(bt-as)$
+\
+\
+
+* {.fragment} $ bt \leq as \land a | (t + d) \land b(t+d) \leq as)$ \
+  else if $b \geq a, d := M(-t) \mod a$
+\
+\
+
+* {.fragment} $bt \leq as \land b | (s - d) \land bt \leq a(s-d)$  \
+  otherwise, $a > b, d := M(s) \mod b$
+\
+\
+
+* {.fragment} satisfies $resolve(M, t \leq ax, bx \leq s) \Rightarrow \exists x \ . \ t \leq ax \land bx \leq t$, and ...
+
+## Model-based Projection for LIA - divisiblity
+
+Resolution introduced divisibility constraints.
+\
+
+So now we also have to eliminate $x$ under divisions.
+\
+\
+
+~ MathPre
+\Mbp(M, x, \bigwedge_{i=1}^n d_i \mid (a_i x + t_i) \land L)  = \\  
+\quad\quad\quad    \Mbp\left(M, x', L[u + d\cdot x'/x]\right) \land \bigwedge_{i=1}^n d_i \mid (a_i u + t_i) \\
+~
+
+where 
+
+* $d = \mathrm{lcm}(d_1, \ldots, d_n)$, 
+* $u = M(x) \mod d$
+
+## Model-based Projection for Term Algebras 
+
+S-expressions: A generic term algebra
+
+~ MathPre
+  SExpr ::= nil | cons(car : SExpr, cdr : SExpr)
+~
+
+* {.fragment} An s-expression is either a _nil_ or a _cons_.
+\
+\
+
+* {.fragment} Access arguments of _cons_ using _car_ and _cdr_.
+\
+\
+
+* {.fragment} Test terms using _cons_?($t$), or _nil_?($t$)
+
+## Model-based Projection for Term Algebras - $\simeq$
+
+~ MathPre
+x \simeq x \land L  \leadsto  L 
+\
+
+u \simeq x \land L  \leadsto L[u/x]    \mathsf{if} x \not\in u
+\
+
+u \simeq x \land L  \leadsto  \false\    \mathsf{if} x \in u
+\
+
+\mathit{cons}(t,s) \simeq \mathit{cons}(u,v) \land L  \leadsto  t \simeq u \land s \simeq v \land L
+\
+     
+\mathit{cons}(t,s) \simeq u \land L  \leadsto \ \mathit{cons?}(u) \land t \simeq \mathit{car}(u) \land s \simeq \mathit{cdr}(u) \land  L 
+~
+
+amounts to _unification_
+
+## Model-based Projection for Term Algebras - $\not\simeq$
+
+
+~ MathPre
+\Mbp(M, x, \mathit{cons}(t, s) \not\simeq u \land L)  =  
+     \quad \quad \quad \quad \quad \mathit{cons?}(u) \land \Mbp(M, x, s \not\simeq \mathit{cdr}(u) \land L) 
+     \quad \mbox{if}\quad x \in s, \quad M(\mathit{cons?}(u)), \quad M(s) \neq M(\mathit{cdr}(u)) 
+~
+
+Case for $M(t) \neq M(\mathit{car}(u))$ is symmetric.
+
+
+~ MathPre
+\Mbp(M, x, \mathit{cons}(t, s) \not\simeq u \land L)  =  \neg \mathit{cons?}(u) \land \Mbp(M, x, L)
+     \quad\mbox{if}\quad x \in s \mbox{ or } x \in t, \quad M(\neg\mathit{cons?}(u))
+
+~
+
+~ MathPre
+ \Mbp(M, x, t_1 \not\simeq x \land \ldots \land t_n \not\simeq x)  =  \top
+~
+Since there is an infinite number of cons-terms.
+
+## Model-based projection Term Algebras - adequacy
+
+* New terms are created during $\Mbp$
+\
+\
+
+* but they are of the form $\mathit{car}, \mathit{cdr}$ following shape of original constructor terms.
+\
+\
+
+* and they occur in conjunctions with $\mathit{cons}?(..)$.
+\
+\
+
+* {.fragment} so $\Mbp$ produces finite set of projections.
+
+## Model-based projection for NRA
+
+* Theory: Non-linear polynomial arithmetic
+
+* Partial CAD - model-based projection [@JovanovicM12]
+  * Given model $M$, such that $M \models \forall x \ . \ p_1(x,y) \geq 0 \vee \ldots \vee p_n(x,y) > 0$ 
+  * Find $q_1, \ldots, q_k$, such that 
+    * $q_1(y) < 0 \vee \ldots \vee q_k(y) > 0 \vee  p_1(x,y) \geq 0 \vee \ldots \vee p_n(x,y) > 0$ is valid
+    * $M \models q_1(y) \geq 0 \wedge \ldots \wedge q_k(y) \leq 0$
+
+* CAD decomposes $R^n$ into sign-invariant cylinders. 
+
+* Choose the cylinder where $M$ is a member.
+
+## Model-based projections, two lenses
+
+
+Sat based MBP [@KomuravelliGC14]:
+
+* Given:    $M \models \ell_1[x] \wedge \ldots \wedge \ell_n[x]$
+
+* Find:     $M \models s_1 \wedge \ldots \wedge s_m$, free for $x$
+
+* Such that:  $ \models (s_1 \wedge\ldots \wedge s_m) \rightarrow \exists x \ . \ \ell_1[x] \wedge \ldots \wedge \ell_n[x]$
+
+Contrast this with Core-based MBP [@MouraJ13]:
+
+* Given:     $M \models \forall x \ . \ \ell_1[x] \vee  \ldots \vee \ell_n[x]$.
+
+* Find:      $M \models s_1 \wedge \ldots \wedge s_m$, free for $x$
+
+* Such that:   $\models (s_1 \wedge \ldots \wedge s_m) \rightarrow \forall x \ . \ \ell_1[x] \vee \ldots \vee \ell_n[x]$
+
+__Claim__: (Roughly) The same projection operator can be used in both cases if $x$ occurs in all literals and the operator is stable under changes to the value of $x$.
+
+## Finding strategies
+
+* Other main ingredient of QSAT is option for players to narrow options of opponents by revealing a strategy
+
+  * $\exists x_1 \forall x_2 \exists x_3 \forall x_4 \ldots F$ at round $2$: 
+    * value of $x_1$ is already fixed,
+    * $\forall$ fixes value of $x_2$, 
+    * $\forall$ can make $x_4$ a function of $x_3$.
+
+* Developing practical strategies is work in progress
+  * For QBF can use Q-resolution proofs as guide [@BjornerJK15]
+
+  * Method by Markus Rabe can be seen as a strategy.
+
+~ End Vertical
+
+~ Begin Vertical
+
+# Horn Clauses [@HoderMB11;@Rybal12;@HoderB12;@McMillan14]
+
+~ Columns
+~~ Column 
+
+```python
+def mc(x):
+    if x > 100:
+       return x - 10
+    else:
+       return mc(mc(x + 11))
+
+def contract(x):
+    assert(x > 101 or mc(x) == 91)
+
+```
+
+~~
+~~ Column {width:3ex}
+~~
+~~ Column
+
+```smt
+   (set-logic HORN)
+   (declare-fun mc (Int Int) Bool)
+   (assert 
+     (forall ((x Int)) 
+          (=> (> x 100) 
+              (mc x (- x 10)))))
+   (assert 
+     (forall ((x Int) (y Int) (z Int)) 
+          (=> (and (<= x 100) (mc (+ x 11) y) (mc y z)) 
+              (mc x z))))
+   (assert 
+     (forall ((x Int) (y Int)) 
+          (=> (and (<= x 101) (mc x y)) 
+              (= y 91))))
+   (check-sat)
+   (get-model)
+```
+
+~~
+~
+
+
+## Horn Clause Engines
+
+* PDR, SPACER - IC3 inspired engine [@HoderB12;@KomuravelliGCC13].
+* Duality - Interpolation based [@McMillan14].
+  * Use Duality, PDR, or SPACER if your Horn clauses use arithmetic variables.
+* Datalog - Bottom-up stratified Datalog engine for finite domains [@HoderMB11].
+  * Use Datalog backened for Horn clauses over finite domains: bit-vectors and Booleans.
+* BMC - Bounded model checking, Tabulation, Symbolic Execution...
+  * Use BMC to unfold Horn clauses a la bounded model checking.
+
+## IC3 
+
+* $\vec{x}$ are state variables.
+* $m$ is a monome (a conjunction of literals).
+* $\varphi$ is a clause (a disjunction of literals).\
+\
+
+* Convention: $m[\vec{x}]$ is a monome over variables $\vec{x}$, $m[\vec{x}_0]$ is a renaming of the same monome $m$ to variables $\vec{x}_0$.
+
+## IC3 recap
+
+* $\langle \vec{x}, \Init(\vec{x}), \rho(\vec{x_0},\vec{x}), \Safe(\vec{x})\rangle$ - a transition system.
+* $\Safe$ - good states.
+* $\cF(R)[\vec{x}_0,\vec{x}]$ - forward predicate transformer.
+   * Given reachable states $R$, produce "states can be reached by including another step".
+   * From Transition System: $\Init[\vec{x}_0] \ \vee \ (R(\vec{x}_0) \wedge \rho[\vec{x}_0,\vec{x}])$
+   * From Horn Clauses: $\bigvee_i Body_i[\vec{x}_0,\vec{x}]$, where
+     ~ Math 
+       R(\vec{x}) <- Body_1[\vec{x}_0,\vec{x}] \vee \ldots\vee Body_k[\vec{x}_0,\vec{x}]
+     ~
+     
+
+
+## IC3 recap (2)
+
+* $R_0, R_1, \ldots, R_N$ properties of states reachable within $i$ steps. 
+* $R_i$ are sets of clauses.
+* Initially $R_0 = \Init$.
+* $\Queue$ a queue of counter-example trace properties. Initially $\Queue = \emptyset$.
+* $N$ a level indication. Initially $N = 0$.
+
+
+## Expanding Traces
+
+repeat until &infin;
+
+ * __Candidate__ If for some $m$, $m \rightarrow R_N \land \neg \Safe$, then add $\langle m, N\rangle$ to $\Queue$.\
+
+ * __Unfold__ If $R_N \rightarrow \Safe$, then set $N <- N + 1, R_{N} <- \true$.\
+{list-style=none}
+
+## Termination {.reveal-transition=zoom}
+
+repeat until &infin;
+
+ * __Unreachable__ For $i < N$, if $R_i \subseteq R_{i+1}$, return _Unreachable_.
+
+ * __Reachable__ If $\langle m, 0 \rangle \in \Queue$, return _Reachable_.\
+{list-style=none}
+
+
+## Search
+
+repeat until &infin;
+
+* __Decide__ Add $\langle m_0[\vec{x}], i\rangle$ to $\Queue$ if \
+    * $\langle m[\vec{x}], i+1\rangle \in \Queue$,\
+    * $m'[\vec{x}] \land m_0[\vec{x}_0]$ is consistent, and\
+    * $m'[\vec{x}] \land m_0[\vec{x}_0] \ \rightarrow \ \cF(R_{i})(\vec{x}_0,\vec{x}) \land m[\vec{x}]$
+{list-style=none}
+  
+
+## Backtracking
+
+repeat until &infin;
+
+ *  __Conflict__  Let $0 \leq i < N$: given a candidate model $\langle m, i+1\rangle\in\Queue$ and clause $\varphi$, such that\
+   * $\neg\varphi\subseteq m$,\
+    *  $\cF(R_i \land \varphi) \rightarrow \varphi$, \
+   then conjoin $\varphi$ to $R_{j}$, for $j \leq i + 1$.\
+\
+
+ * __Leaf__ If $\langle m, i\rangle \in \Queue$, $0 < i < N$ and $m \land \cF(R_{i-1})$ is unsatisfiable,
+then add $\langle m, i + 1\rangle$ to $\Queue$.\
+{list-style=none}
+
+## Inductive Generalization 
+repeat until &infin;
+
+ * __Induction__ For $0 \leq i < N$, a clause $(\varphi \lor\psi)\ \in R_i$, $\varphi\not\in R_{i+1}$,
+if $\cF(R_i \wedge \varphi)\rightarrow \varphi$, then conjoin $\varphi$ to $R_{j}$, for each $j \leq i + 1$.
+{list-style=none}
+
+## IC3 beyond SAT {data-transition="zoom"}
+
+## Decide - Generalized form
+
+__Decide__ Add $\langle m_0[\vec{x}], i\rangle$ to $\Queue$ if $\langle m[\vec{x}], i+1\rangle \in \Queue$,
+$m' \land m_0[\vec{x}_0] \ \rightarrow \ \cF(R_{i})[\vec{x}_0,\vec{x}] \land m$.
+  
+
+* [@Bradley11;@EenMB11] Model from propositional SAT check for $m \land \cF(R_{i})[\vec{x}_0,\vec{x}]$ gives (near prime implicant) $m_0$. 
+* [@HoderB12] Model from SMT check for arithmetical $m \land \cF(R_{i})[\vec{x}_0,\vec{x}]$ produces numerical assignment $m_0$.
+* [@KindermannJN12;@CimattiG12] Partial quantifier elimination.
+* [@KomuravelliGC14] $(\exists\vec{x} \ . \ m \land \cF(R_{i})[\vec{x}_0,\vec{x}]) \ \equiv\ \bigvee_i \psi_i[\vec{x}_0]$ where $\psi_i$ are quantifier-free. Use model for $m \land \cF(R_{i})[\vec{x}_0,\vec{x}]$ to compute $\psi_i$ without expanding full disjunction.
+* [@CimattiGMT14;@ItzhakyBRST14] Keep vocabulary of literals fixed (= predicate abstraction). 
+
+~ End Vertical
+
+
+# References
+
+[BIB]
+
+

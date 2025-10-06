@@ -1,0 +1,1269 @@
+[INCLUDE=presentation]
+Title         : Arithmetic Reasoning in Z3
+Sub Title     : TU Wien Guest Lectures October 2025
+                https://z3prover.github.io/slides/guest
+                A Laura Kovacs guest lecture production
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Email         : nbjorner\@microsoft.com
+Author        : Lev Nachmanson
+Affiliation   : Microsoft Research
+Email         : levnach\@microsoft.com
+Reveal Theme  : solarized
+Beamer Theme  : singapore
+Bibliography  : refs.bib
+Cite Style    : natural
+muZ           : $\mu{Z}$
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+Package       : bussproofs
+Embed         : 1024
+Tex Header    : \usetikzlibrary{shapes,snakes}
+Css Header:
+    .reveal p, .reveal li, .reveal .bibitem, .reveal dd, .reveal dt {
+      text-align: left !important;
+      data-transition: none 
+    }
+
+.Math-Inline,.Math-Display,~Math,~MathPre: 
+    replace=//<-/\leftarrow//->/\rightarrow//=>/\Rightarrow//!=/\mathop{\neq}//g 
+    replace=//AA/\forall//EE/\exists//g
+
+
+~ MathDefs
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\twodpstate}[2]{#1  \dbar #2}
+\newcommand{\compl}[1]{\overline{#1}}
+\newcommand{\Model}{M}
+\newcommand{\nodefinition}{}
+\newcommand{\Mbp}{Mbp}
+\newcommand{\Queue}{\mathcal{Q}}
+\newcommand{\Init}{\mathit{Init}}
+\newcommand{\Safe}{\mathit{Safe}}
+\newcommand{\true}{\textsf{true}}
+\newcommand{\false}{\textsf{false}}
+\newcommand{\cF}{{\mathcal{F}}}
+\newcommand{\phidown}{\varphi_{\downarrow}}
+\newcommand{\psidown}{\psi_{\downarrow}}
+\newcommand{\phiup}{\varphi^{\uparrow}}
+\newcommand{\router}[1]{R_{#1}}
+\newcommand{\mustsummary}[3]{
+\langle #1 \stackrel{\mathtt{must}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\notmaysummary}[3]{
+\langle #1 \stackrel{\neg\mathtt{may}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\querysummary}[3]{
+\langle #1 \stackrel{?}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\dst}{\mathit{dst}}
+\newcommand{\src}{\mathit{src}}
+\newcommand{\unk}[1]{{\color{blue}{#1}}}
+\newcommand{\basicvars}{{\mathcal B}}
+\newcommand{\nonbasicvars}{{\mathcal N}}
+\newcommand{\mulvars}{{\mathcal M}}
+\newcommand{\PP}{$(C \lor p) \quad (D \lor \neg p)$}
+\newcommand{\QQ}{$C \lor D$}
+\newcommand{\PB}{$(q \lor t \lor p) \quad (q \lor r \lor \neg p)$}
+\newcommand{\QB}{$(q \lor t \lor r)$}
+\newcommand{\onenorm}[1]{|\!|#1|\!|_1}
+\newcommand{\idiv}{\;\mbox{\rm div}\;}
+~
+
+<style>
+.invariant {
+  font-style: oblique;
+  cite-style: natural;
+  before: "[Invariant ]{.invariant-before}"
+}
+</style>
+
+[TITLE]
+
+# Contents
+
+[TOC]
+
+~ Begin Vertical 
+
+# Arithmetic - a fundamental SMT theory {data-transition:none }
+
+~ Center
+![Frog]
+~
+
+[Frog]: images/frog.png "frog" { width:50% }
+
+
+## F* {data-transition:none }
+
+![EverParse]
+[EverParse]: images/everparse.png "everparse" {width:auto}
+
+linear and non-linear arithmetic
+
+## Certora {data-transition:none }
+
+- 256 bit non-linear arithmetic 
+
+<!---
+[OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/dbb6104ce834628e473d2173bbc9d47f81a9eec3/contracts/utils/math/Math.sol#L123)
+--->
+
+![OpenZeppelinImage]
+
+[OpenZeppelinImage]: images/openzeppelin.png "OpenZeppelinImage" { width:auto}
+
+
+## Verus {data-transition:none }
+
+- linear arithmetic
+
+![AutoVerus]
+[AutoVerus]: images/autoverus.png "AutoVerus" { width:auto}
+
+## Several other {data-transition:none }
+
+- Dafny, Boogie, Viper
+- Dafny - first customer of non-linear arithmetic (Gr&ouml;bner)
+- Verdis - ZK for prime fields
+
+
+## Many Arithmetic Theories {data-transition:none }
+
+![ArithmeticTheories]
+[ArithmeticTheories]: images/ArithmeticTheories.png "ArithmeticTheories" { width:auto }
+
+
+## Other Fragments {data-transition:none }
+
+Cardinality, Pseudo-Boolean, finite range LIA theories
+
+\
+Modular arithmetic, finite fields
+{.fragment}
+
+\
+Bi-linear real arithmetic $\vec{x}A\vec{y} \leq \vec{b}$
+{.fragment}
+
+\
+Non-unit two-variable per inequality $ax + by \leq c$
+{.fragment}
+
+\
+At most one (unit) positive variable per inequality (Horn) $x - 3y - 2z \leq 2$. 
+  What is the non-unit complexity?
+{.fragment}
+
+\
+max-atom: $\max(x,y) + k \geq z$. In NP $\cap$ co-NP, local strategy/policy iteration [@CostanGGMP05;@GawlitzaS07;@BezemNR08;@KarpenkovMW16;@Karpenkov17]{cite-style:natural}
+{.fragment}
+
+\
+Knapsack theories: all variables with positive coefficients, 
+except for one inequality where all variables have negative coefficients. 
+{.fragment}
+
+## Theoretical vs Practical Complexity {data-transition:none }
+
+* Conjunctions:
+  * RDL, IDL solved by 
+    - Floyd-Warshal ($V^3$), 
+    - Bellman-Ford ($V\cdot E$).
+  * LRA - in P
+  * LIA - NP complete
+  * Finite Fields ~ Bit Vectors - NEXPTIME 
+  * NIA - undecidable
+  * Quantified NIA - highly undecidable
+* Clauses:
+  * $\geq$ NP hard
+
+## CDCL(Arith) by example  {data-transition:none }
+
+![BasicTheory6]
+[BasicTheory6]: images/CDCLT6.png "basictheory6" { width:auto }
+
+
+## Solver Architecture  [@BjornerN24]{cite-style:natural} {data-transition:none }
+
+
+![Arch]
+
+[Arch]: images/solver-arch.jpg "SolverArch" {width:auto}
+
+~ End Vertical
+
+~ Begin Vertical
+
+# LRA - Linear Real Arithmetic {data-transition:none }
+
+
+
+
+![LPArch]
+
+[LPArch]: images/solver-arch-lp.jpg "LPSolverArch" {width:auto}
+
+## LRA {data-transition:none }
+
+__What__: Variables range over reals (rationals). Addition, multiplication by constant
+
+__How__: Dual Simplex
+
+__Why__: A basis for everything more
+
+~ MathPre
+  x, y, z \in \mathcal{R}
+  0 < x < y < z \land x + y + z = 1
+
+  x = 1/6, y = 1/3, z = 1/2
+~
+
+## Farkas and Dual Simplex [@DutertreM06]{cite-style:natural} {data-transition:none }
+
+SMT solving based on Dual Simplex maintain a tableau of the form:
+
+~ Math
+\begin{array}{ll}
+x_i = \sum_{x_j \in \nonbasicvars} a_{ij} x_j            & x_i \in \basicvars \\
+l_j \leq x_j \leq u_j                                    & x_j \in \nonbasicvars \cup \basicvars \\
+val : x_j \mapsto {\mathcal R}                           & \forall x_j \in \nonbasicvars \\
+nval : x_i \mapsto \sum_{x_j \in \nonbasicvars} a_{ij} val(x_j) & \forall x_i \in \basicvars 
+\end{array}
+~
+
+where $\basicvars$ are basic and $\nonbasicvars$ are non-basic variables.
+
+## Compiling into tableau {data-transition:none }
+
+```python
+  x, y = Reals('x y')
+  solve([x >= 0, Or(x + y <= 2, x + 2*y >= 6), 
+                 Or(x + y >= 2, x + 2*y > 4)])
+```
+
+Introduce slacks to define _terms_
+
+~ MathPre
+  s_1 = x + y, s_2 = x + 2y, s_1, s_2 \in \basicvars, x, y \in \nonbasicvars
+~
+
+Formula using slacks:
+~ MathPre
+  x \geq 0, (s_1 \leq 2 \vee s_2 \geq 6), (s_1 \geq 2 \vee s_2 > 4)
+~ 
+
+## Constraints := Tableau Equalities + bounds {data-transition:none }
+
+Equalities are _global definitions_ 
+
+~ MathPre
+  s_1 = x + y, s_2 = x + 2y, s_1, s_2 \in \basicvars, x, y \in \nonbasicvars
+~
+
+Bounds (e.g., $s_1 \leq 2$) are added/deleted during search.
+
+
+## From Definitions to a Tableau {data-transition:none }
+
+${\color{red}s_1} := x + y, {\color{red}s_2} := x + 2y$
+{.fragment}
+
+\
+\
+
+${\color{red}s_1} = x + y$\
+${\color{red}s_2} = x + 2y$
+{.fragment}
+
+\
+\
+
+${\color{red}s_1} - x - y = 0$   - ${\color{red}s_1, s_2}$ are basic (dependent)\
+${\color{red}s_2} - x - 2y = 0$  - $x, y$ are non-basic
+{.fragment}
+
+## Pivoting {data-transition:none }
+
+* Value of non-basic variable $x_j$ can be chosen between $lo_j$ and $hi_j$.
+* Value of basic variable is a function of non-basic variable values.
+* Pivoting swaps basic and non-basic variables.
+  * used to get values of basic variables within bounds.
+
+
+## Pivoting example {data-transition:none }
+
+${\color{red}s_1} - x - y = 0$   - ${\color{red}s_1, s_2}$ are basic (dependent)\
+${\color{red}s_2} - x - 2y = 0$  - $x, y$ are non-basic
+$x \geq 0, (s_1 \leq 2 \vee s_2 \geq 6), (s_1 \geq 2 \vee s_2 > 4)$
+
+\
+Initial values: $x = y = s_1 = s_2 = 0$
+{.fragment}
+
+\
+Bounds $x \geq 0, s_1 \leq 2, s_1 \geq 2$:
+{.fragment}
+
+\
+$s_1 := 2$, make $s_1$ non-basic. \
+${\color{red}y} + x - s_1 = 0$   - ${\color{red}y, s_2}$ are basic (dependent)\
+${\color{red}s_2} + x - 2s_1 = 0$  - $s_1, y$ are non-basic
+{.fragment}
+
+
+
+## Infeasible Tableau {data-transition:none }
+
+A tableau is infeasible if there is a row $x_i = \sum_{x_j \in \nonbasicvars} a_{ij} x_j$
+such that
+
+~ Math
+\begin{array}{lll}
+     & a_{ij} < 0 \implies val(x_j) = l_j,                 & \forall x_j \\
+     & a_{ij} > 0 \implies val(x_j) = u_j,                 & \forall x_j \\
+     & nval(x_i) < l_i
+%     \\
+%or \\
+%     & a_{ij} > 0 \implies val(x_j) = l_j,                 & \forall x_j \\
+%     & a_{ij} < 0 \implies val(x_j) = u_j,                 & \forall x_j \\
+%     & nval(x_i) > u_i
+\end{array}
+~
+
+_conflict explanation_: literals that are used for tight bounds.
+
+<!---
+%Slack variables are unfolded into their definitions.
+
+_justification_: the coefficients $a_{ij}$
+--->
+
+## LRA is Convex {data-transition:none }
+
+Convexity: $A\vec{x} \leq b \implies x_1 = y_1 \lor x_2 = y_2$, then $A\vec{x} \leq b \implies x_i = y_i$ for $i = 1$ or $i = 2$.
+{.fragment}
+
+
+* Suppose $val_1$ is a solution to $A\vec{x} \leq b$, then $val_1(x_i) = val_1(y_i)$ for $i = 1$.
+* Similar for solution $val_2$ but with $i = 2$.
+* Set $val_3 := (val_1 + val_2) / 2$.
+* Then $A \cdot val_3(\vec{x}) \leq b$ too and $val_3$ has to agree with either $val_1$ or $val_2$ on implied equality.
+{.fragment}
+
+## LRA - next {data-transition:none }
+
+* Z3 uses bignum (infinite precision arithmetic), always.
+  * A show-stopper for LP centric applications (Marabou, traffic engineering)
+  * Many scenarios can be solved at fixed precision or floats with guarantees (SCIP).
+
+* Z3 also contains difference logic solvers. They are used sparingly for SMTLIB categories IDL/RDL.
+
+* Integration of policy/strategy iteration?
+
+## Strategy/Policy iteration [@CostanGGMP05]{cite-style:natural} {data-transition:none }
+
+Goal is to find minimal $x_i$ such that:
+
+~ MathPre
+   x_i \geq e_i  for each x_i
+   where e ::= x_j | a\cdot e | e + e | \min(e,e) | \max(e,e)
+   where a > 0 is a constant
+~
+
+
+\
+_Policy_ Initially $\pi$ replaces $\min(e_1,e_2)$ by $e_1$ (arbitrary choice).
+
+\
+_Solve_ the resulting unit-Horn system with solution $M$.
+
+\
+_Evaluate_ each $\min(e_1, e_2)$ subterm wrt. $M$ to check if it preserves $\min$.
+
+\
+_Repeat_ For each $\min(e_1, e_2)$, if $M(e_1) > M(e_2)$, 
+  but $\pi(\min(e_1,e_2)) = e_1$, then update $\pi(\min(e_1,e_2)) := e_2$.  
+
+ 
+~ End Vertical
+
+~ Begin Vertical
+
+# Bounds and Equality Propagation {data-transition:none }
+
+
+![BoundsArch]
+
+[BoundsArch]: images/solver-arch-bounds.jpg "SolverArchBounds" {width:auto}
+
+
+## Bounds {data-transition:none }
+
+__What__: Extract Boolean propagation axioms from arithmetic.
+
+__How__: Index bounds atoms that are created and infer bounds from tableau.
+
+__Why__: It is much more efficient to have the SAT solver propagate (binary) clauses than theory reasoning.
+
+~ MathPre
+   (x \geq 1 \lor P) \land (x \leq 0 \lor Q) \land \ldots
+~
+If $x \geq 1$ is asserted, then directly propagate $x \leq 0$ to false.
+
+
+## LP Bounds Propagation {data-transition:none }
+
+* For atoms $x \geq 3, x \geq 2, x \geq 1$ add axioms $x \geq 3 \implies x \geq 2,\ \ \ \  x \geq 2 \implies x \geq 1$.
+
+* Infer new bounds of variables: $x - 2y = 0, y \geq 1 \implies x \geq 2$.
+  * For every tableau row $r$,
+    * For every variable $x$ in row $r$,
+      * Check if bounds of other variables strengthen current variable bound,
+      * Use implied bound for T-propagation of bounds atoms.
+
+## Equalities {data-transition:none }
+
+__What__: Extract equalities between variables and propagate equalities to other theories. 
+
+__How__: By cheap tests on the tableau.
+
+__Why__: Useful to propagate congruences for arithmetic variables used under non arithmetical function symbols.
+
+~ MathPre
+    x \leq y + 1 \land z \geq y + 1 \land z \leq x \land p(x) \land \neg p(z)
+
+    \leadsto x = z  
+    \leadsto p(x) \land \neg p(x)
+~
+
+## Finding implied equalities {data-transition:none }
+
+~ MathPre
+   x + u \leq z \land z - 1 \leq y \land y \leq x \land 1 \leq u \leq 1
+~
+Solved tableau:
+~ MathPre
+    x = z - u - s_1, y = z - u - s_2, 
+    1 \leq u \leq 1, 0 \leq s_1 \leq 0, 0 \leq s_2 \leq 0
+~
+assignment $z = 0, x = y = -1$.
+Necessary condition for $x = y$.
+Sufficient (incomplete) condition:
+
+* $x$ is basic, and the tableau has row $x - y + \alpha = 0$,
+* $x, y$ are connected through a non-basic variable $z$ in a pair of the tableau rows in one of the following forms
+  1. $x - z + \alpha = 0, y - z + \alpha' = 0$, 
+  2. $x + z + \alpha = 0, y + z + \alpha' = 0$, 	
+
+$\alpha, \alpha'$ are linear combinations of fixed variables. We never have to calculate $\alpha$!
+
+## Complete Equality Propagation {data-transition:none }
+
+Will this method find all implied equalities?
+
+## Propagating Equality Assumptions {data-transition:none }
+
+If $x, y$ are shared variables and $val(x) = val(y)$, but the equality between $x, y$ has not
+been propagated. Then we can _assume_ the equality $x \simeq y$ atom. It is satisfied in the theory of arithmetic,
+and the equality atom will propagate to other theories that have to reconcile on $x = y$.
+
+~ MathPre
+  0 \leq x, y, z \leq 1 \land x, y, z \in \mathcal{Z} \land 
+  P(x) \land \neg P(y) \land Q(y) \land \neg Q(z) \land \neg S(x) \land S(z)
+~
+
+If $val(x) = val(y) = 0$ then assume $x \simeq y$: conflicts with $P(x) \land \neg P(y)$.
+
+## Propagating Equality Assumptions (II) {data-transition:none }
+
+* Arithmetic solver: $x = y = 0, z = 1$
+
+* Add atom $x \simeq y$ to search space and assign it to true.
+
+* EUF solver $x \simeq y \land P(x) \land \neg P(y) \land Q(y) \land \neg Q(z) \land \neg S(x) \land S(z)$
+
+* Conflict: $x \simeq y \land P(x) \land \neg P(y)$
+
+* Lemma $x \not\simeq y$ 
+
+* Arithmetic solver: $x = 0, y = z = 1$.
+
+* New lemma $y \not\simeq z\ldots$
+
+## Propagation - next {data-transition:none }
+
+* Z3 exposes <b>solve_for</b> API function to extract _all_ equalities through Gaussian elimination.
+  * If variables are equal modulo current $val$ it performs a local solver call to check if disequality is feasible.
+
+* Integrate stronger inequality propagation eagerly? 
+  * Such as bounds tightening.
+
+~ End Vertical
+
+~ Begin Vertical
+
+# Special Arithmetic {data-transition:none }
+
+## Difference Arithmetic {data-transition:none }
+
+```smt
+(set-logic QF_IDL) ; optional in Z3
+(declare-fun t11 () Int)
+(declare-fun t12 () Int)
+(declare-fun t21 () Int)
+(declare-fun t22 () Int)
+(declare-fun t31 () Int)
+(declare-fun t32 () Int)
+
+(assert (and (>= t11 0) ...))
+(assert (and (>= t21 0) ...))
+(assert (and (>= t31 0) (>= t32 (+ t31 2)) (<= (+ t32 3) 8)))
+(assert (or ... (>= t21 (+ t11 2))))
+(assert (or (>= t21 (+ t31 2)) ...))
+(check-sat)
+(get-model) ; display the model  
+```
+
+## Bellman-Ford {data-transition:none }
+
+Solve difference logic using graph $O(E\cdot V)$ Bellman-Ford network flow algorithm.
+Negative cycle $\Rightarrow$ unsat.
+
+![BellmanFord]
+[BellmanFord]: images/bellmanford.png "BellmanFord" { width:auto; max-width:"90%" }
+
+
+## Convexity and Complexity {data-transition:none }
+
+* IDL poly time but is not convex. $0 \leq x, y, z \leq 1$: two out of three have to be equal.
+
+* UF is poly time.
+
+* Quiz [Vaughan Pratt]: The combination IDL+UF is NP hard. 
+
+## Bit-vectors as arithmetic [@ZoharIMNNPRBT22]{cite-style:natural} {data-transition:none }
+
+Add bit-vector operators together with on-demand expansion.
+~ MathPre
+   \mathsf{bvand}(x, y, N)  \mbox{bit-wise conjunction of $x, y$ defined for $[0, 2^N-1]$}
+   \displaystyle \mathsf{bvand}(\sum_i 2^i x_i, \sum_i 2^i y_i, N) = \sum_{i = 0}^{N-1} 2^i (x_i\cdot y_i) 
+~
+
+* Native arithmetic operators and decision procedures for bit-wise and, shift left, shift right logical and shift right arithmetical.
+
+* Quiz: express bitwise negation.
+
+## Bit-vectors as arithmetic in Z3. {data-transition:none }
+
+* Eager axioms: 
+  * $0 \leq \mathsf{bvand}(x, y, N) < 2^N$
+  * $0 \leq x \implies \mathsf{bvand}(x, y, N) \leq x$.
+
+* On-demand axioms - the rest
+  * based on current LIA model.
+
+## Pseudo-Booleans {data-transition:none }
+
+* Pseudo-Boolean constraints are treated as a theory.
+* There are two implementations: one in the main SMT core, and one as part of a tuned SAT solver.
+* The PB theory solvers perform Boolean propagation on cardinality and PB constraints.
+* Conflict analysis enabled by hijacking the SAT solver conflict analysis process.
+
+## EUF or Arithmetic? {data-transition:none }
+
+An instance from a plant capacity problem:
+
+* Number of Stations  = O(1K)
+* Number of Tasks = O(10K)
+* Up to O(10) different operators per station
+
+Direct MIP-style encoding: $t_{i,s,op}$ - Task $i$ is at station $s$ attended by operator $op$.
+
+~ MathPre
+   10K \times 1K \times 10 = 100M \mbox{variables}
+~
+
+Instead use EUF $\mathit{station}(i) = s, \mathit{operator}(i) = op$, $\mathit{taskof}(s, op) = i$.
+
+Scales encoding, but loses propagation efficiency.
+
+Claim: Ackerman reduction simulate indicator variables.
+
+~ End Vertical
+
+~ Begin Vertical
+
+# LIA - Linear Integer Arithmetic {data-transition:none }
+
+
+![LIAArch]
+
+[LIAArch]: images/solver-arch-int.jpg "SolverArchLIA" {width:auto}
+
+## LIA {data-transition:none }
+
+__What__: Variables range over Integers. Addition, multiplication by constant.
+
+__How__: Conservative: If unsat in LRA then unsat in LIA. Cuts, Branch and Bound.
+
+__Why__: A practical basis for program verification (few verification systems use bit-vectors) and many applications.
+
+
+~ MathPre
+ x, y, z in \mathcal{Z}
+ 0 < x < y < z \land x + y + z = 1 \leadsto unsat
+ 2x + 6y + 3 = 0 \leadsto unsat
+~
+
+## From LRA to LIA {data-transition:none }
+
+When can a solution to LRA be used for LIA?
+
+* Patching and Cubes: If assignment from LRA is already integral or can be fixed.
+
+* GCD Test and bounds tightening: Detect when there are no integer solutions.
+
+* Cuts and branches: Block current LRA solution.
+
+
+## Patching [@MouraB08]{cite-style:natural}  {data-transition:none }
+
+~ MathPre
+ y - \frac{1}{2} x = 0    &            
+ z - \frac{1}{3} x = 0    &           
+3 \leq x \leq 10, -3 \leq y \leq 4, -4 \leq z \leq 12 \\ 
+~
+
+ 
+
+~ MathPre
+  \mbox{Initial assignment:}        &   x := 3, y := \frac{3}{2}, z := 1 
+  \mbox{Move $x$ from $3$ to $8$:}  &   x := 8, y := 4, z := \frac{8}{3}
+  \mbox{Move $x$ from $3$ to $6$:}  &   x := 6, y := 3, z := 2
+~
+
+## Patching [@BjornerNachmanson18]{cite-style:natural}  {data-transition:none }
+
+![CAV2024slide]
+
+[CAV2024slide]: images/cav2024/Slide7.png "CAV2024" {width:auto}
+
+
+## Cubes  [@BrombergerW16,@BrombergerW17]{cite-style:natural} {data-transition:none }
+
+
+__Proposition__: If $Ax \leq b - \frac{1}{2} \onenorm{A}$ has a solution over the reals, then $Ax \leq b$ 
+has an integer solution obtained by rounding.\
+\
+
+__Example__: Given
+
+~ Math
+3x + y \leq 9 \wedge - 3y \leq -2
+~
+
+Solve instead
+~ Math
+3x + y \leq \underbrace{9 - \frac{1}{2}(3 + 1)}_{7} \wedge -3y \leq \underbrace{-2 - \frac{1}{2}3}_{-3.5}
+~
+Real solution $y = \frac{7}{6}, x = \frac{35}{18}$. Then $y = 1, x = 2$ is an integer solution. 
+
+## Cubes [@BjornerNachmanson18]{cite-style:natural} {data-transition:none }
+
+__Observation__: One can often avoid strengthening inequalities.
+
+\
+bounds on variables $x \leq 4$.
+{.fragment}
+
+\
+differences between variables $x - y \leq 6$ need not be strengthened to $x - y \leq 5$.
+{.fragment}
+
+\
+octagon inequalities $x + y \leq 5$ can be strengthened to $x + y < 5$, or solutions can be _patched_. 
+{.fragment}
+
+\
+unit horn inequalities $x \geq 5y + 6z + 3$ 
+{.fragment}
+
+<!---
+Is $3x + y \leq 9 \wedge - 3y \leq -2$ integer feasible?
+
+Ask instead: 
+
+Is $3x + y \leq 9 - \frac{1}{2}(3 + 1) = 7, -3y \leq -2 - \frac{1}{2}3 = -3.5$ integer feasible?
+
+Thanks to tighter bounds, every rational solution $y := \frac{7}{6}, x := 0$ of stronger system, 
+can be rounded to integer solution.
+
+
+* Bounds tightening is not required for difference constraints [@BjornerNachmanson18]{cite-style:natural}.
+* Cube constraints, $x + y \geq 5$ are only unsafe to round if values fall at mid-points, such as $x = \frac{3}{2}$.
+--->
+
+
+## GCD Tests  {data-transition:none }
+
+Basic GCD: $5/6x + 3/6y + z + 5/6u = 0$ is infeasible, if
+
+* There are fixed variables: $2 \leq x \leq 2, -1 \leq u \leq -1$
+* After replacing fixed variables by values: $5 + 3(y + 2z) = 0$ 
+* $3 \not\uparrow 5$.
+
+Extended GCD: $a x + b y + c = 0$ is infeasible if
+
+* $a < b$
+* $lb \leq x \leq ub$ is bounded
+* $\lfloor \frac{a \cdot ub}{\gcd(b,c)} \rfloor < \lceil  \frac{a \cdot lb}{\gcd(b,c)} \rceil$
+ 
+
+Example:
+
+* $3x + 7y + 14 = 0$, $1 \leq x \leq 2$ 
+* $0 = \lfloor \frac{3\cdot 2}{7} \rfloor < \lceil \frac{3 \cdot 1}{7} \rceil = 1$.
+
+
+
+## Gomory cuts   {data-transition:none }
+
+* Z3's implementation is based on [@DutertreM06]{cite-style:natural}.
+* Applies generally to mixed integer problems.
+* Some value to finding cuts with small coefficients.
+
+## Bounds Tightening {data-transition:none }
+
+~ MathPre
+         &  2x + 4y + z \leq 5, z \leq 2 
+\implies & \mbox{by replacing $z$ with upper bound}
+         & 2x + 4y \leq 3 
+\implies & \mbox{by rounding upper bound}
+         & 2x + 4y \leq 2 
+\implies & \mbox{by adding back $z$} 
+         & 2x + 4y + z \leq 4
+~
+
+## Cuts from Hermite Matrices [@DilligDA09;@ChristH15]{cite-style:natural} {data-transition:none }
+
+Constraints: $Ax \leq b$. 
+
+\
+Assume $A$ is square and a tight non-integral solution $Ax_0 = b$. 
+{.fragment}
+
+\
+Find Hermite $H$, unimodular $U$, s.t.\ $AU = H$.
+$
+\left(
+\begin{array}{rrrr}
+1 &  0  & 0 & 0  \\
+-1 &  2 & 0 & 0  \\
+-3 & -1 & 3 & 0  \\
+-1 &  0 & -2 & 4  \\
+\end{array}
+\right)
+$
+{.fragment}
+
+\
+Then $Ax \leq b \Leftrightarrow \exists y \ . \ Hy \leq b \land y = U^{-1}x$
+{.fragment}
+
+\
+Then $y_0 = U^{-1}x_0$ is not integral either.
+{.fragment}
+
+\
+Branch on some non-integral $y_{0i}$: $y_i \leq \lfloor y_{0i} \rfloor$.
+{.fragment}
+
+
+## Diophantine Solutions and Cuts [@Griggio12]{cite-style:natural} {data-transition:none }
+
+Bring tableau into _integer solved form_ $x := \vec{a}\vec{y}$ with $\vec{a}$ integer (also used by Pugh's Omega test):
+
+~ MathPre
+       & 3x + 14y - 7 = 0 
+\equiv & 
+       & 3 (x + (14 \idiv 3) y - (7 \idiv 3))
+       & + (14 \;\mbox{mod}\; 3)y - (7 \;\mbox{mod}\; 3) = 0
+\equiv & 
+       & 3 (x + 4 y - 2) + 2 y - 1 = 0
+\simeq & 
+       & 3 z + 2 y - 1 = 0                  & fresh\; z
+       & x := z - 4 y - 2
+~
+
+* Detect GCD conflicts during normalization.
+* Cuts and bounds tightening on solved form.
+
+
+## Branching  {data-transition:none } 
+
+~ Example
+  LRA solver assigns $val(x) := \frac{1}{2}$, for integer $x$.
+  Create branch atom $x \leq 0$.
+
+  When $x \leq 0$ is assigned, upper bound $x \leq 0$ is added to tableau.
+
+  When $\neg(x \leq 0)$ is assigned, then lower bound $1 \leq x$ is added to tableau.
+~
+
+<!---
+
+Similar to traditional MIP branch-and-bound methods, 
+the solver creates somewhat eagerly case splits on bounds 
+of integer variables if the dual simplex solver fails to assign them integer values. For example, Simplex may assign an integer variable $x$, the value $\frac{1}{2}$, in which case z3 creates a literal $x \leq 0$ that triggers two branches
+$x \leq 0$ and $\neg(x \leq 0) \equiv x \geq 1$.f
+
+--->
+
+## LIA - next {data-transition:none }
+
+* Opportunities for micro-tuning are endless.
+
+* Smart scheduling for LIA (and NRA/NIA) end-game solvers?
+
+* LIA solver for small integers. 
+
+* IntSAT/CutSAT not part of Z3.
+
+
+~ End Vertical
+
+~ Begin Vertical
+
+# NRA - Non-linear Real Arithmetic {data-transition:none }
+
+
+![NRAArch]
+
+[NRAArch]: images/solver-arch-nra.jpg "SolverArchNRA" {width:auto}
+
+
+## NRA {data-transition:none }
+
+
+__What__: Variables range over Reals. Addition, unrestricted multiplication.
+
+__How__: Incremental linearization, CAD.
+
+__Why__: A basis for solving also NIA and interesting self-contained uses pop up, such as Economy.
+
+~ MathPre
+  x, y, z \in \mathit{R}
+  x > 1 \land y > 1 \land x\cdot y < 1 \leadsto unsat
+~
+
+## Tableau with monomial definitions {data-transition:none }
+
+Subset of variables are monomials $\mulvars$:
+
+~ Math
+\begin{array}{ll}
+x_i = \sum_{x_j \in \nonbasicvars} a_{ij} x_j            & x_i \in \basicvars \\
+m_i := \prod_{x_{ij}} x_{ij}                             & m_i \in \mulvars \subset \nonbasicvars \cup \basicvars \\
+l_j \leq x_j \leq u_j                                    & x_j \in \nonbasicvars \cup \basicvars \\
+val : x_j \mapsto {\mathcal R}                           & \forall x_j \in \nonbasicvars \\
+nval : x_i \mapsto \sum_{x_j \in \nonbasicvars} a_{ij} val(x_j) & \forall x_i \in \basicvars 
+\end{array}
+~
+
+Z3 tracks some equalities: If $m := xy$ and $x = -z$ is known, then $m := -zy$ is also used for lemmas.
+
+## NL Patching {data-transition:none }
+
+Suppose $ m := x \cdot x \cdot y$ is in tableau, but $val(m) \neq val(x)^2 val(y)$.
+
+* Try patch $val(m) := val(x) \cdot val(x) \cdot val(y)$,
+* Try patch $val(y) := val(m) / (val(x) \cdot val(x))$,
+* Try patch $val(x) := \pm r / val(y)$, when $val(m) = r^2$ for a rational $r$.
+
+Patching uses LP patch lookahead.
+
+
+## NL Bounds propagation using Interval arithmetic {data-transition:none }
+
+
+Monomial propagation: $m := x\cdot x\cdot y$
+
+~ MathPre  
+  y \geq 3 \implies m \geq 0                 & \mbox{by} & m \in [-\infty,\infty]^2 \cdot [3, \infty]
+
+  x \geq 1, y \geq 3 \implies m \geq 3       & \mbox{by} & m \in [1,\infty]^2[3,\infty]
+
+  m \leq 12, y \geq 3 \implies -2 \leq x \leq 2 & \mbox{by} & x \in \pm\sqrt{(-\infty,12] / [3,\infty)}.
+~ 
+
+## NL Bounds propagation on terms {data-transition:none }
+
+Recall: A _term_ is a slack variable introduced as short-hand for arithmetic expression.
+
+Interval arithmetic isn't distributive:
+
+Let $x \geq 2, y \geq -1, z \geq 2$
+
+Then $xy + xz \in [2,\infty)\cdot[-1,\infty) + [2,\infty)\cdot[2,\infty) = (-\infty,\infty)$
+
+But $x(y + z) \in [2,\infty)([-1,\infty) + [2,\infty)) = [2,\infty)$
+
+So z3 explores different variants of distributing multiplication over terms.
+
+
+
+
+## Gr&ouml;bner basis saturation {data-transition:none }
+
+* $V := \{ m_i, x_{ij} \mid m_i := \prod_{ij} x_{ij}, val(m_i) \neq \prod_{ij} val(x_{ij}) \}$.
+* $\mathcal{R} := \emptyset$
+* Ignore $r_i : x + by = 0$, $x$ is unbounded.
+* Add  $r_i : ax + by = 0$ to $\mathcal{R}$, and add $y$ to $V$, if $x \in V$.
+* Run bounded Gr&ouml;bner saturation based on $\mathcal{R}$.
+* Propagate new equations, detect infeasible equations 
+  * using interval bounds propagation
+  * GCD tests
+  * Euclidian tests
+
+<!---
+
+Z3 uses a best effort Gr\"obner basis reduction to find inconsistencies, cheaply, 
+and propagate consequences. While Gr{\"o}bner basis heuristics are not new to Z3,
+they have evolved and to our knowledge the integration is unique among SMT solvers.
+Recall that reduced Gr{\"o}bner basis for a set of polynomial equations $p_1 = 0, \ldots, p_k = 0$
+is a set $q_1 = 0, \ldots, q_m = 0$, such that every $p_i$ is a linear sum of $q_j$'s,
+and the leading monomials of every pair $q_i, q_j$, $i \neq j$, have no common factors.
+Since Z3 uses completion as a heuristic to make partial inferences, it does not seek to compute
+a basis.
+The Gr\"obner module performs a set of partial completion steps, preferring
+to eliminate variables that can be isolated, and expanding a bounded number of super-position
+steps (reductions by S-polynomials).
+
+Z3 first adds equations $m = x_1\ldots x_k$ for monomial definitions that are violated.
+It then traverses the transitive cone of influence of Simplex rows that contain one of the added variables
+from monomial definitions. It only considers rows where the basic variable is bounded.
+Rows where the basic variable is unbounded are skipped
+because the basic variable can be solved for over the reals.
+Fixed variables are replaced by constants, and the bounds constraints that fixes the variables
+are recorded as dependencies with the added equation. Thus, the equations handled by the
+Gr{\"o}bner basis reduction are of the form $\langle p_i: xy + 3z + 3 = 0, d_i: \{3 \leq u \leq 3\} \rangle$, where $p_i$
+is a polynomial and $d_i$ is a set of dependencies corresponding to fixed variables that were replaced
+by constants in $p_i$. In the example, we replaced $u$ by $3$ and the definition $\langle m = xy, \emptyset\rangle$ resolved $m$ by $xy$.
+Dependencies are accumulated when two polynomials are resolved to infer a new derived equality.
+Generally, when $\langle xy + p_1 = 0, d_1\rangle, \langle xz + p_2 = 0, d_2 \rangle$ are two polynomial equations,
+then $\langle zp_1 - yp_2 = 0, d_1 \cup d_2\rangle$ can be derived accumulating the premises $d_1, d_2$.
+
+Finally, equations are pre-solved if they are linear and can be split
+into two groups, one containing a single variable that has a
+lower (upper) bound, the other with more than two variables
+with upper (lower) bounds. This avoids losing bounds information
+during completion.
+
+After (partial) completion, the derived equations are post-processed:
+\begin{description}
+
+\item[Constant propagation]
+For equalities of the form $x = 0$ or $ax + b = 0$. If the current assignment to $x$ does not
+satisfy the equation, then the equality is propagated as a lemma.
+
+\item[Linear propagation]
+As a generalization of constant propagation, if the completion contains linear equations that
+evaluate to false under the current assignment, then these linear equations are added to the
+Simplex Tableau. Example~\ref{ex:yoav} illustrates a use where this propagation is useful.
+
+\item[Factorization] Identify factors of the
+form $x y p \simeq 0$ where $x, y$ are variables an $p$ is linear. We infer 
+the clause $x y p \simeq 0 \implies x \simeq 0 \lor y \simeq 0 \lor p \simeq 0$.
+
+\end{description}
+
+--->
+
+## Multi-terminal ZDDs for polynomials {data-transition:none }
+
+Design goals:
+
+* single instance store
+* polynomial simplification is built-in
+
+
+![PDD]
+[PDD]: images/PDD.jpg "pdd" { height:70% }
+
+
+## Incremental Linearization [@CimattiGIRS18]{cite-style:natural} {data-transition:none }
+
+~ MathPre
+  x = 0     & \implies & xy = 0 
+  x = \pm 1 & \implies & xy = \pm y
+  x \geq 1  & \implies & xy \geq y
+  x \geq 0, y \geq 0 & \implies & xy \geq 0
+~
+
+
+## NLSAT  [@JovanovicM12]{cite-style:natural} {data-transition:none }
+
+
+![nlsat]
+
+[nlsat]: images/nlsat2.png "nlsat" { width:auto; max-width:90% }
+
+## NRA - next {data-transition:none }
+
+* Integration of linearization with NLSAT [@PromiesNAW25]{cite-style:natural}
+
+* $\delta$-satisfiability to leverage numeric methods.
+
+* Postitiv Stellensatz (ground and quantifiers)
+
+~ End Vertical
+
+~ Begin Vertical
+
+# NIA - Non-linear Integer Arithmetic {data-transition:none }
+
+
+![NRAArch]
+
+[NRAArch]: images/solver-arch-nra.jpg "SolverArchNRA" {width:auto}
+
+## NIA {data-transition:none }
+
+__What__: Variables range over Integers. Addition, unrestricted multiplication.
+
+__How__: Methods for NRA + LIA + $\epsilon$
+
+__Why__: The tougher spot in verification tools, such as F* and Certora.
+
+~ MathPre
+  x, y, z \in \mathit{Z}
+  x > 1 \land y > 1 \land x\cdot y < 3 \leadsto unsat
+~
+
+## NIA - Theoretical Difficulty and Practical Scope {data-transition:none }
+
+* QF\_NIA is undecidable [@DavisPutnamRobinson1961;@Matiyasevich1970]{cite-style:natural}: there is no complete proof system for UNSAT.
+
+* QF\_NIA used by ZK/Smart Contract auditors for bounded integers $[0, 2^{256}($.
+
+* Partial solution by $NIA := LIA + NRA$ 
+
+## NIA := LIA + NRA {data-transition:none }
+
+* [@Jovanovic2017MCSAT]{cite-style:natural}: add branch and bound to NLSAT. Also current method in Z3's NLSAT.
+
+* [@Cimatti2018Incremental]{cite-style:natural}: incremental linearization.
+
+## NLSAT Branch and Bound [@Jovanovic2017MCSAT]{cite-style:natural} {data-transition:none }
+
+* Idea: Augment NLSAT (complete for NRA) post-check for integers.
+
+* If solution to $x \in \mathcal{Z}$ is not integer, but in interval $(k, k+1), k \in \mathcal{Z}$, then
+
+* Add axiom $x \leq k \lor x \geq k + 1$.
+
+* Run NLSAT again.
+
+
+
+## Incremental Linearization for Integers [@CimattiGIRS18]{cite-style:natural} {data-transition:none }
+
+
+* Makes the biggest difference for solving NIA in Z3.
+* Creates constraints for violated monomial assignments $val(xy) \neq val(x)val(y)$.
+* Example, tangent lemma:
+
+~ MathPre
+x > a, y > b & \implies & (x - a) \cdot (y - b) > 0
+             & \implies & xy - ay - bx + ab > 0
+~
+
+
+Suppose $val(xy) < val(x)\cdot val(y)$.
+Then setting $a := val(x) - 1$, $b := val(y) -1$ 
+ensures that $val(xy) - a\cdot val(y) - b\cdot val(x) - a\cdot b \leq 0$.
+
+## Pseudo-linear monomials {data-transition:none }
+
+
+~MathPre
+    & x = val(x) \implies x\cdot y = val(x)\cdot y
+if  & 
+    & lo \leq x \leq hi, z \in \mathcal{Z}
+    & hi - lo \leq 4   
+~
+
+## But NIA > LIA + NRA {data-transition:none }
+
+
+
+## Euclidian Lemmas (I) {data-transition:none }
+
+Consistency checks on equations produced by Gr&ouml;bner saturation.
+
+~ MathPre
+
+ x y - z = 0 & \implies & x \uparrow z   &  x, y, z \in Z
+             & \implies & (x > z \geq 0 \implies z = 0) & \clubsuit
+             & \implies & (x < z \leq 0 \implies z = 0) & \spadesuit
+             & \implies & (2x > z \geq x > 0 \implies z = x) & \heartsuit
+             & \implies & \ldots
+~
+
+Create lemma if current assignment to $x, y, z$ violates $\clubsuit$ or $\spadesuit$.
+To not introduce divergence, z3 skips lemmas of the form $\heartsuit$.
+
+## Euclidian Lemmas (II) {data-transition:none }
+
+<!---
+~ MathPre
+ x^2 - y = 0 & \implies & y \mod 4 \equiv \{ 0, 1 \}
+ x^k - y = 0 & \implies & y \mod k^2 \equiv \{ 0, 1, \ldots, (k-1)^k \}
+~
+
+For equation $px^k + q = 0$ substitute $x$ by $kx + \{ 0, \ldots, k - 1 \}$
+and check if GCD of coefficients to monomials divide constant coefficient in every case.
+
+
+
+$x(x+1) + 2y + 1 = 0$ is infeasible because
+~ MathPre
+     2x(2x + 1) + 2y   & \equiv 0 \mod 2, 
+     (2x+1)(2x+2) + 2y & \equiv 0 \mod 2.
+~ 
+--->
+
+
+![NIAParity]
+
+
+[NIAParity]: images/nia-parity.png "NiaParity" {width:auto}
+
+
+
+![NIAParitySolution]
+
+
+[NIAParitySolution]: images/nia-parity-solution.jpg.png "NiaParitySolution" {width:auto}
+
+## NIA - next {data-transition:none }
+
+* Identifying practical inference algorithms $X$ where $NIA = NRA + LIA + X + Y$.
+
+* Local search
+
+* Still very fragile, some can be mitigated by parallelism 
+
+~ Center
+![NIAscatter]
+[NIAscatter]: images/par-vs-seq.png "par-vs-seq" {width:50%}
+~
+
+~ End Vertical 
+
+~ Begin Vertical
+
+# Extra Credit {data-transition:none }
+
+## LIA* {data-transition:none }
+
+![LIAstarIntro]
+
+[LIAstarIntro]: images/solving-lia-star-by-approximations.png "LIAstarIntro" {width:auto}
+
+## LIA* - non-starter approach {data-transition:none }
+
+![LIAstarNonstarter]
+<!--- ![Ruzica] --->
+![RuzicaMunch]
+
+[LIAstarNonstarter]: images/solving-lia-star-nonstarter.png "LIAstarNonstarter" {width:auto}
+
+[Ruzica]: images/portrait-ruzica-piskac.jpg "Ruzica" {width:auto}
+[RuzicaMunch]: images/ruzica-munch.png "Ruzica" {width:auto}
+
+## LIA* - mile-high {data-transition:none }
+
+![LIAstarMileHigh]
+
+[LIAstarMileHigh]: images/solving-lia-star-by-approximations-mile-high.png "LIAstarMileHigh" {width:auto}
+
+
+## LIA* - under approxiations {data-transition:none }
+
+Grow under-approximation: $U^* \implies F_2^*$:
+
+Initially $U := \emptyset, U^* := (0,0)$
+
+Maintain, $U = \bigcup_i a_i + \lambda B_i$ under-approximates $F_2$ and set
+$U^* := \exists \mu\lambda (x = \sum_i \mu_i a_i + \lambda_i B_i) \land \bigwedge_i (\mu_i = 0 \implies \lambda_i = 0)$.
+
+* If $U^* \land F_1$ is SAT done.  Otherwise,
+* Let $x_1, y_1: U^*(x_0, y_0) \land F_2(x_1, y_1) \land \neg U^*(x_0 + x_1, y_0 + y_1)$.
+* Add $(x_1, y_1)$ to $U$. 
+* Reduce vectors $a_i, B_i$ using new element.
+
+## LIA* over-approximation (I) {data-transition:none }
+
+![LIAstar]
+
+[LIAstar]: images/overapprox-lia-star.png "LIAstar" {width:auto}
+
+
+## LIA* over-approximation (II) {data-transition:none }
+
+Suppose 
+~ MathPre
+      U^*(x_0, y_0) \land F_2(x_1, y_1) \land F_2(x_2, y_2) & 
+\land F_1(x_0 + x_1 + x_2, y_0 + y_1 + y_2)                 & \mbox{is unsat}
+~
+
+Compute interpolant $I$:
+~ MathPre
+U^*(x_0, y_0) \land F_2(x_1, y_1) & \implies & I(x_0 + x_1, y_0 + y_1) 
+I(x, y) & \implies & (F_2(x_2, y_2) \implies \neg F_1(x + x_2, y + y_2))
+~
+
+Initially $O^* := \top$
+
+Add conjunctions from I to $O^*$ that are inductive, that is:
+
+~ MathPre
+O^*(x, y) \land F_2(x_1, y_1) \implies O^*(x + x_1, y + y_1)
+~
+
+## Warm Start {data-transition:none }
+
+You can set the initial value of variables.
+
+```
+ (declare-const x Int)
+ (set-initial-value x 10)
+ (push)
+ (assert (> x 0))
+ (check-sat)
+ (eval x)
+ ; 10
+```
+
+It is not always possible to enforce: If a benchmark is translated to SAT, initialization is partial.
+
+
+<!--- 
+
+## Quantifiers {data-transition:none }
+
+## Local Search {data-transition:none }
+
+## Powers {data-transition:none }
+
+--->
+
+~ End Vertical
+
+
+# References {data-transition:none }
+
+[BIB]

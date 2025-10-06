@@ -1,0 +1,651 @@
+[INCLUDE=presentation]
+Title         : Programming Z3
+Sub Title     : TU Wien Guest Lectures, October 2025
+SubTitle      : Programming Z3
+                A Laura Kovacs guest lecture production
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Email         : nbjorner\@microsoft.com
+Reveal Theme  : solarized
+Beamer Theme  : singapore
+Bibliography  : refs.bib
+Cite Style    : natural
+muZ           : $\mu{Z}$
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+Embed         : 1024
+Tex Header    : \usetikzlibrary{shapes,snakes}
+Css Header:
+    .reveal p, .reveal li, .reveal .bibitem, .reveal dd, .reveal dt {
+      text-align: left !important;
+    }
+
+.Math-Inline,.Math-Display,~Math,~MathPre: 
+    replace=//<-/\leftarrow//->/\rightarrow//=>/\Rightarrow//!=/\mathop{\neq}//g 
+    replace=//AA/\forall//EE/\exists//g
+
+
+~ MathDefs
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\twodpstate}[2]{#1  \dbar #2}
+\newcommand{\compl}[1]{\overline{#1}}
+\newcommand{\Model}{M}
+\newcommand{\nodefinition}{}
+\newcommand{\Mbp}{Mbp}
+\newcommand{\Queue}{\mathcal{Q}}
+\newcommand{\Init}{\mathit{Init}}
+\newcommand{\Safe}{\mathit{Safe}}
+\newcommand{\true}{\textsf{true}}
+\newcommand{\false}{\textsf{false}}
+\newcommand{\cF}{{\mathcal{F}}}
+\newcommand{\phidown}{\varphi_{\downarrow}}
+\newcommand{\psidown}{\psi_{\downarrow}}
+\newcommand{\phiup}{\varphi^{\uparrow}}
+\newcommand{\router}[1]{R_{#1}}
+\newcommand{\mustsummary}[3]{
+\langle #1 \stackrel{\mathtt{must}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\notmaysummary}[3]{
+\langle #1 \stackrel{\neg\mathtt{may}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\querysummary}[3]{
+\langle #1 \stackrel{?}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\dst}{\mathit{dst}}
+\newcommand{\src}{\mathit{src}}
+\newcommand{\unk}[1]{{\color{blue}{#1}}}
+~
+
+<style>
+.invariant {
+  font-style: oblique;
+  before: "[Invariant ]{.invariant-before}"
+}
+</style>
+
+[TITLE]
+
+# Contents
+
+[TOC]
+
+
+
+
+~ Begin Vertical
+
+# Programming Z3
+
+~ Columns
+~~ Column { width:"30%" }
+Solver methods
+```python
+s = Solver()
+
+
+s.add(\($\varphi$\))
+s.assert_and_track(\($\varphi, \ell$\))
+
+s.push()
+s.pop()
+
+s.check()
+s.check(\($[\ell_1,\ldots, \ell_n]$\))
+
+s.model()
+s.proof()
+s.unsat_core()   
+
+s.statistics()     
+```
+~~
+~~ Column { width:3ex }
+~~
+~~ Column
+\
+
+  * Create a solver
+  \
+  \
+  * Add assertion to solver state
+  \
+  \
+  * Create local scopes
+  \
+  \
+  * Check satisfiability
+  \
+  \
+  * Retrieve models, proofs, cores
+  \
+  \
+  * Additional information
+
+~~
+~
+
+## Assertions
+
+~ Columns
+~~ Column { width:"30%" }
+Solver methods
+```python
+s.add(\($\varphi$\))
+s.assert_and_track(\($\varphi, \ell$\))
+
+```
+
+~~
+
+~~ Column { width:3ex }
+~~
+
+~~ Column
+\
+  
+  Assert $\varphi$ to the solver state.
+  Optionally, track the assertion $\varphi$
+  by a literal $\ell$. 
+
+  Unsatisfiable cores contain tracked literals.
+
+~~
+~
+
+## Scopes
+
+~ Columns
+~~ Column { width:"30%" }
+Solver methods
+```python
+s.push()
+
+s.pop()
+```
+
+~~
+
+~~ Column { width:2ex}
+~~
+
+~~ Column
+\
+  
+  Add or remove a scope from the solver.
+
+  Assertions added within a scope are 
+  removed when the scope is popped.
+  
+  
+~~
+~
+
+## Check Satisfiability
+
+~ Columns
+~~ Column 
+Solver methods
+```python
+s.check()
+
+s.check(\($[\ell_1,\ldots, \ell_n]$\))
+```
+
+~~
+
+~~ Column { width:3ex }
+~~
+
+~~ Column
+\
+  Is the solver state satisfiable?
+
+  Is the solver state satisfiable modulo the assumption literals
+  $\ell_1, \ldots, \ell_n$.
+
+  The solver state is the conjunction of assumption literals and
+  assertions that have been added to the solver in the current scope.
+~~
+~
+
+## Certificates
+
+
+~ Columns
+~~ Column { width:"40%" }
+Methods
+```python
+
+s.model()
+
+s.proof()
+
+s.unsat_core()   
+
+```
+~~
+
+~~ Column { width:"10%"}
+~~
+
+~~ Column
+\
+An interpretation satisfying current constraints.
+\
+\
+A _proof term_ certifying unsatisfiability of constraints.
+\
+\
+A _subset_ of assumptions/tracked assertions that suffice to establish unsatisfiability. 
+~~
+~
+
+~ End Vertical
+
+
+
+~ Begin Vertical
+
+# Extended SAT queries 
+![Silva]
+[Silva]: images/silva-sat-base-problem-solving.png "Silva" { width:auto; max-width:90% }
+
+Slide is by Joao Marques-Silva
+
+# Logical Queries - SAT+
+
+\
+\
+
+$\hspace{2cm}$ sat                      $\hspace{1.3cm}$ $\varphi$ $\hspace{1.3cm}$ unsat
+{.fragment} 
+
+\
+
+$\hspace{1.6cm}$ model                    $\hspace{1.3cm}$ $\varphi$ $\hspace{1.3cm}$ (clausal) proof
+{.fragment} 
+
+\
+
+$\hspace{0.6cm}$ correction set $\hspace{0.3cm}$    $\subseteq  \varphi_1, \ldots, \varphi_n   \supseteq $ $\hspace{0.2cm}$ core
+{.fragment}
+
+\
+
+local min correction set $\hspace{0.05cm}$ $ \subseteq  \varphi_1, \ldots, \varphi_n    \supseteq$ $\hspace{0.2cm}$ local min core
+{.fragment}
+
+\
+
+min correction set $\hspace{0.35cm}$ $ \subseteq  \varphi_1, \ldots, \varphi_n    \supseteq$ $\hspace{0.2cm}$ min core
+{.fragment}
+
+\
+
+$\hspace{3.2cm}$  $\max x \varphi(x)$
+{.fragment}
+
+# Logical Queries
+
+~ MathPre
+\mathrm{Satisfiability}   & \varphi \rightsquigarrow sat, unsat, timeout \smallskip  
+\mathrm{Certificates}     & \varphi \rightsquigarrow model, proof, unsat core \smallskip
+\mathrm{Interpolation}    & \varphi[x,y] \rightarrow I[x] \rightarrow \psi[x,z] \smallskip
+\mathrm{Optimization}     & \max x \mid \varphi \smallskip 
+\mathrm{Consequences}     & \varphi \rightarrow \varphi_1 \wedge \ldots \wedge \varphi_n\smallskip
+\mathrm{Sat\ subsets}     & \psi_1 \wedge \psi_2,\ \psi_1 \wedge \psi_3\smallskip
+\mathrm{Unsat\ cores}     & \neg(\psi_1 \wedge \psi_2),\ \neg(\psi_1 \wedge \psi_3)\medskip
+\mathrm{Model\ counting}  & |\{ x \mid \varphi\}| \medskip
+\mathrm{All\ models}      & Ideal(\varphi), M_1 \models \varphi, M_2 \models \varphi, \ldots \medskip
+\mathrm{Model\ probability} & \ldots
+~
+
+~ End Vertical
+
+~ Begin Vertical
+
+
+# Programming with Cores and Correction sets
+
+* Optimization as SMT with preferred models
+
+* An introduction to cores and correction sets
+
+* Show examples of algorithms on top of SMT/Z3
+
+
+  
+# Cores, Correction Sets, Satisfying Assignments
+
+* {.fragment} (M)US (Minimal) unsatisfiable subset
+  * (minimal) subset of assertions that are unsatisfiable.
+    Also known as a _core_
+
+* {.fragment} (M)SS (Maximal) satisfiable subset
+   * (maximal) subset of assertions that are satisfiable.
+
+* {.fragment} (M)CS (Minimal) correction set
+   * complement of an (M)SS.
+
+* {.fragment} (Prime) implicant
+   * $m \Rightarrow \phi$ iff $m$ is a core for $\neg \phi$.
+
+
+## A Duality: MUS $\sim$ MCS [@Reiter87]
+
+![Reiter]
+[Reiter]: images/Reiter.PNG "Reiter" { width:auto; max-width:90% }
+
+
+## All Cores and Correction Sets [@liffiton2016fast]
+
+~ Begin Columns
+~ Column {font-sizes:large}
+\
+
+* Given $\varphi_1, \ldots, \varphi_n$
+  * Find all min unsat cores  
+  * Find all max satisfying subsets 
+* Generate subset $S \subseteq \{1,\ldots, n\}$
+  * Not a superset of old core
+  * Not a subset of old sat subset
+* Is $\bigwedge_{j \in S} \varphi_j$ satisfiable?
+  * If yes, find max sat $S' \supseteq S$
+  * If no, find min unsat $S' \subseteq S$
+* Block $S'$ from next iteration
+~
+~ Column 
+\
+
+```python { font-size:medium}
+def ff(s, p): 
+    return is_false(s.model().eval(p))
+
+def marco(s, ps):
+    map = Solver()
+    while map.check() == sat:
+        seed = {p for p in ps if not ff(map, p)}
+        if s.check(seed) == sat:
+           mss = get_mss(s, seed, ps)
+           map.add(Or(ps - mss))
+           yield "MSS", mss
+        else:
+           mus = get_mus(s, seed)
+           map.add(Not(And(mus)))
+           yield "MUS", mus
+
+```
+~
+~ End Columns
+
+## Cores and Correction sets Algorithm
+
+```python { font-size:xx-large}
+def ff(s, p): 
+    return is_false(s.model().eval(p))
+
+def marco(s, ps):
+    map = Solver()
+    while map.check() == sat:
+        seed = {p for p in ps if not ff(map, p)}
+        if s.check(seed) == sat:
+           mss = get_mss(s, seed, ps)
+           map.add(Or(ps - mss))
+           yield "MSS", mss
+        else:
+           mus = get_mus(s, seed)
+           map.add(Not(And(mus)))
+           yield "MUS", mus
+
+```
+
+
+## Maximizing Satisfying Assignments [@MenciaPM15]
+
+```python
+def tt(s, f): 
+    return is_true(s.model().eval(f))
+
+def get_mss(s, mss, ps):
+    ps = ps - mss
+    backbones = set([])
+    while len(ps) > 0:
+       p = ps.pop()
+       if sat == s.check(mss | backbones | { p }):
+          mss = mss | { p } | { q for q in ps if tt(s, q) }
+          ps  = ps - mss
+       else:
+          backbones = backbones | { Not(p) }
+    return mss
+          
+```
+
+## Minimizing Cores [@Junker04;@BradleyM07;@Marques-SilvaJB13;@BacchusK15]
+
+Use built-in core minimization:
+```python
+s.set("sat.core.minimize","true")  # For Bit-vector theories
+s.set("smt.core.minimize","true")  # For general SMT 
+```
+
+Or roll your own:
+
+```python { height:675px; overflow:auto }
+
+def quick_explain(test, sub):
+    return qx(test, set([]), set([]), sub)
+
+def qx(test, B, D, C):
+    if {} != D:
+       if test(B):
+          return set([])
+    if len(C) == 1:
+       return C
+    C1, C2 = split(C)
+    D1 = qx(test, B | C1, C1, C2)
+    D2 = qx(test, B | D1, D1, C1)
+    return D1 | D2
+    
+def test(s):
+    return lambda S: s.check([f for f in S]) == unsat
+
+
+s = Solver()
+a, b, c, d, e = Bools('a b c d e')
+s.add(Or(a, b))
+s.add(Or(Not(a), Not(b)))
+s.add(Or(b, c))
+s.add(Or(Not(c), Not(a)))
+
+print s.check([a,b,c,d,e])
+print s.unsat_core()
+
+mus = quick_explain(test(s), {a,b,c,d})
+```
+
+
+
+## All maximal satisfying sets (basic)
+
+```python
+def all_mss(s, ps):
+    while sat == s.check():
+        mss = get_mss(s, { p for p in ps if tt(s, p) }, ps)
+        s.add(Or(ps - mss))
+        yield "MSS", mss
+
+```
+
+* Inefficiency: Same unsat cores may be revisited.
+
+
+## <a href="https://github.com/Z3Prover/z3/blob/master/examples/python/mus/mss.py">All Correction Sets</a>
+
+Find all satisfying subsets among $\varphi_1, \ldots, \varphi_n$:
+\
+
+* Initialize: $F_1 \leftarrow \varphi_1, \ldots, F_n \leftarrow \varphi_n$, $F \leftarrow \top$.
+* While $F$ is sat:
+  * If $F \wedge F_1\wedge \ldots\wedge F_n$ is sat with model $M$
+    * $\{ \varphi_j \mid M(\varphi_j) = \top \}$ is mss.
+    * $F \leftarrow F \wedge \bigvee \{ \varphi_j \;\mid\; M(\varphi_j) = \bot \}$ add mcs
+  * Else suppose $F_1,\ldots, F_k$ is a core
+    * Replace by $F'_1, \ldots, F'_{k-1}$: 
+    * $F'_1 \leftarrow F_1 \vee F_2$, $F'_2 \leftarrow F_3 \vee (F_2 \wedge F_1)$,   
+      $\ldots$, $F'_{k-1} \leftarrow F_k \vee (F_{k-1} \wedge \ldots)$.
+
+~ End Vertical
+
+
+
+~ Begin Vertical
+
+# MaxSMT
+
+* Typical definition: Minimize the number of violated _soft_ assertions.
+
+* Is built-in, based on MaxSAT algorithms.
+
+
+
+## MaxSAT example 
+```smt
+(declare-const a Bool)
+(declare-const b Bool)
+(declare-const c Bool)
+(assert-soft a :weight 1)
+(assert-soft b :weight 2)
+(assert-soft c :weight 3)
+(assert (= a c))
+(assert (not (and a b)))
+(check-sat)
+(get-model)
+```
+
+## MaxSAT flattened
+
+```smt
+(declare-const a Bool)
+(declare-const b Bool)
+(declare-const c Bool)
+(assert-soft a :weight 1)
+(assert-soft b :weight 1) (assert-soft b :weight 1)
+(assert-soft c :weight 1) (assert-soft c :weight 1) (assert-soft c :weight 1) 
+(assert (= a c))
+(assert (not (and a b)))
+(check-sat)
+(get-model)
+```
+
+* NB. Implementations of MaxSAT typically flatten weights on demand.
+
+
+## MaxSAT flat form
+
+
+~ Math
+  \underbrace{(a \equiv c) \wedge \neg (a \wedge b)}_{F}, 
+  \underbrace{a}_{F_1}
+  \underbrace{b}_{F_2}
+  \underbrace{b}_{F_3}
+  \underbrace{c}_{F_4}
+  \underbrace{c}_{F_5}
+  \underbrace{c}_{F_6}
+~ 
+
+* $F$ - hard constraints
+
+* $F_1, F_2, \ldots, F_6$ - soft constraints
+
+# MaxSAT with Cores [@NarodytskaB14]
+
+A: $F, \underbrace{F_1, F_2, F_3, F_4 }_{core}, F_5$ 
+\
+\
+A': $F, \ F_2 \vee F_1, F_3 \vee (F_2 \wedge F_1), 
+   F_4 \vee (F_3 \wedge (F_2 \wedge F_1)), F_5$
+\
+\
+__Lemma__: for any model $M$ of $F$, $cost(M, A) = 1 + cost(M, A')$
+\
+\
+__Proof__: $M(F_j) = \bot, j$ min: $ M(F'_i) = M(F_{i+1}) \vee i = j + 1, \forall i$
+
+
+# MaxSAT with MCS [@BjornerN15]
+
+A: $F, \underbrace{F_1, F_2, F_3, F_4 }_{\mbox{correction set}}, F_5$
+\
+\
+A': $\underbrace{ F \wedge (F_1 \vee F_2 \vee F_3 \vee F_4) }_{F`},$ \
+  $F_2 \wedge F_1,\ F_3 \wedge (F_2 \vee F_1), \ F_4 \wedge (F_3 \vee (F_2 \vee F_1)), \ F_5$
+\
+\
+__Lemma__: for any model $M$ of $F'$, $cost(M, A) = cost(M, A')$
+\
+\
+__Proof__: $M(F_j) = \top, j$ min:
+\ \ \    $ M(F'_i) = M(F_{i+1}) \wedge (i \neq j \vee j = 1), \forall i$
+
+
+## MaxSAT with Cores (python)
+
+```python
+def add_def(s, fml):
+    name = Bool("%s" % fml)
+    s.add(name == fml)
+    return name
+
+def relax_core(s, core, Fs):
+    prefix = BoolVal(True)
+    Fs -= { f for f in core }
+    for i in range(len(core)-1):
+        prefix = add_def(s, And(core[i], prefix))
+        Fs |= { add_def(s, Or(prefix, core[i+1])) }
+
+def maxsat(s, Fs):
+    cost = 0
+    Fs0 = Fs.copy()
+    while unsat == s.check(Fs):
+        cost += 1
+        relax_core(s, s.unsat_core(), Fs)    
+    return cost, { f for f in Fs0 if tt(s, f) }
+```
+
+## MaxSAT with MCS (python)
+
+```python
+def relax_mcs(s, mcs, Fs):
+    prefix = BoolVal(False)
+    Fs -= { f for f in mcs }
+    s.add(Or(mcs))
+    for i in range(len(mcs)-1):
+        prefix = add_def(s, Or(mcs[i], prefix))
+        Fs |= { add_def(s, And(prefix, mcs[i+1])) }
+
+def maxsat(s, Fs0):
+    Fs = Fs0.copy()
+    cost = len(Fs)
+    while s.check() == sat:
+        mss = { f for f in Fs if tt(s, f) }
+        model1 = get_mss(s, mss, Fs)
+        mcs = Fs - mss
+        if cost > len(mcs):
+           cost = len(mcs)
+           model = model1
+        relax_mcs(s, [ f for f in mcs ], Fs)
+    return cost, [ f for f in Fs0 if is_true(model.eval(f)) ]
+```
+
+MCS alone is inefficient. In [@BjornerN15] we combine MUS and MCS steps.
+
+~ End Vertical
+
+
+
+
+# References
+
+[BIB]
+
+

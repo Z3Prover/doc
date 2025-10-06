@@ -1,0 +1,443 @@
+[INCLUDE=presentation]
+Title         : On Incremental Pre-processing for SMT
+SubTitle      : CADE 2023
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Author        : Katalin Fazekas
+Affiliation   : TU Wien
+Reveal Theme  : solarized
+Beamer Theme  : singapore
+Bibliography  : proofs.bib
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+Package       : bussproofs
+Package       : xcolor
+Embed         : 1024
+Background Transition : none
+Tex Header    : \usetikzlibrary{shapes,snakes}
+Css Header:
+    .reveal p, .reveal li, .reveal .bibitem, .reveal dd, .reveal dt {
+      text-align: left !important;
+    }
+
+.Math-Inline,.Math-Display,~Math,~MathPre: 
+    replace=//<-/\leftarrow//->/\rightarrow//=>/\Rightarrow//!=/\mathop{\neq}//g 
+    replace=//AA/\forall//EE/\exists//g
+
+
+~ MathDefs
+\newcommand{\state}[2]{\ensuremath{{#1\,\parallel\,#2}}\xspace}
+\newcommand{\subst}[4]{\ensuremath{\langle #1\!\leftarrow\!#2;#3\rangle^{#4}}\xspace}
+\newcommand{\substRigid}[3]{\ensuremath{\langle #1\!\leftarrow\!#2;#3\rangle^{\bot}}\xspace}
+\newcommand{\substLoose}[3]{\ensuremath{\langle #1\!\leftarrow\!#2;#3\rangle^{\top}}\xspace}
+
+
+\newcommand{\condsymbol}[1]{{\color{gray}\fbox{\begin{minipage}[c][3pt][c]{4pt}\centering\ensuremath{\color{blue}{#1}}\xspace\end{minipage}}}}
+\newcommand{\rulename}[1]{\textsc{\color{blue}#1}}
+
+\newcommand{\condAdd}{\condsymbol{\flat}}
+\newcommand{\nameAdd}{\rulename{Add}\xspace}
+
+\newcommand{\condUndo}{\condsymbol{\partial}}
+\newcommand{\nameUndo}{\rulename{Undo}\xspace}
+
+\newcommand{\condRigid}{\condsymbol{\natural}}
+\newcommand{\nameRigid}{\rulename{Rigid}\xspace}
+
+
+\newcommand{\condFlex}{\condsymbol{\ast}}
+\newcommand{\nameFlex}{\rulename{Flex}\xspace}
+
+\newcommand{\condDrop}{\condsymbol{\heartsuit}}
+%\newcommand{\nameWeaken}{\rulename{Weaken}\xspace}
+
+%\newcommand{\nameIntro}{\rulename{Intro}\xspace}
+
+\newcommand{\nameUpdate}{\rulename{Update}\xspace}
+\newcommand{\nameInvert}{\rulename{Invert}\xspace}
+
+\newcommand{\rigidSubst}[3]{\subst{#1}{#2}{#3}{\bot}}
+\newcommand{\flexSubst}[3]{\subst{#1}{#2}{#3}{\top}}
+\newcommand{\satSubst}[3]{\subst{#1}{#2}{#3}{\star}}
+\newcommand{\nameInit}{\mathsf{add}}
+\newcommand{\nameDone}{\mathsf{done}}
+\newcommand{\nameReplayRigid}{\condsymbol{\flat}}
+\newcommand{\nameReplaySkip}{\condsymbol{\circ}}
+\newcommand{\nameReplayUnd}{\condsymbol{\partial}}
+\newcommand{\nameWeaveRigid}{\nameRigid^\ast}
+\newcommand{\nameWeaveFlex}{\nameFlex^\ast}
+\newcommand{\nameWeaveDrop}{\nameWeaken^\ast}
+
+\newcommand{\modelUpdate}[3]{#1[{#2 \mapsto #3}]}
+
+
+\newcommand{\nameSat}{\rulename{Sat}\xspace}
+
+\newcommand{\ruleAdd}[3]{
+\infer[\condAdd]%
+	{\state{#1,#2#3}{#3}}%
+	{\state{#1}{#3}}%
+}
+
+\newcommand{\ruleUndo}[3]{
+\infer[\condUndo]%
+	{\state{#1,#2#3'}{#3\concat#3'}}%
+	{\state{#1}{#3\concat\subst{x}{t}{#2}{\top}\concat#3'}}%
+}
+
+\newcommand{\ruleRigid}[3]{
+\infer[\condRigid]%
+	{\state{#2[t/x],#1}{#3\concat\subst{x}{t}{#2}{\bot}}}%
+	{\state{#2,#1}{#3}}%
+}
+
+
+\newcommand{\ruleFlex}[3]{
+\infer[\condFlex]%
+	{\state{#2[t/x],#1}{#3\concat\subst{x}{t}{#2}{\top}}}%
+	{\state{#2,#1}{#3}}%
+}
+
+\def\CACLFIG#1{%
+\begin{figure}[#1]
+\centering
+\begin{tabular}{c@{\qquad}c}
+ \ruleRigid{F}{\Psi}{\theta}
+&\ruleFlex{F}{\Psi}{\theta}\\[1ex]
+ \nameRigid & \nameFlex\\[1.5ex]
+ 
+ \ruleUndo{F}{\Psi}{\theta}
+&\ruleAdd{F}{\Phi}{\theta}\\[1ex]
+ \nameUndo  & \nameAdd\\[1.5ex]
+\multicolumn{2}{c}
+{where \,$\condRigid$\, is \,``$F,\Psi \models x = t$ and $x \in \Psi$,$x \not\in F$, $t \cap D_\theta = \emptyset$ and substitutable for $x$ in $\Psi$'',}\\
+\multicolumn{2}{c}
+{and \,$\condFlex$\, is \,``$F,\Psi \equiv_{sat}F, \Psi, x = t$ and $x \in \Psi$,$x \not\in F$, $t \cap D_\theta = \emptyset$ and substitutable for $x$ in $\Psi$'',}\\
+\multicolumn{2}{c}
+{and \,$\condUndo$\, is \,``$D(\Psi,\theta')$ contains only clean assignments''\; and}\\
+\multicolumn{2}{c}
+{and \,$\condAdd$\, is \,``$D(\Phi,\theta)$ contains only clean assignments''.}\\
+\end{tabular}
+\caption{Incremental Preprocessing Rules}
+\label{fig:all_rules}
+\end{figure}}
+
+
+\newcommand{\model}{\ensuremath{\mathcal{M}}\xspace}
+\newcommand{\sig}{\ensuremath{\Sigma}\xspace}
+\newcommand{\univ}{\ensuremath{\mathcal{U}_\model}\xspace}
+
+\newcommand{\nsb}[1]{{\color{blue} [NSB: #1]}}
+
+\newcommand{\formula}{\varphi}
+\newcommand{\equations}{\mathcal{E}}
+\newcommand{\papercomment}[1]{{\color{darkgreen} [comment: #1]}}
+\newcommand{\hiddencomment}[1]{}
+
+\newcommand{\modelEquiv}[4]{#1 \succeq_{#2 \mapsto #3} #4}
+\newcommand{\modelEquivTheta}[3]{#1 \succeq_{#2} #3}
+~
+
+<style>
+.invariant {
+  font-style: oblique;
+  before: "[Invariant ]{.invariant-before}"
+}
+</style>
+
+[TITLE]
+
+
+
+# Outline { data-transition="none" }
+
+
+_What semantic conditions and interfaces are required for SMT pre-processing to allow incremental use?_
+
+
+<p>
+<p>
+
+__Calculus__
+
+* __Main notion__: Simplification modulo _model updates_
+
+* __Rules covering__: SAT/SMT/FTP/MIP 
+
+* __Replay__: formulas when adding new constraints
+
+
+# Why Pre-processing? { data-transition="none" }
+
+![Regin]
+
+[Regin]: images/speedups.png "Speedups" {with:auto}
+
+# Why Incremental pre-processing? { data-transition="none" }
+
+* Better performance for highly incremental applications
+
+* Offer more uniform user experiences
+
+* Unleash in-processing
+
+
+# Pre-processing for SMT - examples { data-transition="none" }
+
+* $x > x - y + 1$ $\leadsto$ $y > 1$
+  * Equilvalence preserving
+
+* $x + 3 = y + z \land \phi[x]$ $\leadsto$ $\phi[y + z - 3]$
+  * $x$ is solved for
+  
+* $F, x \leq y, x \leq z, y \leq u$ $\leadsto$ $F$
+   * $x, y \not\in FV(F)$
+   * interpret as: $x \mapsto \min(y,z), y \mapsto u$
+
+* $F, p \lor C \leadsto F$
+  * $p$ is a blocked literal
+  * (resolving on $p \lor C$ in $F$ produces tautologies)
+
+# Pre-processing for SMT - incremental { data-transition="none" }
+
+* $x > x - y + 1$ $\leadsto$ $y > 1$ - add $z > x$
+  * $\leadsto y > 1 \land z > x$.
+
+* $x + 3 = y + z \land \phi[x]$ $\leadsto$ $\phi[y + z - 3]$ - add $z > x$
+  * $\leadsto \phi[x] \land z > y + z - 3$.
+
+* $F, x \leq y, x \leq z, y \leq u$ $\leadsto$ $F$ - add $z > y + x$
+  * $\leadsto F, x \leq y, y \leq u, x \leq z, z > y + x$. 
+
+* $F, p \lor C \leadsto F$ - add $\neg p \lor D$
+  * $\leadsto F, p, \lor C, \neg p \lor D$.
+
+
+# Pre-processing - as inference rule { data-transition="none" }
+
+
+$x + 3 = y + z \land F[x]$ $\leadsto$ $F[y + z - 3]$
+
+~ MathPre
+  \state{F, x + 3 = y + z}{\theta} \Longrightarrow
+        \state{F[y + z - 3 / x]}{\theta\rigidSubst{x}{y + z - 3}{x + z = y + z}}
+~
+
+
+* If $M \models F[y + z - 3]$,
+* then $M[x \mapsto y + z - 3] \models F, x + 3 = y + z$.
+
+~ Begin Vertical
+
+# Simplification modulo $\theta$ - motivation { data-transition="none" }
+
+Just _preserving satisfiability_ is not sufficient for ensuring compositionality.
+
+
+Semantic condition on pre-processing and inferences that
+
+* Capture model reconstruction
+
+* Allow formalizing main useful cases of incremental pre-processing
+
+
+
+# Simplification modulo $\theta$ - definition { data-transition="none" }
+
+
+We say that the formula $F$ simplifies to $F'$ modulo $\theta$, denoted $\modelEquivTheta{F}{\theta}{F'}$ 
+
+* If $\model \models F$ then there is a model $\model'$ such that, $\model' \models F'$ and $\model'$ agrees with $\model$ on all
+  symbols that are in $F$ or in background theories or not in $F'$.
+* If $\model' \models F'$ then $\model'\theta \models F$.
+
+
+# Simplification state { data-transition="none" }
+
+Substitution with side-constraints
+
+* $\theta := \subst{x_1}{t_1}{\Psi_1}{\mathbb{B}_1} \ldots \subst{x_k}{t_k}{\Psi_k}{\mathbb{B}_k}$ 
+
+* The effect of $\theta$
+
+  * On models - $\model\theta\subst{x}{t}{\Psi}{\mathbb{B}} = \modelUpdate{\model}{x}{t^\model} \theta$
+  * On formulas - $F\subst{x}{t}{\Psi}{\mathbb{B}}\theta = F[t/x]\theta$
+  * To undo simplifications - add back $\Psi_i$ if $\mathbb{B}_i = \top$.
+  * $\mathbb{B}_i = \top$, or $\bot$.
+
+# Example { data-transition="none" }
+
+
+~ MathPre
+  \state{F, p \lor C}{\theta} \Longrightarrow \state{F}{\flexSubst{p}{p \lor \neg C}{p \lor C}}
+~
+
+~ Math
+  \modelEquivTheta{p \lor C, F}{p \mapsto p \lor \neg C}{F}
+~
+
+* $M' \models F$, then $M'\flexSubst{p}{p \lor \neg C}{p \lor C} \models F, p \lor C$.
+
+* $M \models F, p \lor C$, then $M \models F$.
+
+~ End Vertical
+
+<!---
+
+# Transitivity of simplification { data-transition="none" }
+
+~ Begin Lemma
+  Let $\modelEquivTheta{F}{\theta}{F'}$ and $\modelEquivTheta{F'}{\theta'}{F''}$ such that every symbol that is both in $F$ and $F''$ also occurs in $F'$ (i.e.~old symbols are not re-introduced). Then $\modelEquivTheta{F}{\theta\theta'}{F''}$.
+~ End Lemma
+
+--->
+
+~ Begin Vertical
+
+# Pre-processing as abstract inference rules { data-transition="none" }
+
+1. Generic rule covering many scenarios (including from SAT).
+   - specialization when model preservation can be established compositionally
+   - specialization when variables occur uniquely
+
+2. Rule to handle when variables can be _solved_ for.
+
+
+# Blocked Clauses { data-transition="none" }
+
+
+~ MathPre
+   \state{F, p \lor C}{\theta} & \Longrightarrow & \state{F}{\theta}\flexSubst{p}{p \lor \neg C}{p \lor C}
+~
+
+* Resolvents with $p$ on $p \lor C$ in $F$ result in tautologies.
+
+* Model for $p$ is updated to ensure $p \lor C$ is satisfied
+
+* If adding constraints such that $p \lor C$ is no longer blocked, add back $p \lor C$
+
+# Covered Clauses { data-transition="none" }
+
+~ MathPre
+   \state{F, p \lor q}{\theta} \Longrightarrow \state{F, p \lor q \lor r}{\theta\flexSubst{p}{p \lor r}{p \lor q}}
+~
+
+* $F := \neg p \lor r \lor s, \neg p \lor r \lor t, F'$
+* $p$ occurs only positively in $F'$
+
+# Skolemization, Tseitin { data-transition="none" }
+
+~ MathPre
+  \state{\forall x \ . \ \exists y \ . \ p(x, y), F}{\theta} \Longrightarrow \state{\forall x \ . \ p(x, f_{sk}(x)), F}{\theta}
+~ 
+~ MathPre
+  \state{p \lor q \land r, F}{\theta} \Longrightarrow \state{p \lor s_{q \land r}, \neg s_{q \land r} \lor q, \neg s_{q \land r} \lor r, F}{\theta}
+~
+
+
+# $\nameUpdate$ - Generic rule  { data-transition="none" }
+
+
+~ MathPre
+\state{F, \Psi}{\theta} & \Longrightarrow & \state{F, \Phi}{\theta\flexSubst{x}{t}{\Psi}} & \ \ \textrm{if } \modelEquiv{F, \Psi}{x}{t}{F, \Phi}
+~
+
+* $F, \Psi$ - initial formula, $F, \Phi$ simplified formula
+* $\theta$  - model converter
+* $\flexSubst{x}{t}{\Psi}$ - updated model converter, replay $\Psi$ to undo simplification
+
+# $\nameFlex$ - Special case { data-transition="none" }
+
+~ MathPre
+\state{\Phi[t + x], F}{\theta} \Longrightarrow \state{\Phi[y], F}{\theta\flexSubst{x}{y - t}{\Phi[t + x]}}
+~
+* $x$ occurs uniquely in the sub-term $t + x$, $x \not\in F$.
+
+$\nameFlex$:
+~ MathPre
+ \state{F,\Psi}{\theta} & \Longrightarrow & \state{F,\Psi[t/x]}{\theta  \flexSubst{x}{t}{\Psi}}
+~
+
+* if $x \in \Psi, x \not\in F$ and $\modelEquiv{\Psi}{x}{t}{\Psi[t/x]}$.
+
+
+# $\nameInvert$ - Special case { data-transition="none" }
+
+
+~ MathPre
+\state{F[x + t]}{\theta} \Longrightarrow \state{F[y]}{\theta  \flexSubst{x}{y - t}{y \simeq x + t}}
+~
+
+* if $x$ occurs uniquely in $F$, $y$ is fresh
+
+
+# $\nameRigid$ - Solvable variables { data-transition="none" }
+
+
+~ MathPre
+  \state{F}{\theta} & \Longrightarrow & \state{F[t/x]}{\theta \rigidSubst{x}{t}{\Psi}} &
+  
+~
+
+* If $\Psi\subseteq F, x \not\in t$, and $\Psi \Rightarrow \exists y \ . \ x \simeq t[y]$
+
+
+
+~ End Vertical
+
+~ Begin Vertical
+
+# Incrementally adding constraints { data-transition="none" }
+
+* $\state{F}{\theta}$ is a state after pre-processing of $F_0$
+* Add formula $\Phi$
+
+* How should $F$, $\theta$, $\Phi$ be adjusted to provide state
+  * $\state{F'}{\theta'}$
+  * such that $\modelEquivTheta{F_0 \land \Phi}{\theta'}{F'}$?
+
+# Solution { data-transition="none" }
+
+* Convert $\theta$ to a _clean_ substitution w.r.t. new formula $\Phi$.
+  * Removes model updates that are no longer sound when adding $\Phi$.
+  * Adds side constraints from $\theta$ back to formula $F$.
+
+* Apply _clean_ substitution $\theta'$ to $\Phi$,
+  * Return $\state{F \land \Phi\theta'}{\theta'}$
+
+# Clean substitutions { data-transition="none" }
+
+A formula $\Phi$ is clean w.r.t. a substitution sequence $\theta$ iff
+
+* $\theta = \varepsilon$, or
+* $\theta = \subst{x}{t}{\Psi}{\mathbb{B}}\theta'$, $x\not\in\Phi$ and $\Phi$ is clean with respect to $\theta'$, or
+* $\theta = \substRigid{x}{t}{\Psi}\theta'$ and $\Phi[t/x]$ is clean with respect to $\theta'$.
+
+# Update { data-transition="none" }
+
+~Math
+\begin{array}{lllcl}
+\multicolumn{2}{l}{\nameAdd:} & & & \\
+ &\state{F}{\theta} & \Longrightarrow & \state{F,\Phi\theta}{\theta} & \ \ \textrm{if } \Phi \textrm{ is clean w.r.t. } \theta \\
+\multicolumn{2}{l}{\nameUndo:}  & & & \\
+&\state{F}{\theta_0\subst{x}{t}{\Psi}{\mathbb{B}}\theta} & \Longrightarrow & \state{F,\Psi\theta}{\theta_0 \theta} & \ \ \textrm{if } \Psi \textrm{ is clean w.r.t. } \theta \\
+\\
+\end{array}
+~
+
+~ End Vertical
+
+# Summary and Outlook { data-transition="none" }
+
+In this paper:
+
+* A notion of model preservation modulo $\theta$ to capture conditions for incrementality.
+* Semantic rules for incremental pre-processing.
+* Exhibited how mainstream SMT pre-processing rules can be captured by semantic rules
+
+Future:
+
+* FOL lifting of SAT pre-processing rules are justified by preservation of proofs
+  * Instead justify by model updates
+* Integrate notions of redundant clauses with calculus

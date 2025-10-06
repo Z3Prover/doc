@@ -1,0 +1,485 @@
+[INCLUDE=presentation]
+Title         : Combining Theory Solvers
+Sub Title     : TU Wien Guest Lectures October 2025
+                https://z3prover.github.io/slides/guest
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Email         : nbjorner\@microsoft.com
+Reveal Theme  : solarized
+Beamer Theme  : singapore
+Bibliography  : refs.bib
+Cite Style    : natural
+muZ           : $\mu{Z}$
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+Package       : bussproofs
+Embed         : 1024
+Tex Header    : \usetikzlibrary{shapes,snakes}
+Css Header:
+    .reveal p, .reveal li, .reveal .bibitem, .reveal dd, .reveal dt {
+      text-align: left !important;
+      data-transition: none 
+    }
+
+.Math-Inline,.Math-Display,~Math,~MathPre: 
+    replace=//<-/\leftarrow//->/\rightarrow//=>/\Rightarrow//!=/\mathop{\neq}//g 
+    replace=//AA/\forall//EE/\exists//g
+
+
+~ MathDefs
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\twodpstate}[2]{#1  \dbar #2}
+\newcommand{\compl}[1]{\overline{#1}}
+\newcommand{\Model}{M}
+\newcommand{\nodefinition}{}
+\newcommand{\Mbp}{Mbp}
+\newcommand{\Queue}{\mathcal{Q}}
+\newcommand{\Init}{\mathit{Init}}
+\newcommand{\Safe}{\mathit{Safe}}
+\newcommand{\true}{\textsf{true}}
+\newcommand{\false}{\textsf{false}}
+\newcommand{\cF}{{\mathcal{F}}}
+\newcommand{\phidown}{\varphi_{\downarrow}}
+\newcommand{\psidown}{\psi_{\downarrow}}
+\newcommand{\phiup}{\varphi^{\uparrow}}
+\newcommand{\router}[1]{R_{#1}}
+\newcommand{\mustsummary}[3]{
+\langle #1 \stackrel{\mathtt{must}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\notmaysummary}[3]{
+\langle #1 \stackrel{\neg\mathtt{may}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\querysummary}[3]{
+\langle #1 \stackrel{?}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\dst}{\mathit{dst}}
+\newcommand{\src}{\mathit{src}}
+\newcommand{\unk}[1]{{\color{blue}{#1}}}
+\newcommand{\basicvars}{{\mathcal B}}
+\newcommand{\nonbasicvars}{{\mathcal N}}
+\newcommand{\mulvars}{{\mathcal M}}
+\newcommand{\PP}{$(C \lor p) \quad (D \lor \neg p)$}
+\newcommand{\QQ}{$C \lor D$}
+\newcommand{\PB}{$(q \lor t \lor p) \quad (q \lor r \lor \neg p)$}
+\newcommand{\QB}{$(q \lor t \lor r)$}
+\newcommand{\onenorm}[1]{|\!|#1|\!|_1}
+\newcommand{\idiv}{\;\mbox{\rm div}\;}
+~
+
+<style>
+.invariant {
+  font-style: oblique;
+  cite-style: natural;
+  before: "[Invariant ]{.invariant-before}"
+}
+</style>
+
+[TITLE]
+
+
+# Combination of Theory Solvers
+
+* Combining Theories in a modular way $\Rightarrow$ scale solvers across theories
+
+
+~ Begin Vertical
+  
+# Combining Theories
+
+In practice, we need a combination of theories.
+\
+
+~ MathPre
+  b + 2 = c  and  f(read(write(a,b,3), c-2)) \neq f(c-b+1)
+~
+
+A theory is a set (potentially infinite) of first-order sentences.
+\
+\
+
+Main questions:
+  * Is the union of two theories $T_1 \cup T_2$ consistent?
+  * Given a solvers for $T_1$ and $T_2$, 
+    how can we build a solver for $T_1 \cup T_2$?
+
+## Combining Theories In a Nutshell
+
+\
+\
+
+~ Math 
+\xymatrix @-0.5em{
+& T_1 \cup T_2 \\
+T_1 \ar@{.>}[ur] &  & T_2 \ar@{.>}[ul] \\
+& T_0 \ar[ul] \ar[ur] 
+} 
+~
+
+Is there an _effective_ $T_0$ over shared signature, that when embeddable into $T_1, T_2$ implies
+$T_1 \cup T_2$ is consistent?
+
+## A Combination History
+
+<!----
+![CombinationHistory]
+[CombinationHistory]: images/CombinationHistory.png "CombinationHistory" { width:auto }
+---->
+
+|------|-----------------------------------|------|--------------------------------------|
+|   __Foundations__                       || __Efficiency using rewriting__             ||
+|------|-----------------------------------|------|--------------------------------------|
+| 1979 | Nelson \& Oppen - Framework       | 1984 |  Shostak Theory                      |
+|------|-----------------------------------|------|--------------------------------------|
+| 1996 | Tinelli et al: N.O Fix            | 1996 | Cyrluk et al: Shostak fix 1          |
+|------|-----------------------------------|------|--------------------------------------|
+| 2000 | Barrett et al: N.O + Rewriting    | 1998 | B: Shostak + Constraints             |
+|------|-----------------------------------|------|--------------------------------------|
+| 2002 | Zarba \& Manna: "Nice" theories   | 2001 | Rues \& Shankar: Shostak fix 2       |
+|------|-----------------------------------|------|--------------------------------------|
+| 2004 | Ghilardi: N.O. as Amalgamation    | 2004 | Ranise et al: N.O. + Superposition   |
+|------|-----------------------------------|------|--------------------------------------|
+|      | \ \ \ \ \ \      GRASP, Chaff: efficient backjumping                          |||
+|------|-----------------------------------|------|--------------------------------------|
+| 2006 | Bruttomesso et al: Delayed Theory Combination                                 |||
+|------|-----------------------------------|------|--------------------------------------|
+| 2007 | de Moura \& B: Model-based Theory Combination                                 |||  
+|------|-----------------------------------|------|--------------------------------------|
+| 2013 | Jovanovich: overlapping, polite, shiny theories                               |||
+|------|-----------------------------------|------|--------------------------------------|
+| 2025 | [@ToledoPZ25] super polite shiny polish++                                     |||
+|------|-----------------------------------|------|--------------------------------------|
+{.booktable}
+
+## Disjoint Theories
+
+* Two theories are disjoint if they do not share function/constant and predicate symbols.
+$=$ is the only exception.
+
+* Example:
+
+  * The theories of arithmetic and arrays are disjoint.
+ 
+  * Arithmetic symbols: $\{0, -1, 1, -2, 2, \ldots, +, -, \times, >, <,  =, \geq \}$.
+  * Array symbols: $\{ read, write \}$
+
+## Purification
+
+\
+
+~ Math
+   \color{red}{b + 2 = c},\ \color{blue}{f}(\color{green}{read}(\color{green}{write}\color{red}{(a,b,3), c-2})) \neq \color{blue}{f}(\color{red}{c-b+1})
+~
+
+\
+becomes
+\
+\
+
+~ Math
+\begin{array}{l}
+  \color{red}{b + 2 + c}, \color{blue}{f(v_1) \neq f(v_2)} \\
+  \color{green}{v_1 \equiv read(v_3, v_4)}\\
+  \color{red}{v_2 \equiv c - b + 1}\\
+  \color{green}{v_3 \equiv write(a,b,v_5)}\\
+  \color{red}{v_4 \equiv c-2}\\
+  \color{red}{v_5 \equiv 2}\\
+\end{array}
+~
+
+## Purification (2)
+
+~ Math
+   \color{red}{b + 2 = c},\ \color{blue}{f}(\color{green}{read}(\color{green}{write}\color{red}{(a,b,3), c-2})) \neq \color{blue}{f}(\color{red}{c-b+1})
+~
+
+becomes
+\
+\
+
+~ Math
+\begin{array}{ll}
+  \mathrm{Arithmetic:} & \color{red}{b + 2 + c, v_2 \equiv c - b + 1, v_4 \equiv c-2,  v_5 \equiv 2}\\[2em]
+  \mathrm{EUF:}        & \color{blue}{f(v_1) \neq f(v_2)}\\[2em]
+  \mathrm{Arrays:}     & \color{green}{v_1 \equiv read(v_3, v_4), v_3 \equiv write(a,b,v_5)}
+\end{array}
+~
+
+## Stably Infinite Theories
+
+* A theory is stably infinite if every satisfiable QFF is satisfiable in an infinite model.
+
+* EUF and arithmetic are stably infinite.
+
+* Bit-vectors are not
+
+## Stably Infinite Theories - Result
+
+~ Center
+
+The union of two consistent, disjoint, stably infinite theories is consistent.
+
+~
+
+
+## Beyond Disjointness - Amalgamation [@Ghilardi04]
+
+~ Math 
+\xymatrix @-0.5em{
+& T_1 \cup T_2 \\
+ T_1 \cup T_0^* \ar@{.>}[ur] &  & T_2 \cup T_0^* \ar@{.>}[ul] \\
+& T_0^* \ar[ul] \ar[ur] \\
+ T_1 \ar[uu] &  & T_2 \ar[uu] \\
+& T_0 \ar[uu]  
+} 
+~
+
+
+## Amalgamation [@Ghilardi04]
+
+1. there is a universal theory $T_0$ in the shared signature $\Sigma_0$ that is contained in both $T_1$ and $T_2$
+   * $T_0$ is universal = axioms of $T_0$ use only $\forall$.
+2. $T_0$ admits model-completion $T^*_0$ \
+   * Every model of $T_0$ embeds into $T^*_0$.
+   * $T^*_0$ admits quantifier elimination.
+3. every model of $T_i$ embeds into a model of $T_i \cup T^*_0$ 
+   * $M \models T_i$ iff $\mu(M) \models T_i \cup T^*_0$
+4. $T_0$ is effectively locally finite.
+   * For every set of constants $\overline{a}$, there is a finite, 
+     computable, set $t_1, \ldots, t_k$ over $\Sigma_0^{\overline{a}}$ s.t. $T_0 \models \forall u \ . \bigvee_i \ . \ t_i = u$.
+
+## Signature non-disjoint theories
+
+\
+
+__Ingredient__: establish homomorphism from theory $\mathcal{T}$ to $\mathcal{T}_A$,
+  such that consistency of $\mathcal{T}$ is reduced to consistency of 
+  $\mathcal{T}_{A} \cup Arith$.
+
+\
+\
+
+Local Theory Extensions, Bridge Functions, Surjective Homomorphisms 
+[@SofronieStokkermans05], [@FontaineG05], [@ZhangSM06], [@SuterDK10], [@ChocronFR15], [@BerthonR16]
+\
+\
+
+~ MathPre
+    type tree = node2(tree, tree) | leaf
+    x, y : tree
+    length(node(x,y)) = 1 + length(x) + length(y)
+    length(leaf) = 1
+
+    length(x) = 2\cdot length(y)  
+~
+
+
+## Nelson-Oppen combination
+
+Let $\mathcal{T}_1$ and $\mathcal{T}_2$ be consistent, stably infinite theories
+over disjoint (countable) signatures. Assume satisfiability of conjunction of
+literals can be decided in $O(\mathcal{T}_1(n))$ and
+$O(\mathcal{T}_2(n))$ time respectively.
+Then
+
+1. The combined theory $\mathcal{T}$ is consistent and stably infinite.
+
+2. Satisfiability of quantifier free conjunction of literals can be decided
+in $O(2^{n^2} \times (\mathcal{T}_1(n) + \mathcal{T}_2(n)))$.
+
+3. If $\mathcal{T}_1$ and $\mathcal{T}_2$ are [convex]{color:red}, then so is
+$\mathcal{T}$ and satisfiability in $\mathcal{T}$ is
+in $O(n^3 \times (\mathcal{T}_1(n) + \mathcal{T}_2(n)))$.
+
+## Convexity
+
+A theory $T$ is _convex_ iff:
+
+* For all finite sets $S$ of literals
+* For every disjunction $a_1 = b_1 \vee \ldots \vee a_n = b_n$
+   * $S \models a_1 = b_1 \vee \ldots \vee a_n = b_n$
+   * iff
+   * $S \models a_i = b_i$ for some $1 \leq i \leq n$.
+
+
+## Convexity: Positive Results
+
+* Every convex theory with non trivial models is stably infinite.
+
+* Horn equational theories are convex.
+   * Horn equations are formulas of the form $a_1 \neq b_1 \vee \ldots a_n \neq b_n \vee a = b$.
+
+## Convexity: Negative Results
+
+* Integer arithmetic is not convex.
+  * $1 \leq a \leq 2, b = 1, c = 2$ implies $a = b \vee a = c$.
+
+* Real non-linear arithmetic
+  * $a^2 = 1, b = 1, c = -1$ implies $a = b \vee a = c$.
+
+## Combination of non-convex theories
+
+* EUF is convex $O(n \log n)$
+* IDL is non-convex $O(n\cdot m)$
+
+* $EUF \cup IDL$ is NP-complete
+  * Reduce 3-CNF to EUF+ IDL:
+    * $0 \leq a_i \leq 1$ for each Boolean variable.
+    * For each clause $a_i \vee \neg a_j \vee a_k$: $f(a_i,a_j,a_k) \neq f(0,1,0)$.
+
+## A Reduction Approach to Combination [@KapurZarbaReduction;@MouraB09]
+
+Theory Combination in Z3:
+
+* _Core Theories_ = Arithmetic + EUF + SAT
+
+* Bit-vectors, Finite domains = SAT
+
+* Other theories _reduced_ to _Core Theories_
+
+  * Arrays, Datatypes, ..: Instantiate Theory Axioms
+    * each index $j$, each occurrence $\color{green}{write(a,i,v)}$.
+    * add $\color{green}{read(write(a,i,v),i) = v}$
+    * add $\color{green}{read(write(a,i,v),j) = read(a,j) \lor i = j}$
+
+## Gentle, smooth, polite theory combinations [@JovanovicB11]
+
+* Filtering rules on when shared variables matter.
+
+*  $x, y$ are shared, but 
+
+    * $x$ occurs only in $f(x), g(x,z)$
+
+    * $y$ occurs only in $h(y), g(z,y)$
+
+* We don't _care_ if $x = y$ or $x \neq y$.
+
+
+
+## Combining Theories in Practice 
+
+Propagate all implied equalities.
+
+* Deterministic Nelson-Oppen.
+
+* Complete only for [convex]{color:#FF0000} theories.
+
+* It may be expensive for some theories.
+
+Delayed Theory Combination.
+
+* Deterministic Nelson-Oppen.
+
+* Create set of interface equalities $(x = y)$ between shared variables.
+
+* Use SAT solver to [guess the partition]{color:#FF0000}.
+
+* Disadvantage: the number of additional equalities 
+  is [quadratic]{color:#FF0000} in the number of shared variables.
+{align-text:left}
+
+## Combining Theories in Practice (2)
+
+Common to these methods is that they are _pessimistic_ about which equalities are propagated.\
+\
+
+Model-based Theory Combination:
+
+* Optimistic approach.
+
+* Use a candidate model $M_i$ for one of the theories $\mathcal{T}_i$ and
+  propagate all equalities implied by the candidate model hedging that other
+  theories will agree.
+    
+  ~ Math
+         \mathrm{if}\ M_i \models \mathcal{T}_i \cup \Gamma_i \cup \{ u = v \}\ \mathrm{then\ propagate}\ u = v
+  ~
+
+* If not, use backtracking on choices $\Gamma$ to fix the model.
+
+* It is cheaper to enumerate equalities that are implied in a 
+  particular model than of all models.
+
+<!----
+![CombiningTheoriesInPractice2]
+[CombiningTheoriesInPractice2]: images/CombiningTheoriesInPractice2.png "CombiningTheoriesInPractice2" { width:auto }
+---->
+
+## Model-Based Theory Combination - Example
+
+~ MathPre
+  x = f(y-1), f(x) \neq f(y), 0 \leq x \leq 1, 0 \leq y \leq 1
+~
+
+purify
+
+~ Math
+  {\color{blue}{x = f(z), f(x) \neq f(y)}}, {\color{red}{0 \leq x \leq 1, 0 \leq y \leq 1, z = y - 1}}
+~
+
+
+## Model-Based Theory Combination (1)
+
+![MBTCombination1]
+[MBTCombination1]: images/MBTCombination1.png "MBTCombination1" { width:auto }
+
+## Model-Based Theory Combination (2)
+
+![MBTCombination2]
+[MBTCombination2]: images/MBTCombination2.png "MBTCombination2" { width:auto }
+
+## Model-Based Theory Combination (3)
+
+![MBTCombination3]
+[MBTCombination3]: images/MBTCombination3.png "MBTCombination3" { width:auto }
+
+## Model-Based Theory Combination (4)
+
+![MBTCombination4]
+[MBTCombination4]: images/MBTCombination4.png "MBTCombination4" { width:auto }
+
+## Model-Based Theory Combination (5)
+
+![MBTCombination5]
+[MBTCombination5]: images/MBTCombination5.png "MBTCombination5" { width:auto }
+
+## Model-Based Theory Combination (6)
+
+![MBTCombination6]
+[MBTCombination6]: images/MBTCombination6.png "MBTCombination6" { width:auto }
+
+## Model-Based Theory Combination (7)
+
+![MBTCombination7]
+[MBTCombination7]: images/MBTCombination7.png "MBTCombination7" { width:auto }
+
+
+~ End Vertical
+
+
+
+
+~ Begin Vertical
+
+# Relaxing conditions, arrays
+
+# Diversifying Arithmetic
+
+# Polite, etc
+
+# Yoni Zohar's ontology
+
+~ End Vertical
+
+~ Begin Vertical
+
+# Canonization and Equality Saturation
+
+* Bit-vectors
+
+* Arithmetic
+
+~ End Vertical
+
+# References {data-transition:none }
+
+[BIB]
