@@ -1,7 +1,6 @@
 [INCLUDE=presentation]
 Title         : Combining Theory Solvers
 Sub Title     : TU Wien Guest Lectures October 2025
-                https://z3prover.github.io/slides/guest
 Author        : Nikolaj Bj&oslash;rner
 Affiliation   : Microsoft Research
 Email         : nbjorner\@microsoft.com
@@ -120,15 +119,11 @@ $T_1 \cup T_2$ is consistent?
 
 ## A Combination History
 
-<!----
-![CombinationHistory]
-[CombinationHistory]: images/CombinationHistory.png "CombinationHistory" { width:auto }
----->
 
 |------|-----------------------------------|------|--------------------------------------|
 |   __Foundations__                       || __Efficiency using rewriting__             ||
 |------|-----------------------------------|------|--------------------------------------|
-| 1979 | Nelson \& Oppen - Framework       | 1984 |  Shostak Theory                      |
+| 1979 | [@NelsonO79] - Framework          | 1984 |  Shostak Theory                      |
 |------|-----------------------------------|------|--------------------------------------|
 | 1996 | Tinelli et al: N.O Fix            | 1996 | Cyrluk et al: Shostak fix 1          |
 |------|-----------------------------------|------|--------------------------------------|
@@ -136,15 +131,15 @@ $T_1 \cup T_2$ is consistent?
 |------|-----------------------------------|------|--------------------------------------|
 | 2002 | Zarba \& Manna: "Nice" theories   | 2001 | Rues \& Shankar: Shostak fix 2       |
 |------|-----------------------------------|------|--------------------------------------|
-| 2004 | Ghilardi: N.O. as Amalgamation    | 2004 | Ranise et al: N.O. + Superposition   |
+| 2004 | [@Ghilardi04]: N.O. as Amalgamation    | 2004 | Ranise et al: N.O. + Superposition   |
 |------|-----------------------------------|------|--------------------------------------|
-|      | \ \ \ \ \ \      GRASP, Chaff: efficient backjumping                          |||
+|      | \ \ \ \ \ \      [@SilvaS99,@MoskewiczMZZM01] efficient backjumping           |||
 |------|-----------------------------------|------|--------------------------------------|
 | 2006 | Bruttomesso et al: Delayed Theory Combination                                 |||
 |------|-----------------------------------|------|--------------------------------------|
-| 2007 | de Moura \& B: Model-based Theory Combination                                 |||  
+| 2007 | [@MouraB08]: Model-based Theory Combination                                   |||  
 |------|-----------------------------------|------|--------------------------------------|
-| 2013 | Jovanovich: overlapping, polite, shiny theories                               |||
+| 2011 | [@JovanovicB11]: overlapping, polite, shiny theories                          |||
 |------|-----------------------------------|------|--------------------------------------|
 | 2025 | [@ToledoPZ25] super polite shiny polish++                                     |||
 |------|-----------------------------------|------|--------------------------------------|
@@ -454,8 +449,6 @@ purify
 
 
 ~ End Vertical
-
-
 
 
 ~ Begin Vertical
