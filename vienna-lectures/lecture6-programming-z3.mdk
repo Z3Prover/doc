@@ -1,7 +1,6 @@
 [INCLUDE=presentation]
 Title         : Programming Z3
 Sub Title     : TU Wien Guest Lectures, October 2025
-SubTitle      : Programming Z3
 Author        : Nikolaj Bj&oslash;rner
 Affiliation   : Microsoft Research
 Email         : nbjorner\@microsoft.com
@@ -639,6 +638,148 @@ def maxsat(s, Fs0):
 MCS alone is inefficient. In [@BjornerN15] we combine MUS and MCS steps.
 
 ~ End Vertical
+
+~ Begin Vertical
+
+# All SMT  {data-transition:none }
+
+```python
+def block_model(s):
+    m = s.model()
+    s.add(Or([ f() != m[f] for f in m.decls() if f.arity() == 0]))           
+```
+
+It is naturally also possible to block models based on the evaluation
+of only a selected set of terms, and not all constants mentioned in the
+model. The corresponding `block_model` is then
+```python
+def block_model(s, terms):
+    m = s.model()
+    s.add(Or([t != m.eval(t, model_completion=True) for t in terms]))
+```
+
+A loop that cycles through multiple solutions can then be formulated:
+```python
+def all_smt(s, terms):
+    while sat == s.check():
+       print(s.model())
+       block_model(s, terms)
+```
+
+## All SMT example  {data-transition:none }
+
+
+```python
+x, y = Ints('x y')
+s = Solver()
+s.add(1 <= x, x <= y, y <= 3)
+s.push()
+print("all ", x)
+all_smt(s, [x])
+s.pop()
+print("all ", x, y)
+all_smt(s, [x, y])
+```
+
+```python
+all  x
+[x = 1, y = 1]
+[x = 2, y = 2]
+[x = 3, y = 3]
+all  x y
+[x = 3, y = 3]
+[x = 2, y = 2]
+[x = 1, y = 1]
+[x = 1, y = 2]
+[x = 1, y = 3]
+[x = 2, y = 3]
+```
+
+## All SMT - avoiding lemmas by using scopes {data-transition:none }
+
+```python
+def all_smt(s, initial_terms):
+    def block_term(s, m, t):
+        s.add(t != m.eval(t, model_completion=True))
+    def fix_term(s, m, t):
+        s.add(t == m.eval(t, model_completion=True))
+    def all_smt_rec(terms):
+        if sat == s.check():
+           m = s.model()
+           yield m
+           for i in range(len(terms)):
+               s.push()
+               block_term(s, m, terms[i])
+               for j in range(i):
+                   fix_term(s, m, terms[j])
+               yield from all_smt_rec(terms[i:])
+               s.pop()   
+    yield from all_smt_rec(list(initial_terms))
+```
+
+## All SMT - user propagator [@BjornerEK23] {data-transition:none }
+
+```python
+class BlockTracked(UserPropagateBase):
+    def __init__(self, s):
+        UserPropagateBase.__init__(self, s)
+        self.trail = []
+        self.lim   = []
+        self.add_fixed(lambda x, v : self._fixed(x, v))
+        self.add_final(lambda : self._final())
+
+    def push(self):
+        self.lim += [len(self.trail)]
+
+    def pop(self, n):
+        self.trail = self.trail[0:self.lim[len(self.lim) - n]]
+        self.lim = self.lim[0:len(self.lim)-n]
+
+    def _fixed(self, x, v):    
+        self.trail += [(x, v)]
+
+    def _final(self):
+        print(self.trail)
+        self.conflict([x for x, v in self.trail])
+```
+
+## All SMT  - user propagator instance  {data-transition:none }
+
+
+```python
+s = SimpleSolver()
+b = BlockTracked(s)
+
+x, y, z, u = Bools('x y z u')
+b.add(x)
+b.add(y)
+b.add(z)
+
+s.add(Or(x, Not(y)), Or(z, u), Or(Not(z), x))
+
+print(s.check())
+```
+
+```python
+python propagator.py 
+[(z, True), (x, True), (y, False)]
+[(z, True), (x, True), (y, True)]
+[(z, False), (y, False), (x, False)]
+[(z, False), (y, False), (x, True)]
+[(z, False), (y, True), (x, True)]
+unsat
+```
+
+## Other Propagation Facilities  {data-transition:none }
+
+```python
+ add_eq
+ propagate
+
+```
+
+~ End Vertical
+
 
 
 
