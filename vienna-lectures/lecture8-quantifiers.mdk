@@ -1229,6 +1229,12 @@ $m' \land m_0[\vec{x}_0] \ \rightarrow \ \cF(R_{i})[\vec{x}_0,\vec{x}] \land m$.
 * [@KomuravelliGC14] $(\exists\vec{x} \ . \ m \land \cF(R_{i})[\vec{x}_0,\vec{x}]) \ \equiv\ \bigvee_i \psi_i[\vec{x}_0]$ where $\psi_i$ are quantifier-free. Use model for $m \land \cF(R_{i})[\vec{x}_0,\vec{x}]$ to compute $\psi_i$ without expanding full disjunction.
 * [@CimattiGMT14;@ItzhakyBRST14] Keep vocabulary of literals fixed (= predicate abstraction). 
 
+## Global Guidance Aim
+
+![GlobalGuidance]
+
+[GlobalGuidance]: images/global-guidance-end-to-end.png "GlobalGuidanceConcept" { width:auto }
+
 ~ End Vertical
 
 
