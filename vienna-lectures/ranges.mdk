@@ -1,0 +1,336 @@
+[INCLUDE=presentation]
+Title         : Solving ranges
+Sub Title     : TU Wien Guest Lectures October 2025
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Email         : nbjorner\@microsoft.com
+Reveal Theme  : solarized
+Beamer Theme  : singapore
+Bibliography  : refs.bib
+Cite Style    : natural
+muZ           : $\mu{Z}$
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+Embed         : 1024
+Tex Header    : \usetikzlibrary{shapes,snakes}
+Css Header:
+    .reveal p, .reveal li, .reveal .bibitem, .reveal dd, .reveal dt {
+      text-align: left !important;
+    }
+
+.Math-Inline,.Math-Display,~Math,~MathPre: 
+    replace=//<-/\leftarrow//->/\rightarrow//=>/\Rightarrow//!=/\mathop{\neq}//g 
+    replace=//AA/\forall//EE/\exists//g
+
+
+~ MathDefs
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\twodpstate}[2]{#1  \dbar #2}
+\newcommand{\compl}[1]{\overline{#1}}
+\newcommand{\Model}{M}
+\newcommand{\nodefinition}{}
+\newcommand{\Mbp}{Mbp}
+\newcommand{\Queue}{\mathcal{Q}}
+\newcommand{\Init}{\mathit{Init}}
+\newcommand{\Safe}{\mathit{Safe}}
+\newcommand{\true}{\textsf{true}}
+\newcommand{\false}{\textsf{false}}
+\newcommand{\cF}{{\mathcal{F}}}
+\newcommand{\phidown}{\varphi_{\downarrow}}
+\newcommand{\psidown}{\psi_{\downarrow}}
+\newcommand{\phiup}{\varphi^{\uparrow}}
+\newcommand{\router}[1]{R_{#1}}
+\newcommand{\mustsummary}[3]{
+\langle #1 \stackrel{\mathtt{must}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\notmaysummary}[3]{
+\langle #1 \stackrel{\neg\mathtt{may}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\querysummary}[3]{
+\langle #1 \stackrel{?}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\dst}{\mathit{dst}}
+\newcommand{\src}{\mathit{src}}
+\newcommand{\unk}[1]{{\color{blue}{#1}}}
+~
+
+# Sample formula
+
+Check satisfiability of 
+
+~ MathPre
+  l < x < y < u
+  [l..u] \setminus \{ x, y \} \subseteq A \subseteq [l..u] \setminus \{ x \}
+~
+
+# Array Property Fragment Encoding
+
+```
+(declare-fun RangeLU (Int) Bool)
+(declare-fun A (Int) Bool)
+(declare-const lo Int)
+(declare-const hi Int)
+(declare-const x Int)
+(declare-const y Int)
+
+(assert (< lo x y hi))
+
+; express that RangeLU = [lo..hi]
+(define-fun below_lo ((i Int)) Bool (=> (<= i (- lo 1)) (not (RangeLU i))))
+(define-fun in_range ((i Int)) Bool (=> (>= i (+ hi 1)) (not (RangeLU i))))
+(define-fun above_hi ((i Int)) Bool (=> (and (<= lo i) (<= i hi)) (RangeLU i)))
+(assert (forall ((i Int)) (below_lo i)))
+(assert (forall ((i Int)) (in_range i)))
+(assert (forall ((i Int)) (above_hi i)))
+
+
+
+; express that [l..u] \ { x, y } \subseteq A \subseteq [l..u] \ { x }
+(define-fun below-A ((i Int)) Bool (=> (and (RangeLU i) (not (= i x)) (not (= i y))) (A i)))
+(define-fun above-A ((i Int)) Bool (=> (A i) (and (RangeLU i) (not (= i x)))))
+
+(assert (forall ((i Int)) (below-A i)))
+(assert (forall ((i Int)) (above-A i)))
+
+(check-sat)
+(get-model)
+(reset)
+
+```
+
+# Attempt 1 - manual encoding
+
+```
+; read set of free variables:
+; R := { x, y }
+; read set for bound variables:
+; B := { lo - 1, hi + 1, lo, hi }
+; 
+
+(declare-fun RangeLU (Int) Bool)
+(declare-fun A (Int) Bool)
+(declare-const lo Int)
+(declare-const hi Int)
+(declare-const x Int)
+(declare-const y Int)
+
+(assert (< lo x y hi))
+(assert (< (+ lo 10) hi))
+
+(define-const r1 Int x)
+(define-const r2 Int y)
+(define-const b1 Int (- lo 1))
+(define-const b2 Int (+ hi 1))
+(define-const b3 Int lo)
+(define-const b4 Int hi)
+
+
+(define-fun below-lo ((i Int)) Bool (=> (<= i (- lo 1)) (not (RangeLU i))))
+(define-fun in-range ((i Int)) Bool (=> (>= i (+ hi 1)) (not (RangeLU i))))
+(define-fun above-hi ((i Int)) Bool (=> (and (<= lo i) (<= i hi)) (RangeLU i)))
+(assert (below-lo r1))
+(assert (below-lo r2))
+(assert (below-lo b1))
+(assert (below-lo b2))
+(assert (below-lo b3))
+(assert (below-lo b4))
+(assert (in-range r1))
+(assert (in-range r2))
+(assert (in-range b1))
+(assert (in-range b2))
+(assert (in-range b3))
+(assert (in-range b4))
+(assert (above-hi r1))
+(assert (above-hi r2))
+(assert (above-hi b1))
+(assert (above-hi b2))
+(assert (above-hi b3))
+(assert (above-hi b4))
+
+
+
+; express that [l..u] \ { x, y} \subseteq A \subseteq [l..u] \ { x }
+(define-fun below-A ((i Int)) Bool (=> (and (RangeLU i) (not (= i x)) (not (= i y))) (A i)))
+(define-fun above-A ((i Int)) Bool (=> (A i) (and (RangeLU i) (not (= i x)))))
+
+
+(assert (above-A r1))
+(assert (above-A r2))
+(assert (above-A b1))
+(assert (above-A b2))
+(assert (above-A b3))
+(assert (above-A b4))
+(assert (below-A r1))
+(assert (below-A r2))
+(assert (below-A b1))
+(assert (below-A b2))
+(assert (below-A b3))
+(assert (below-A b4))
+
+(check-sat)
+(get-model)
+```
+
+
+# Examining the result of manual encoding
+
+Run z3 with model.compact=false
+We get a model, corresponding to assigned atoms:
+
+```
+  (define-fun RangeLU ((x!0 Int)) Bool
+    (ite (= x!0 1) true
+    (ite (= x!0 2) true
+    (ite (= x!0 (- 1)) false
+    (ite (= x!0 11) true
+    (ite (= x!0 12) false
+    (ite (= x!0 0) true
+      true)))))))
+  (define-fun A ((x!0 Int)) Bool
+    (ite (= x!0 1) false
+    (ite (= x!0 2) false
+    (ite (= x!0 (- 1)) false
+    (ite (= x!0 12) false
+    (ite (= x!0 0) true
+    (ite (= x!0 11) true
+      false)))))))
+
+```
+
+# Examining the result (II)
+
+* The ite guards are based on assigned atoms.
+We can ignore the default case. Here it is arbitrary.
+
+* For RangeLU we should have the interpretation $[0..11]$.
+
+* The set $A$ should be equal to $[0..11]$ except two elements, these are $\{1, 2\}$.
+So the expected interpretation of $A$ is $\{0\} \cup [3..11]$.
+
+# Array property fragment by example
+
+Let us recall the correctness proof for the array property fragment.
+We will consider the special case for a single bound variable to keep it simple.
+
+* $inst := \{ lo - 1 -> -1, lo -> 0, x -> 0, y -> 1, hi -> 11, hi + 1 -> 12\}$
+
+Define projection function project such that
+
+* for every integer z: project(z) is the nearest integer that is in the range of inst.
+
+For example project(-3) = project(-2) = projec(-1) = -1.
+
+# Constructing $M_\forall$
+
+We would like to build an interpretation $M_\forall$ over finite sets from the above interpretation $M_{inst}$ using project.
+Define:
+
+~ MathPre
+  M_\forall(z) := M_{inst}(project(z))
+~
+
+for every integer z.
+
+Then $M_\forall(x \in A) \Leftrightarrow M_{inst}(project(x)) \in M_{inst}(A).$
+
+# Proving model presevation (main theorem)
+
+Given
+
+~ MathPre
+\forall i : Guard(i) => F_V(i)
+~
+
+Suppose we have a model for $M_{inst}(Guard(t) => F_V(t))$ for every $t$ in the instantation set $inst$.
+
+Let us show that for every z:
+
+1.   $M_\forall(Guard(z)) => M_{inst}(Guard(project(z)))$
+
+2.   $M_{inst}(F_V(project(z))) => M_\forall(F_V(z))$
+
+Then it follows from transitivity of $Guard(project(z)) => F_V(project(z))$
+that $Guard(z) => F_V(z)$.
+
+# Recall what are guards and value formulas
+
+Recall that $Guard(z)$ can be assumed to be a conjunction $z \geq t$, $z \leq t$. 
+Then as project(z) is the a term in inst that maps to the nearest value close to z.
+Then, the truth value of $project(z) \geq t$, or $project(z) \leq t$ is the same.
+This proves (1)
+
+$F_V$ is a disjunction of ground formulas or (negated) membership constraints $z \in A$.
+Assume $M_{inst}(F_V(project(z)))$. Then one of the disjunctions in $F_V$ is true.
+Suppose it is project(z) in A. Now, we constructed $M_\forall(z \in A) \Leftrightarrow M_{inst}(project(z) \in A)$.
+Therefore $M_\forall(z \in A)$.
+
+# But there is a problem!
+If we construct a model from our instantiation set we don't get a well-formed model.
+What is going on?
+
+The problem is that our quantified formula wasn't in the right format.
+
+```
+(define-fun below-A ((i Int)) Bool (=> (and (RangeLU i) (not (= i x)) (not (= i y))) (A i)))
+```
+
+is not in the format of $Guard => F_V$.
+Guards cannot be atoms $i \neq x$.
+
+# Every problem is a solution in disguise
+
+Instead we have to create multiple guards to capture the property in the array fragment:
+
+```
+(define-fun below-A-1 ((i Int)) Bool (=> (and (RangeLU i) (< i x) (< i y)) (A i)))
+(define-fun below-A-1 ((i Int)) Bool (=> (and (RangeLU i) (< x i) (< i y)) (A i)))
+(define-fun below-A-1 ((i Int)) Bool (=> (and (RangeLU i) (< y i) (< i x)) (A i)))
+(define-fun below-A-1 ((i Int)) Bool (=> (and (RangeLU i) (> i x) (> i y)) (A i)))
+```
+
+Thus, the index set now includes $\{ x - 1, x + 1, y - 1, y + 1 \}$.
+
+# Programming the theory solver
+
+We can now turn our attention to the following question: 
+how do we best automatically detect instantation sets from finite set formulas?
+
+In a nutshell we want to ensure that we have enough membership constraints for ranges to
+force composite constraints to evaluate correctly if we use the nearest neighbor projection
+function.
+
+For example if the atomic formula $i \in [l..u] \setminus \{x, y\}$ exists then we should also evaluate it on $i - 1, i + 1$.
+
+# Outline of a procedure (I)
+
+* _Range local terms_: For every range expression $[l..u]$ define the range local terms as initially $\{l-1, l, u, u + 1\}$.
+
+* _Saturating range local terms_: Whenever $x \in [l..u]$ occurs and is assigned to true and x is not a range local term, 
+then add $\{x-1, x + 1\}$ to range local terms and add atoms for $x - 1 \in [l..u], x + 1 \in [l..u]$.
+
+# Outline of a procedure (II) - Problem!
+
+If we can't assume complete assignments for ground formulas, this saturation rule is insufficient.
+
+For example, we could have ($i \in [l..u] \setminus \{ x, y \} => i \in A$) holds for $i = x$
+because $i \in [l..u] \setminus \{ x, y \} => i \in [l..u]$ and 
+$i \neq x$ and $i \neq y$ and we don't need the truth value of $i \in [l..u]$
+to evaluate this formula (to false) for $i = x$.
+
+# Outline of a procedure (III) - Solution
+
+The way we got from finite set constraints to the array property fragment was to encode every connective
+with universal axioms.
+For example,
+
+~ MathPre
+  i \in [l..u] \setminus \{ x, y \} \Leftrightarrow i \in [l..u] \wedge i \neq x \wedge i \neq y
+ ~
+
+
+It suffices to retrace range-local terms from axioms.
+
+__Claim__: The following extension will do the trick:
+Whenever $x \in setop([l..u],..)$ occurs, and x is not a range local term, then add range local terms $x - 1, x + 1$. 
+
+
