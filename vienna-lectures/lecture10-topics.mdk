@@ -1,0 +1,1118 @@
+[INCLUDE=presentation]
+Title         : Topics in SMT
+Sub Title     : TU Wien Guest Lectures October 2025
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Email         : nbjorner\@microsoft.com
+Reveal Theme  : solarized
+Beamer Theme  : singapore
+Bibliography  : refs.bib
+Cite Style    : natural
+muZ           : $\mu{Z}$
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+Package       : bussproofs
+Embed         : 1024
+Tex Header    : \usetikzlibrary{shapes,snakes}
+Css Header:
+    .reveal p, .reveal li, .reveal .bibitem, .reveal dd, .reveal dt {
+      text-align: left !important;
+    }
+
+.Math-Inline,.Math-Display,~Math,~MathPre: 
+    replace=//<-/\leftarrow//->/\rightarrow//=>/\Rightarrow//!=/\mathop{\neq}//g 
+    replace=//AA/\forall//EE/\exists//g
+
+
+~ MathDefs
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\twodpstate}[2]{#1  \dbar #2}
+\newcommand{\compl}[1]{\overline{#1}}
+\newcommand{\Model}{M}
+\newcommand{\nodefinition}{}
+\newcommand{\Mbp}{Mbp}
+\newcommand{\Queue}{\mathcal{Q}}
+\newcommand{\Init}{\mathit{Init}}
+\newcommand{\Safe}{\mathit{Safe}}
+\newcommand{\true}{\textsf{true}}
+\newcommand{\false}{\textsf{false}}
+\newcommand{\cF}{{\mathcal{F}}}
+\newcommand{\phidown}{\varphi_{\downarrow}}
+\newcommand{\psidown}{\psi_{\downarrow}}
+\newcommand{\phiup}{\varphi^{\uparrow}}
+\newcommand{\router}[1]{R_{#1}}
+\newcommand{\mustsummary}[3]{
+\langle #1 \stackrel{\mathtt{must}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\notmaysummary}[3]{
+\langle #1 \stackrel{\neg\mathtt{may}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\querysummary}[3]{
+\langle #1 \stackrel{?}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\dst}{\mathit{dst}}
+\newcommand{\src}{\mathit{src}}
+\newcommand{\unk}[1]{{\color{blue}{#1}}}
+\newcommand{\proof}{\pi}
+\newcommand{\Justification}{{\mathcal J}}
+\newcommand{\Literal}{{\mathcal L}}
+\newcommand{\find}{\mathit{find}}
+\newcommand{\basicvars}{{\mathcal B}}
+\newcommand{\nonbasicvars}{{\mathcal N}}
+\newcommand{\evalone}{\mathcal{E}}
+\newcommand{\evalstar}[1]{\Sem{#1}}
+\newcommand{\inter}{\mathcal{I}}
+\newcommand{\Value}{\mathcal{V}}
+\newcommand{\termsort}{\mathsf{T}}
+\newcommand{\terms}{\mathbf{T}}
+\newcommand{\values}{\mathsf{V}}
+\newcommand{\Range}{\mathcal{R}}
+\newcommand{\Theory}{\mathcal{T}}
+\newcommand{\Sem}[1]{\mathcal{M}(#1)}
+\newcommand{\Literals}{\mathcal{L}}
+\newcommand{\Clauses}{\mathcal{C}}
+\newcommand{\Equalities}{\mathsf{E}}
+\newcommand{\Functions}{\mathcal{F}}
+\newcommand{\uprepair}{\mathcal{U}}
+\newcommand{\downrepair}{\mathcal{D}}
+\newcommand{\parentsof}{\mathcal{P}}
+\newcommand{\EUF}{{\sf{EUF}}}
+\newcommand{\LIA}{{\sf{LIA}}}
+\newcommand{\NIA}{{\sf{NIA}}}
+\newcommand{\NRA}{{\sf{NRA}}}
+\newcommand{\NIRA}{{\sf{NIRA}}}
+\newcommand{\DT}{{\sf{DT}}}
+\newcommand{\BV}{{\sf{BV}}}
+\newcommand{\A}{{\sf{A}}}
+\newcommand{\Str}{{\sf{S}}}
+
+~
+
+
+
+<style>
+.invariant {
+  font-style: oblique;
+  cite-style: natural;
+  before: "[Invariant ]{.invariant-before}"
+}
+</style>
+
+[TITLE]
+
+# Contents
+
+[TOC]
+
+~ Begin Vertical 
+
+# Local Search
+
+## Terms and values
+
+
+~ MathPre
+s, t, \varphi, x, y, z & \in &   \termsort      & ::= & f(\termsort^*) & & \mbox{function applied to terms}\\
+                       &     &   \mathcal{M}    & : & \Functions \times \values^* \rightarrow \values & & \mbox{operator semantics} \\
+                       &     &   \Range         & : & \termsort \rightarrow 2^\values & & \mbox{non-empty viable range} \\
+                       &     &   \terms         & \subset & \termsort & & \mbox{a finite set of terms, closed under sub-terms} \\
+~
+
+
+## Interpretations
+
+
+~ MathPre
+  \Value      & : & \termsort \rightarrow \values & & \mbox{value assignment}\\
+%  \evalone    & : & \termsort \rightarrow \values & & \mbox{one step evaluation}\\
+  \evalone(f(\vec{t}))   & := & \Sem{f(\Value(\vec{t}))} & & \mbox{one step local evaluation}\\
+  \evalstar{f(\vec{t})} & := & \Sem{f(\evalstar{\vec{t}})} & & \mbox{full evaluation}\\ 
+~
+
+## Coherence
+
+Given a formula $\varphi$, fix
+
+* $\Value(\varphi) := \true, \Range(\varphi) := \{ \true \}$.
+
+
+~ Proposition
+Let $\terms$ be the subterms in formula $\varphi$. If
+$\evalone(t) = \Value(t) \in \Range(t)$ for every $t \in \terms$
+then $\evalstar{\varphi} = \true$.
+~
+
+## Invertible functions
+
+Recall global pre-processing rules: If $F[x + y]$ contains the subterm $x + y$ and this is the only occurrence of $x$ simplify to $F[x]$ and remember
+that interpretation for $x$ should be repaired to $\Model(x) := \Model(x) - \Model(y)$.
+
+* Many operators are invertible.
+
+* Sometimes operators are not invertible, but _weakly invertible_: If $\Model(x \cdot y) = 1, \Model(x) = \Model(y) = 0$. We cannot solve for $x$ or $y$. But we can reset both $x, y$ to some values that solve for 1.
+
+## Repair by invertibility
+
+Rehash
+ ~  If $\evalone(t) \not\in \Range(t)$, set $\Value(t) := $ to a new random value in $\Range(t)$.
+Strong invertibility
+ ~  If there is a value $v_1 \in \Range(t_1)$, such that $\Value(t) = \Sem{f(v_1, \Value(t_2))}$, then set $\Value(t_1) := v_1$.
+ ~  Symmetric for $v_2$.
+Weak invertibility
+ ~  If there are values $v_1 \in \Range(t_1), v_2 \in \Range(t_2)$ with $v_1\neq\Value(t_1)$, such that $\Value(t) = \Sem{f(v_1, v_2)}$, set $\Value(t_1) := v_1$.
+ ~   Symmetric for $v_2$.
+No invertibility
+ ~  If there are no values $v_1, v_2$, such that $\Value(t) = \Sem{f(v_1,v_2)}$, then set $\Value(t)$ to a new random value in $\Range(t)$.    
+Revert to Up 
+ ~ is allowed if $\evalone(t) \in \Range(t)$.
+
+
+## Repair by gradients
+
+~ Definition
+   Given a valuation $\evalone(\varphi) = \bot$, select a sub-term $t$ and
+   collect a set of Boolean atoms $A$ containing $t$. Based on $A$, compute
+  an orbit $O$ of possible updates to $\Value(t)$ that toggle the truth values of one or more atoms in $A$.
+    Then use a cost function that allows selecting an optimal value in $O$ that improves evaluation of $\varphi$ maximally towards $\top$.
+~
+
+I found that using gradients is not as brittle as local repear. 
+Gradients can exploit derivatives. 
+But local repair is useful when there is not clear derivative for functions.
+
+
+## Challenges and Opportunities
+
+* Combine Theory local search with Boolean local search
+  * Best current solution runs Boolean SLS (in z3 it is ddfw) in alternation with theory repair.
+  * Theory local search solvers are clause-aware structures.
+
+* Use information from local search to speed up complete search
+  * Variable priorties: keep track of frequency of variable flips
+  * Variable phases: 
+    * For SAT: set the phase (and values of arithmetic variables) to the best model so far
+    * For UNSAT: I haven't addressed this seriously yet
+
+~ End Vertical
+
+
+~ Begin Vertical 
+
+# Equality Saturation modulo Theories
+
+* A fresh topic
+
+* Egglog: 
+  * E-saturation modulo ground equalities and E-matching rules.
+  * Datalog-like bottom-up saturation.
+
+## Congruence Closure Modulo Theories
+
+If we merge 
+
+* $A \cup B \cup C \simeq D \cup E$
+* $A \cup B \cup E \simeq F$
+
+We can infer that $D \cup E \simeq F \cup C$.
+
+* Augment E-graph merge by ACI completion.
+
+## ACI completion
+
+* A little subroutine that sits as a callback from E-graph merge.
+* Maintains a work list of AC equations that have not been processed.
+* Finds critical pairs, superposes, and adds new equalities.
+* Reduces existing equalities modulo oriented equations.
+
+
+## Bit-vector equalities
+
+* $x[10:3] = x[8:1] \Rightarrow x[10:9] = x[8:7] = x[6:5] = x[4:3] = x[2:1]$
+
+* "Cut, dice, and slice" extract, concat, and bit-wise: $x[hi:lo] \simeq y \& x$
+
+## E-matching Modulo Theories
+
+* Matching modulo AC and ACI
+
+* Matching modulo Higher-Order functions
+
+Both topics have established solutions.
+
+For E-matching:
+
+* Basic solutions: to implement top-down algorithm with the additional feature that you can iterate over an equivalence class of ground terms in each step.
+
+
+~ End Vertical
+
+
+~ Begin Vertical 
+
+
+# CDCL(T) proofs
+
+Theory solver offers two main services
+
+~ Math
+\begin{array}{llllll}
+{\sf T-Propagate} & \twodpstate{M}{F} & \Longrightarrow &
+\twodpstate{M\ell^{C\vee\ell}}{F} &
+\left\{
+\begin{array}{l}
+\mbox{$\ell$ unassigned in $M$} \\
+\mbox{$\ell$ or $\neg{\ell}$ occurs in $F$} \\
+\mbox{$T \models C \vee \ell$}\\
+\compl{C} \subseteq M
+\end{array}
+\right.
+\\[4em]
+{\sf T-Conflict} &
+\twodpstate{M}{F} &  \Longrightarrow & \conflstate{M}{F}{C}   & 
+\compl{C} \subseteq M,\ T \models C.
+\end{array}
+~
+
+## CDCL(T) proofs (II)
+
+
+Both cases rely on establishing $T$-tautologies
+
+~ Math
+   T \models C
+~
+
+* $T$ tautologies are justified using theory specific rules
+
+* $T$ tautologies can be added to propositional RUP proofs as _trusted_ assumptions
+
+## CDCL(T) proofs - justifying inferences
+
+* EUF - we show how to justify EUF tautologies found by congruence closure
+
+* Arithmetic - we illustrate extracting Farkas proofs
+  * Many other inferences
+
+* Other theories - many rely on instantiating axioms.
+  * Trusted base (verified using ITP) using many axioms vs.\ trusted base with powerful checkers.
+
+
+## Combining Theory Solvers
+
+* SMT solvers combine multiple $T$-solvers into a single solver.
+
+* Example: EUF + Arithmetic
+
+* For proof generation, we have a _nested_ scenario:
+  * use $T$-lemmas in CDCL solver
+  * combine multiple $T$ lemmas into a $T$ lemma used by the SAT solver.
+
+
+## Using $T$-lemmas in CDCL
+
+
+* The CDCL solver by default logs $T$-clauses after false unit literals have been removed
+
+* Steps required to verify $T$-clause $\mathcal{C}$:
+  * Map $\Justification$ to original $T$-clause $\mathcal{C}_0$.
+  * Verify $\mathcal{C}_0$ is a $T$ tautology
+  * Verify that $\mathcal{C}$ follows from $\mathcal{C}_0$ using RUP.
+
+## Combining $T$ lemmas (I)
+
+
+![CDCLTarch]
+[CDCLTarch]: images/CDCL-T-arch.jpg "CDCLTarch" { width:auto }
+
+T-solvers share and propagate equalities
+
+## Combining $T$ lemmas (II)
+
+* Each internal $T$-propagation is logged as a lemma.
+
+* Assumed and propagated equalities are not known by CDCL(T) solver.
+
+* Equality reasoning _leaks_ to $T$-solvers
+
+~ Math
+\begin{array}{cc}
+   \AxiomC{$C[t,t]$}
+   \UnaryInfC{$s \not\simeq t \lor C[t, s]$}
+   \DisplayProof
+   & \begin{array}{l}
+      \mbox{$T$-axiom} \\
+      \mbox{$T$-lemma as generated by solver}
+     \end{array}
+\end{array}
+~
+
+* $\Rightarrow$ Checking $T$-lemmas requires equality reasoning.
+
+
+# A brief overview of some efforts
+
+## References
+
+* Aaron Stump [@StumpD02;@Stump02;@StumpBD02;@WuAS03;@AppelMSV03;@StumpT05;@KlapperS05;@Stump09;@StumpORHT13]
+
+* CVC [@BarbosaRKLNNOPV22;@OzdemirNPZB19;@HadareanBRTD15;@KatzBTRH16]
+
+* SMT4J [@Fazekas15]
+
+* SMTInterpol [@HoenickeS22;@HoenickeS22SMT]
+
+* VeriT [@BoutonODF09;@Barbosa20]
+
+* Z3 [@MouraB08] Axiom Profiler [@AxiomProfiler]
+
+* Isabelle, Coq, L$\exists\forall$N [@BlanchetteBP13;@BohmeFSW11;@BessonCP11;@EkiciMTKKRB17]
+
+* Format proposals [@BessonFT11;@abs-2107-02354;@Barrett2014ProofsIS]
+
+* SMT3 [@BrownJK22]
+
+## R - LFSC - Logical Framework with Side Conditions [@Stump02]
+
+* Variant of dependent type theory with built-ins for exceptions
+  * Proof rules are described as dependent types
+  * Proof terms are type checked
+
+* First described in 2002, then several 2008, 2013, ..
+
+* Noteworthy:
+
+  * Integration with RUP [@Oe2011ExtendedAC]
+  * On-the-fly checking theory lemmas
+  * Part of CVC (Fx7, SVC) certification tool chain(s)
+
+## R - VeriT [@FontaineMMNT06;@BoutonODF09;@Barbosa20]
+
+
+*# Pre-processing
+
+* A general _contextual_ rewrite functor
+  * plug in transforms for __let__, __var__, __bind__, __app__
+
+* So far unexplored in this work:
+  * Global rewrites
+  * Fixed to post-order traversals
+
+## R - CVC [@BarbosaRKLNNOPV22;@OzdemirNPZB19;@HadareanBRTD15;@KatzBTRH16;@StumpBD02;@Barrett2014ProofsIS]
+
+* Wide set of theories 
+  * Supported include: EUF, Arithmetic, ADT, Arrays, Strings, others
+  * Unsupported only: Floats, sets, sequences
+    
+* Target a variety of backends
+  * LFSC, L$\exists\forall$N, Coq, Isabelle
+
+* Pre-processing proofs
+
+
+## R - SMTInterpol [@HoenickeS22SMT]
+
+* Trusted base of proof rules, see SMT Workshop 2022 paper.
+
+* Proof rules for linear arithmetic, arrays, ADTs, EUF.
+
+* Proof rules formulated mild extension of SMT3
+
+* Self-contained checker
+
+## R - Z3 - existing [@MouraB08]
+
+* Proof terms as expressions.
+  * Checks proof terms when they are created internally.
+* Extract
+  * Isabelle tactics [@BlanchetteBP13]
+  * HOL4 bit-vector proofs [@BohmeFSW11]
+  * For Z3-interpolate [@McMillan11]
+  * Arithmetic proofs for SPACER 
+
+## R - Z3 - existing - limitations
+
+* Many built-in proof term constructors. Does not parse back.
+* Not easy to maintain/extend when adding new pre-processing or inference rules
+* Built-in proof tooling limited to normalization for SPACER
+* Many bugs related to details
+  * __or__ is both a term builder and creates a clause. Sometimes a unit literal is an __or__.
+  * Proofs are optional code paths and weave many places. Forget to weave and proofs go poof.
+  * lack of lambda when proofs were first introduced leads to broken handling of nested quantifiers
+  * SPACER includes band-aid for incomplete arithmetic proof terms
+
+## R - Z3 - RUP(T) for a new core
+
+* Preference towards coarse-grained inferences
+* Integrated self-checker
+* Wishfull plans:
+  * trim(T)
+  * integrate with profiling tools (AxiomProfiler based on proof logs)
+  * bridges to external formats and checkers (L$\exists\forall$N?)
+  
+# Proof Formats
+
+## F - veriT proof format [@abs-2107-02354]
+
+
+```
+(assume a0 (exists ((x A)) (f x)))
+(anchor :step t1 :args (:= x vr))
+(step t1.t1 (cl (= x vr)) :rule cong)
+(step t1.t2 (cl (= (f x) (f vr))) :rule cong)
+(step t1 (cl (= (exists ((x A)) (f x))
+(exists ((vr A)) (f vr)))) :rule bind)
+(step t2 (cl (not (= (exists ((vr A)) (f x)) 
+             (exists ((vr A)) (f vr)))) (not (exists ((vr A)) (f x)))
+(exists ((vr A)) (f vr))) :rule equiv_pos1)
+(step t3 (cl (exists ((vr A)) (f vr))) :premises (a0 t1 t2) :rule resolution)
+(define-fun X () A (choice ((vr A)) (f vr)))
+(step t4 (cl (= (exists ((vr A)) (f vr)) (f X))) :rule sko_ex)
+(step t5 (cl (not (= (exists ((vr A)) (f vr)) (f X))) 
+             (not (exists ((vr A)) (f vr))) (f X)) :rule equiv_pos1)
+(step t6 (cl (f X)) :premises (t3 t4 t5) :rule resolution)
+```
+
+## F - CVC4 - LFSC
+
+![CVC4Proof]
+[CVC4Proof]: images/CVC4Proof.png "CVC4Proof" { width:95%; max-width:80% }
+
+
+## F - SMTInterpol [@HoenickeS22SMT]
+
+![SMTInterpolExample]
+[SMTInterpolExample]: images/SMTInterpolExample.png "SMTInterpolExample" { width:95%; max-width:120% }
+
+
+## F - Z3 proof format [@MouraB08]
+
+```
+(set-option :proof true)
+(declare-fun f (Int) Int)
+(declare-const x Int)
+(assert (or (= (f (f (f x))) x) (= (f (f x)) x)))
+(assert (not (= (f (f (f (f (f (f x)))))) x)))
+(check-sat)
+(get-proof)
+```
+
+## F - Z3 proof format (II)
+
+```
+((proof
+(let ((?x25 (f x)))
+ (let ((?x26 (f ?x25)))
+ (let ((?x27 (f ?x26)))
+ (let ((?x32 (f ?x27)))
+ (let ((?x33 (f ?x32)))
+ (let ((?x34 (f ?x33)))
+ (let (($x35 (= ?x34 x)))
+ (let (($x29 (= ?x26 x)))
+ (let (($x28 (= ?x27 x)))
+ (let ((@x47 (hypothesis $x28)))
+ (let ((@x53 (monotonicity (monotonicity (monotonicity @x47 (= ?x32 ?x25)) (= ?x33 ?x26)) (= ?x34 ?x27))))
+ (let (($x36 (not $x35)))
+ (let ((@x37 (asserted $x36)))
+ (let ((@x57 (lemma (unit-resolution @x37 (trans* @x53 @x47 $x35) false) (not $x28))))
+ (let (($x30 (or $x28 $x29)))
+ (let ((@x39 (rewrite (= $x30 $x30))))
+ (let ((@x58 (unit-resolution (mp (mp (mp (asserted $x30) @x39 $x30) @x39 $x30) @x39 $x30) @x57 $x29)))
+ (let ((@x64 (trans* (monotonicity (monotonicity @x58 (= ?x27 ?x25)) (= ?x32 ?x26)) @x58 (= ?x32 x))))
+ (let ((@x69 (trans* (monotonicity (monotonicity @x64 (= ?x33 ?x25)) (= ?x34 ?x26)) @x58 $x35)))
+ (unit-resolution @x37 @x69 false))))))))))))))))))))))
+```
+
+
+## F - new Z3 proof format 
+
+~ Math
+\begin{array}{ll}
+( \mathbf{assume}\ \Literal^*)                & \mbox{input assumption} 
+\\[1.5em]
+( \mathbf{infer}\ \Literal^*\ \Justification)  & \mbox{inferred clause with optional justification}
+\\[1.5em]
+( \mathbf{delete}\ \Literal^*)                & \mbox{deleted clause}
+\end{array}
+~
+
+
+~ MathPre
+  \Justification   & ::= & \mathbf{rup} \mid (\mathbf{euf} \Literal^* \mathcal{CC}^*) \mid (\mathbf{farkas} (\mathcal{Z} \times \Literal)^*) | \mathit{inst} |\ldots
+  \mathcal{CC}     & ::= & (\mathbf{cc} (= (f ts) (f ts')))
+  \mathit{inst}    & ::= & (\mathbf{inst} \Literal^*\;(\mathbf{bind} t_1 \ldots t_n))
+~
+
+
+## F - new Z3 proof format (II)
+
+Pretty printed from Python:
+
+```
+assume(Or(f(f(f(x))) == x, f(f(x)) == x))
+assume(Not(f(f(f(f(f(f(x)))))) == x))
+infer(rup, Not(f(f(f(f(f(f(x)))))) == x))
+infer(euf(Not(f(f(f(f(f(f(x)))))) == x),
+          f(f(x)) == x,
+          cc(f(x) == f(f(f(x)))),
+          cc(f(f(f(f(x)))) == f(f(x))),
+          cc(f(f(f(f(f(x))))) == f(x)),
+          cc(f(f(f(f(f(f(x)))))) == f(f(f(f(x)))))),
+      Or(Not(f(f(x)) == x), f(f(f(f(f(f(x)))))) == x))
+infer(rup, Not(f(f(x)) == x))
+infer(rup, f(f(f(x))) == x)
+infer(euf(Not(f(f(f(f(f(f(x)))))) == x),
+          f(f(f(x))) == x,
+          cc(f(x) == f(f(f(f(x))))),
+          cc(f(f(f(f(f(x))))) == f(f(x))),
+          cc(f(f(f(f(f(f(x)))))) == f(f(f(x))))),
+      f(f(f(f(f(f(x)))))) == x)
+infer(rup, False)
+```
+
+## F - new Z3 proof format (III)
+
+From SMTLIB:
+
+```
+(declare-fun f (Int) Int)
+(define-const $24 Int (f x))
+(define-const $25 Int (f $24))
+(define-const $26 Int (f $25))
+(define-const $27 Bool (= $26 x))
+(define-const $28 Bool (= $25 x))
+(assume $27 $28)
+(define-const $30 Int (f $26))
+(define-const $31 Int (f $30))
+(define-const $32 Int (f $31))
+(define-const $33 Bool (= $32 x))
+(assume (not $33))
+(declare-fun rup () Proof)
+(infer (not $33) rup)
+(declare-fun euf (Bool Bool Proof Proof Proof Proof) Proof)
+(declare-fun cc (Bool) Proof)
+(define-const $42 Bool (= $32 $30))
+(define-const $43 Proof (cc $42))
+(define-const $40 Bool (= $31 $24))
+(define-const $41 Proof (cc $40))
+(define-const $38 Bool (= $30 $25))
+(define-const $39 Proof (cc $38))
+(define-const $36 Bool (= $24 $26))
+(define-const $37 Proof (cc $36))
+(define-const $34 Bool (not $33))
+(define-const $44 Proof (euf $34 $28 $37 $39 $41 $43))
+(infer (not $28) $33 $44)
+(infer (not $28) rup)
+(infer $27 rup)
+(declare-fun euf (Bool Bool Proof Proof Proof) Proof)
+(define-const $49 Bool (= $32 $26))
+(define-const $50 Proof (cc $49))
+(define-const $47 Bool (= $31 $25))
+(define-const $48 Proof (cc $47))
+(define-const $45 Bool (= $24 $30))
+(define-const $46 Proof (cc $45))
+(define-const $51 Proof (euf $34 $27 $46 $48 $50))
+(infer $33 $51)
+(infer rup)
+```
+
+
+## EUF - SMT $>$ SAT
+
+The _empty theory_ of first-order logic.
+
+~ Math
+\begin{array}{ccc}
+   \AxiomC{\mbox{}}
+   \RightLabel{refl}
+   \UnaryInfC{$s \simeq s$}
+   \DisplayProof
+& \ \ & 
+   \AxiomC{$s \simeq t$}
+   \AxiomC{$t \simeq u$}
+   \RightLabel{trans}
+   \BinaryInfC{$s \simeq u$}
+   \DisplayProof
+\\[2em]
+   \AxiomC{$t \simeq s$}
+   \RightLabel{symm}
+   \UnaryInfC{$s \simeq t$}
+   \DisplayProof
+   & & 
+   \AxiomC{$ts_1 \simeq ts'_1, \ldots, ts_k \simeq ts'_k$}   
+   \RightLabel{cong}
+   \UnaryInfC{$f(ts) \simeq f(ts')$}
+   \DisplayProof
+\end{array}
+~
+
+## EUF - Decision Procedure
+
+![EUFDecisionProcedure]
+[EUFDecisionProcedure]: images/eufcc.jpg "EUFDecisionProcedure" { width:auto; max-width:110% }
+
+
+## EUF - Data-structures
+
+* E-Node:
+~ MathPre
+    n : & \langle & f: & Func  & \mbox{function symbol}
+        &      & ts: & N^* & \mbox{arguments}
+        &      & find: & N  & \mbox{link to representative}
+        &      & P:    & N^*   & \mbox{list of parents}            
+        &      & cg:   & N    & \mbox{congruence representative}
+        &      & j:    & null | Just \times N & \mbox{pointer to justification and node}
+        & \rangle
+~
+* Union-find: $find(n)$ - set $n \leftarrow n.\find$ until $n = n.\find$.
+* etable:    $(n.f, find(n.ts)) \mapsto cg$
+
+## EUF - algorithm merge
+
+merge($n_1, n_2$)
+
+```
+Roots:        n1 := find(n1), r2 := find(n2)
+              assume (r1 != r2)
+Erase:        for each p in r1.P such that p.cg == p:
+                 erase from table        
+Update root:  r1.find := r2
+Justify:      ....
+Insert:       for each p in r1.P:
+                 p.cg = insert p in etable
+                 if p.cg == p:
+                   append p to r2.P
+                 else 
+                   add (p.cg == p) to "to_merge" 
+
+```
+
+## EUF - algorithm - unmerge
+
+unmerge($r_1, r_2$):
+
+```
+Erase:        for each p in r2.P added from r1.P:
+                 erase p from table 
+Unjustify:    ....
+Revert root:  r1.find := r1
+Insert:       for each p in r1.P:
+                 insert p if n was cc root before merge
+
+condition for being cc root before merge:
+  p.cg == p or !congruent(p, p.cg)
+
+congruent(p,q) := roots of p.ts = roots of q.ts
+```
+
+
+
+## EUF - justifications (I)
+
+A justification is a reason for merging two nodes.
+There are two possible reasons for merging nodes:
+
+1. A literal $\ell: s \simeq t$ is asserted. The justification is the literal $\ell$.
+2. Nodes are merged due to congruence closure.
+
+~ MathPre
+   Justification ::= \ell: s \simeq t | cc: f(ts) \simeq f(ts')
+~
+
+__NB__: $cc: f(ts) \simeq f(ts')$ is justified _recursively_ by justifying $ts \simeq ts'$.
+
+
+## EUF - justifications (II)
+
+__Invariant:__ Every non-root node points to a linked list of justifications leading to the root
+
+__NB__ The linked list does not follow direction of union-find.
+
+~ MathPre
+    r_1 \leftarrow find(n_1)
+    r_2 \leftarrow find(n_2)
+    r_1.\find \leftarrow r_2
+    old justification: n_1 \stackrel{j_1}{\rightarrow} n^1_1 \stackrel{j_2}{\rightarrow} n^2_1 \cdots \stackrel{j_m}{\rightarrow} r_1
+    new justification: n_1 \stackrel{j_1}{\leftarrow} n^1_1 \stackrel{j_2}{\leftarrow} n^2_1 \cdots \stackrel{j_m}{\leftarrow} r_1
+    add justification: n_1 \stackrel{j}{\rightarrow} n_2
+~
+
+## EUF - justifications (III)
+
+![justificationunionfind]
+[justificationunionfind]: images/justifiedunionfind.jpg "justificationunionfind" { width:auto; max-width:80% }
+
+## EUF - justifications are not unique
+
+* Missed justifications:
+  * If $\find(n_1) = \find(n_2)$ then merge is a no-op. 
+
+* __egg__ [@EggProofs] keeps track of potential extra paths to find _short_ proofs.
+
+* for SMT: data-structure overhead vs.\ amortized effect of backtracking?
+
+
+## EUF - from justifications to proofs
+
+* Suppose $\find(s) = \find(t)$ follows from
+  * merge($s_1, t_1$), merge($s_2, t_2$),$\ldots$, merge($s_k, t_k$).
+  * Proof of $s \simeq t$:
+
+
+~ Math
+\begin{array}{ll}
+   \proof(s \simeq t) & =
+   \begin{array}{c}
+   \AxiomC{$\proof(s \stackrel{j}{\rightarrow} \cdots a)$}
+   \AxiomC{$\proof(t \stackrel{j'}{\rightarrow} \cdots a)$}
+   \RightLabel{symm}
+   \UnaryInfC{$a \simeq t$}
+   \RightLabel{trans}
+   \BinaryInfC{$s \simeq t$}
+   \DisplayProof\\[2em]
+   \mbox{$a$ is a least common $\rightarrow$ ancestor of $s, t$}
+   \end{array}
+\end{array}
+~
+
+## EUF - from justifications to proofs (II)
+
+~Math
+\begin{array}{ll}
+   \proof(s \stackrel{j}{\rightarrow} t \stackrel{j'}{\rightarrow} \cdots u) & =
+   \begin{array}{c}
+   \AxiomC{$\proof(j, s \simeq t)$}
+   \AxiomC{$\proof(t \stackrel{j'}{\rightarrow} \cdots u)$}
+   \RightLabel{trans}
+   \BinaryInfC{$s \simeq u$}
+   \DisplayProof
+   \end{array}
+   \\[1.5em]
+   \proof(s) & =
+   \begin{array}{c}
+   \AxiomC{\mbox{}}
+   \RightLabel{refl}
+   \UnaryInfC{$s \simeq s$}
+   \DisplayProof
+   \end{array}
+   \\[1.5em]
+   \proof(\ell : s \simeq t, s \simeq t) & = \ell
+   \\[1.5em]
+   \proof(\ell : t \simeq s, s \simeq t) & = 
+   \begin{array}{c}
+   \AxiomC{$\ell$}
+   \RightLabel{symm}
+   \UnaryInfC{$s \simeq t$}
+   \DisplayProof    
+   \end{array}
+   \\[1.5em]
+   \proof(cc: f(ts) \simeq f(ts'), f..) & =
+   \begin{array}{c}
+   \AxiomC{$\proof(ts_1 \simeq ts'_1), \ldots, \proof(ts_k \simeq ts'_k)$}   
+   \RightLabel{cong}
+   \UnaryInfC{$f(ts) \simeq f(ts')$}
+   \DisplayProof
+   \end{array}
+\end{array}
+~
+
+## EUF - coarse- or fine-grained proofs
+
+* Fine-grained proofs - pro/cons:
+  * Proof checker is simple. Just needs to check proof rules.
+  * Requires building proof terms.
+  * $\proof$ produces proofs of size $O(n^2)$. Can be tuned to $O(n)$.
+
+* A coarse-grained proof object (N. Shankar chat @ FLoC):
+  * Just list set of input literals $\ell$ and congruences $cc$ used.
+  * Sort $cc$ starting from leaves in $\pi$ (z3 sorts on a global timestamp).
+  * Proof checker: union-find + processing $cc$ into union-find.
+
+
+## EUF - Example
+
+```
+(set-option :sat.euf true)
+(set-option :sat.smt.proof eufproof.smt2)
+(declare-fun f (Int) Int)
+(declare-const x Int)
+(assert (or (= (f (f (f x))) x) (= (f (f x)) x)))
+(assert (not (= (f (f (f (f (f (f x)))))) x)))
+(check-sat)
+```
+
+## EUF - Example (II)
+
+```
+assume(Or(f(f(f(x))) == x, f(f(x)) == x))
+assume(Not(f(f(f(f(f(f(x)))))) == x))
+infer(rup, Not(f(f(f(f(f(f(x)))))) == x))
+infer(euf(Not(f(f(f(f(f(f(x)))))) == x),
+          f(f(x)) == x,
+          cc(f(x) == f(f(f(x)))),
+          cc(f(f(f(f(x)))) == f(f(x))),
+          cc(f(f(f(f(f(x))))) == f(x)),
+          cc(f(f(f(f(f(f(x)))))) == f(f(f(f(x)))))),
+      Or(Not(f(f(x)) == x), f(f(f(f(f(f(x)))))) == x))
+infer(rup, Not(f(f(x)) == x))
+infer(rup, f(f(f(x))) == x)
+infer(euf(Not(f(f(f(f(f(f(x)))))) == x),
+          f(f(f(x))) == x,
+          cc(f(x) == f(f(f(f(x))))),
+          cc(f(f(f(f(f(x))))) == f(f(x))),
+          cc(f(f(f(f(f(f(x)))))) == f(f(f(x))))),
+      f(f(f(f(f(f(x)))))) == x)
+infer(rup, False)
+```
+
+# A - Arithmetic
+
+
+## A - Farkas and Dual Simplex
+
+SMT solving based on Dual Simplex maintain a tableau of the form:
+
+~ Math
+\begin{array}{ll}
+x_i = \sum_{x_j \in \nonbasicvars} a_{ij} x_j            & x_i \in \basicvars \\
+l_j \leq x_j \leq u_j                                    & x_j \in \nonbasicvars \cup \basicvars \\
+val : x_j \mapsto {\mathcal R}                           & \forall x_j \in \nonbasicvars \\
+nval : x_i \mapsto \sum_{x_j \in \nonbasicvars} a_{ij} val(x_j) & \forall x_i \in \basicvars 
+\end{array}
+~
+
+where $\basicvars$ are basic and $\nonbasicvars$ are non-basic variables.
+
+## A - Compiling into tableau
+
+```python
+  x, y = Reals('x y')
+  solve([x >= 0, Or(x + y <= 2, x + 2*y >= 6), 
+                 Or(x + y >= 2, x + 2*y > 4)])
+```
+
+Introduce slacks to define terms
+
+~ MathPre
+  s_1 = x + y, s_2 = x + 2y, s_1, s_2 \in \basicvars, x, y \in \nonbasicvars
+~
+
+Formula using slacks:
+~ MathPre
+  x \geq 0, (s_1 \leq 2 \vee s_2 \geq 6), (s_1 \geq 2 \vee s_2 > 4)
+~ 
+
+Only bounds (e.g., $s_1 \leq 2$) are asserted during search.
+
+
+## A - Infeasible Tableau
+
+A tableau is infeasible if there is a row $x_i = \sum_{x_j \in \nonbasicvars} a_{ij} x_j$
+such that
+
+~ Math
+\begin{array}{lll}
+     & a_{ij} < 0 \implies val(x_j) = l_j,                 & \forall x_j \\
+     & a_{ij} > 0 \implies val(x_j) = u_j,                 & \forall x_j \\
+     & nval(x_i) < l_i
+%     \\
+%or \\
+%     & a_{ij} > 0 \implies val(x_j) = l_j,                 & \forall x_j \\
+%     & a_{ij} < 0 \implies val(x_j) = u_j,                 & \forall x_j \\
+%     & nval(x_i) > u_i
+\end{array}
+~
+(We omit the symmetric case for upper bounds, $nval(x_i) > u_i$)
+
+The _explanation_ for infeasibility are the
+literals $l_j \leq x_j$ or $x_j \leq u_j$, respectively
+$l_i \leq x_i$ or $x_i \leq u_i$.
+
+Slack variables are unfolded into their definitions.
+
+The _justification_ are the coefficients $a_{ij}$
+
+## A - Inferences
+
+* Dual simplex infeasibility
+
+* Bounds propagation
+
+* Equality propagation
+
+* Properties of div, mod, rem, to_int
+
+* Cuts
+
+* GCD tests
+
+* Non-linear arithmetic
+  * NLSat
+  * Incremental Linearization
+  * Gr&ouml;bner basis computation
+  * Interval reasoning
+
+## A - Towards Generic Inferences
+
+```
+   (farkas c1 (<=? g1 g1') c2 (<=? g2 g2') ... cn (<=? gn gn'))
+   (bound c1 (<=? g1 g1') c2 (<=? g2 g2') ... cn (<=? gn gn') (not (<= e1 e2)))
+   (implied-eq c0 c1 (<=? g1 g1') c2 (<=? g2 g2') ... cn (<=? gn gn') (not (= e1 e2)))
+```
+
+where __<=?__ is __<=, <, > >=, =__, and their negations; and $c_i$ are integer constants.
+
+* All inferences
+  * Apply Gauss-Jordan elimination to equalities
+  * Substitute result into remaining inequalities
+
+## A - Towards Generic Inferences - bounds
+
+
+```
+   (bound c1 (<=? g1 g1') (<=? g2 g2') ... (<=? gn gn') (not (<= e1 e2)))
+```
+
+* Apply Cut to the first $n$ bounds.
+* Remaining inequalities are $ax \leq b$ and $\neg(a'x \leq b')$
+* Check $\exists k \geq 0. kax = a'x \land kb \leq b'$.
+
+
+## A - Towards Generic Inferences - implied equalities
+
+```
+   (implied-eq c0 c1 (<=? g1 g1') c2 (<=? g2 g2') ... cn (<=? gn gn') (not (= e1 e2)))
+```
+
+Check:
+
+* Linear combination of first _c0_ inequalities implies one side of equality.
+* Linear combination of remaining inequalities implies the other side.
+
+
+
+# Quantifiers and other theories
+
+## T - Skolem functions
+
+Use Skolem functions, not fresh constants [@KatzBTRH16], when instantiating existentials
+
+```
+    (=> (forall ((x I)) (= (A i) (B i))) (= A B))
+```
+is instantiated as
+```
+   A = B or select(A, diff(A,B)) != select(B, diff(A, B))
+```
+
+Use Skolem functions to replace extended operators
+
+```
+(assert (contains a b))
+```
+
+Is rewritten into 
+
+```
+(assert (= a (str.++ (contains.left a b) b (contains.right a b))))
+```
+
+## T - Hilbert Choice
+
+```
+   (choose ((x T)) (p x))
+```
+
+Used in proof generating systems (veriT, SMTInterpol).
+
+## T - Quantifiers
+
+* Mainstream SMT solvers are (still) Instantiation Based
+
+
+
+# Standardization?
+
+* SMTLIB Google Group (Hoenicke, Reynolds, others active)
+
+* Some diversity in formats generated by provers and not clear the format from provers should/can be aligned.
+
+
+## S - Farkas with SMTInterpol
+
+![SMTInterpolArithProofs]
+[SMTInterpolArithProofs]: images/SMTInterpolArithProofs.jpg "SMTInterpolArithProofs" { width:auto; max-width:110% }
+
+## S - Farkas with Z3
+
+
+```
+   (farkas c1 (<=? g1 g1') c2 (<=? g2 g2') ... cn (<=? gn gn'))
+```
+
+where __<=?__ is __<=, <, > >=, =__, and their negations; and $c_i$ are integer constants.
+
+Define normalization function:
+
+```
+   ci * (>= gi gi')       ->  -ci * (<= gi gi')
+   ci * (< gi gi')        ->   ci * (<= (+ 1 gi) gi')        if gi is Int
+   ci * (> gi gi')        ->  -ci * (< gi gi')
+   ci * (not (<= gi gi')) ->  -ci * (< gi gi')
+   ci * (<= gi gi')       ->  -ci * (<= gi' gi)              if ci < 0
+   etc
+```
+
+Let $I$ be indices of inequalities, $E$ equalities, $s := \sum_{i \in I} c_i(g_i - g_i')$
+and reduce $s$ using the equalities $E$. Then $s$ is non-negative if $I$ contains a strict inequality,
+or negative if it only contains weak inequalities.
+
+## S - some impressions
+
+* Tradeoff between generic rules and simpler rules.
+  * Shifts work between proof logger and proof checker
+
+* Unclear if added complexity of checking generic rules provides return on investment.
+
+* A proof checker could map to nucleus of SMTInterpol format before validating premises.
+  * Each normalization step maps to a justification
+  
+
+# Several Directions
+
+* Model transformers, dual to proofs
+  * undo effect of model transformers for incrementality
+
+* Pre and in-processing proofs
+  * proofs for global inferences
+
+* Sustainable proofs
+  * proof/life balance
+
+## Several Directions (II)
+
+* Beyond the power of regular resolution 
+  * for EUF
+  * for EPR
+
+* Proofs for 
+  * word-level bit-vectors
+  * CP domains within CDCL(T) solvers
+  * PB/Cardinality proofs for CDCL(T)
+    * Specifically extract PB justification as coarse/fine-grained proofs
+
+~ End Vertical
+
+# Bibliography
+
+[BIB]
+
+
+
+
+
+
+
+
+
+
+

@@ -54,6 +54,8 @@ Css Header:
 \newcommand{\unk}[1]{{\color{blue}{#1}}}
 ~
 
+[TITLE]
+
 # Sample formula
 
 Check satisfiability of 
