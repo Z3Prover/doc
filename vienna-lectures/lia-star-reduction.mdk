@@ -88,7 +88,7 @@ To
          
        &  (\sum (e \in s \wedge e \not \in t)) = 0 
 \wedge &  (\sum e \in s) = 1       
- \wedge &  (\sum (e \in u) \neq (\sum e \in t) - 1
+ \wedge &  (\sum e \in u) \neq (\sum e \in t) - 1
  \wedge &  (\sum e \in u \not\leftrightarrow e \in t \wedge e \not \in s) = 0
 ~
 
@@ -105,6 +105,104 @@ To
 * Cardinality constraints added to LIA formula
 * Set constraints are under summations
 
+# Step 4 - Boolean reduction
+
+~ MathPre
+        & k_s = 1 
+ \wedge & k_u \neq k_t - 1 
+ \wedge & \displaystyle (k_s, k_t, k_u) \in \sum_{(a, b, c) \in Bool^3} & \mid (\neg a \vee b) 
+        &                                                      & \wedge   (c \leftrightarrow b \wedge \neg a)
+~
+
+# Solving B*
+
+__Claim__: for set cardinalities we are creating sets based on semi-linear combinations of Boolean vectors.
+The Boolean vectors range over all satisfying implicants of the formula $F$ under $\sum$.
+
+__General form__:
+
+~ MathPre
+  F_1(\vec{k}) \wedge  \vec{k} \in \sum_{\vec{b}} F_2(\vec{b})
+~
+
+Define 
+
+~ MathPre
+  F_2^*(\vec{k}) & := & \vec{k} \in \sum_{\vec{b}} F_2(\vec{b})
+~
+
+# Solving B* with CHC
+
+* CHC - Constrained Horn Clauses
+
+~ MathPre
+  & \widehat{F}_2^*(\vec{0})
+  & \widehat{F}_2^*(\vec{k}) \wedge F_2(\vec{b}) & \implies & \widehat{F}_2^*(\vec{k} + \vec{b})
+  & \widehat{F}_2^*(\vec{k})                     & \implies & \neg F_1(\vec{k})
+~ 
+
+If this is satisfiable, then $F_1(\vec{k}) \wedge F_2^*(\vec{b})$ is UNSAT.
+
+Justification: if $\widehat{F}_2^*(\vec{k})$ is a solution to CHC, then ${F}_2^*(\vec{k}) \implies \widehat{F}_2^*(\vec{k})$.
+
+# B* is a _linear_ _memory-less_ Boolean program
+
+* Pretend it as a state-machine where the initial state is $\vec{0}$.
+
+* $F_2(\vec{b})$ tells us the space of possible increments.
+
+* The increments are independent of the current state. 
+
+# State reachability of Boolean programs are decidable
+
+* A state-of-art method: IC3
+
+* Z3 contains an engine for Horn clauses (PDR/SPACER), with IC3 a special case.
+
+# From PDR to conflicts
+
+* Assume we have a set of literals over set constraints and cardinalities of sets.
+
+* We want to check satisfiability of them. 
+
+* Extract $F_1, F_2^*$, solve for $\widehat{F}^*_2$.
+  * If the system is unsat: it means there is some solution for sets that satisfy the cardinality constraints.
+  * if the system has a solution: it means the conjunction of set constraints cannot satisfy the cardinality constraints.
+    * we could look for a subset of set constraints that are sufficient using the unsat core from cardinality constraints.
+
+
+# Theory combination
+
+Not all set constraints are _pure_. 
+
+* $X = \{ x \}$ means the set $X$ is a singleton set and if $Y = \{ y \}$ with $x \not\simeq y$, then $Y \neq X$.
+* Abstract singleton constraints as sets of size 1 for variables that are distinct. Track distinctness assumptions.
+
+__Claim__: we can eliminate singleton sets and just consider set variables with cardinality 1 from the point of view of the set solver.
+
+* Can anything reasonable be done with ranges, subsets, map?
+
+# Algorithm - Outline
+
+* Set of literals $\mathcal{L}$ over set constraints.
+* Sub-terms over sets $s \equiv t \cup v, \ldots$.
+* Introduce fresh variables for sub-term definitions.
+* Define $F_2^*$ for set constraints producing solutions for each set-value sub-term.
+* Define $F_1$ for cardinality constraints.
+* Check reachability. 
+
+# The extra mile
+
+What if we want to solve CHC over finite sets (not just Boolean programs)?
+
+~ MathPre
+  R(\emptyset) 
+  R(s) \wedge x \in s & \implies & R(s \cup \{ x + 2\})
+  R(s) \wedge x \in s & \implies & 4 \uparrow x
+~
+
+* Is there a (non-trivial) class of CHC over finite sets that is solvable?
+* Trivial := finite sets over finite base sorts
 
 # Bibliography
 
