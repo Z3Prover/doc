@@ -141,7 +141,7 @@ Define
   & \widehat{F}_2^*(\vec{k})                     & \implies & \neg F_1(\vec{k})
 ~ 
 
-If this is satisfiable, then $F_1(\vec{k}) \wedge F_2^*(\vec{b})$ is UNSAT.
+If this is satisfiable, then $F_1(\vec{k}) \wedge F_2^*(\vec{k})$ is UNSAT.
 
 Justification: if $\widehat{F}_2^*(\vec{k})$ is a solution to CHC, then ${F}_2^*(\vec{k}) \implies \widehat{F}_2^*(\vec{k})$.
 
