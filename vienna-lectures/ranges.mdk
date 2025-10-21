@@ -30,7 +30,7 @@ Css Header:
 \newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
 \newcommand{\twodpstate}[2]{#1  \dbar #2}
 \newcommand{\compl}[1]{\overline{#1}}
-\newcommand{\Model}{M}
+\newcommand{\Model}{\mathcal{M}}
 \newcommand{\nodefinition}{}
 \newcommand{\Mbp}{Mbp}
 \newcommand{\Queue}{\mathcal{Q}}
@@ -56,7 +56,7 @@ Css Header:
 
 [TITLE]
 
-# Sample formula
+# Example formula {data-transition:none }
 
 Check satisfiability of 
 
@@ -65,7 +65,7 @@ Check satisfiability of
   [l..u] \setminus \{ x, y \} \subseteq A \subseteq [l..u] \setminus \{ x \}
 ~
 
-# Array Property Fragment Encoding
+# Array Property Fragment Encoding {data-transition:none }
 
 ```
 (declare-fun RangeLU (Int) Bool)
@@ -100,7 +100,7 @@ Check satisfiability of
 
 ```
 
-# Attempt 1 - manual encoding
+# Attempt 1 - manual encoding {data-transition:none }
 
 ```
 ; read set of free variables:
@@ -174,7 +174,7 @@ Check satisfiability of
 ```
 
 
-# Examining the result of manual encoding
+# Examining the result of manual encoding {data-transition:none }
 
 Run z3 with model.compact=false
 We get a model, corresponding to assigned atoms:
@@ -199,7 +199,7 @@ We get a model, corresponding to assigned atoms:
 
 ```
 
-# Examining the result (II)
+# Examining the result (II) {data-transition:none }
 
 * The ite guards are based on assigned atoms.
 We can ignore the default case. Here it is arbitrary.
@@ -209,12 +209,12 @@ We can ignore the default case. Here it is arbitrary.
 * The set $A$ should be equal to $[0..11]$ except two elements, these are $\{1, 2\}$.
 So the expected interpretation of $A$ is $\{0\} \cup [3..11]$.
 
-# Array property fragment by example
+# Array property fragment by example {data-transition:none }
 
 Let us recall the correctness proof for the array property fragment.
 We will consider the special case for a single bound variable to keep it simple.
 
-* $inst := \{ lo - 1 -> -1, lo -> 0, x -> 0, y -> 1, hi -> 11, hi + 1 -> 12\}$
+* $inst := \{ lo - 1 -> -1, lo -> 0, x -> 1, y -> 2, hi -> 11, hi + 1 -> 12\}$
 
 Define projection function project such that
 
@@ -222,20 +222,20 @@ Define projection function project such that
 
 For example project(-3) = project(-2) = projec(-1) = -1.
 
-# Constructing $M_\forall$
+# Constructing $\Model_\forall$ {data-transition:none }
 
-We would like to build an interpretation $M_\forall$ over finite sets from the above interpretation $M_{inst}$ using project.
+We would like to build an interpretation $\Model_\forall$ over finite sets from the above interpretation $\Model_{inst}$ using project.
 Define:
 
 ~ MathPre
-  M_\forall(z) := M_{inst}(project(z))
+  \Model_\forall(z) := \Model_{inst}(project(z))
 ~
 
 for every integer z.
 
-Then $M_\forall(x \in A) \Leftrightarrow M_{inst}(project(x)) \in M_{inst}(A).$
+Then $\Model_\forall(x \in A) \Leftrightarrow \Model_{inst}(project(x)) \in \Model_{inst}(A).$
 
-# Proving model presevation (main theorem)
+# Proving model presevation (main theorem) {data-transition:none }
 
 Given
 
@@ -243,18 +243,18 @@ Given
 \forall i : Guard(i) => F_V(i)
 ~
 
-Suppose we have a model for $M_{inst}(Guard(t) => F_V(t))$ for every $t$ in the instantation set $inst$.
+Suppose we have a model for $\Model_{inst}(Guard(t) => F_V(t))$ for every $t$ in the instantation set $inst$.
 
 Let us show that for every z:
 
-1.   $M_\forall(Guard(z)) => M_{inst}(Guard(project(z)))$
+1.   $\Model_\forall(Guard(z)) => \Model_{inst}(Guard(project(z)))$
 
-2.   $M_{inst}(F_V(project(z))) => M_\forall(F_V(z))$
+2.   $\Model_{inst}(F_V(project(z))) => \Model_\forall(F_V(z))$
 
 Then it follows from transitivity of $Guard(project(z)) => F_V(project(z))$
 that $Guard(z) => F_V(z)$.
 
-# Recall what are guards and value formulas
+# Recall what are guards and value formulas {data-transition:none }
 
 Recall that $Guard(z)$ can be assumed to be a conjunction $z \geq t$, $z \leq t$. 
 Then as project(z) is the a term in inst that maps to the nearest value close to z.
@@ -262,11 +262,11 @@ Then, the truth value of $project(z) \geq t$, or $project(z) \leq t$ is the same
 This proves (1)
 
 $F_V$ is a disjunction of ground formulas or (negated) membership constraints $z \in A$.
-Assume $M_{inst}(F_V(project(z)))$. Then one of the disjunctions in $F_V$ is true.
-Suppose it is project(z) in A. Now, we constructed $M_\forall(z \in A) \Leftrightarrow M_{inst}(project(z) \in A)$.
-Therefore $M_\forall(z \in A)$.
+Assume $\Model_{inst}(F_V(project(z)))$. Then one of the disjunctions in $F_V$ is true.
+Suppose it is project(z) in A. Now, we constructed $\Model_\forall(z \in A) \Leftrightarrow \Model_{inst}(project(z) \in A)$.
+Therefore $\Model_\forall(z \in A)$.
 
-# But there is a problem!
+# But there is a problem! {data-transition:none }
 If we construct a model from our instantiation set we don't get a well-formed model.
 What is going on?
 
@@ -279,7 +279,7 @@ The problem is that our quantified formula wasn't in the right format.
 is not in the format of $Guard => F_V$.
 Guards cannot be atoms $i \neq x$.
 
-# Every problem is a solution in disguise
+# Every problem represents a solution in a sublime disguise {data-transition:none }
 
 Instead we have to create multiple guards to capture the property in the array fragment:
 
@@ -292,7 +292,7 @@ Instead we have to create multiple guards to capture the property in the array f
 
 Thus, the index set now includes $\{ x - 1, x + 1, y - 1, y + 1 \}$.
 
-# Programming the theory solver
+# Programming the theory solver {data-transition:none }
 
 We can now turn our attention to the following question: 
 how do we best automatically detect instantation sets from finite set formulas?
@@ -303,14 +303,14 @@ function.
 
 For example if the atomic formula $i \in [l..u] \setminus \{x, y\}$ exists then we should also evaluate it on $i - 1, i + 1$.
 
-# Outline of a procedure (I)
+# Outline of a procedure (I) {data-transition:none }
 
 * _Range local terms_: For every range expression $[l..u]$ define the range local terms as initially $\{l-1, l, u, u + 1\}$.
 
 * _Saturating range local terms_: Whenever $x \in [l..u]$ occurs and is assigned to true and x is not a range local term, 
 then add $\{x-1, x + 1\}$ to range local terms and add atoms for $x - 1 \in [l..u], x + 1 \in [l..u]$.
 
-# Outline of a procedure (II) - Problem!
+# Outline of a procedure (II) - Problem! {data-transition:none }
 
 If we can't assume complete assignments for ground formulas, this saturation rule is insufficient.
 
@@ -319,7 +319,7 @@ because $i \in [l..u] \setminus \{ x, y \} => i \in [l..u]$ and
 $i \neq x$ and $i \neq y$ and we don't need the truth value of $i \in [l..u]$
 to evaluate this formula (to false) for $i = x$.
 
-# Outline of a procedure (III) - Solution
+# Outline of a procedure (III) - Solution {data-transition:none }
 
 The way we got from finite set constraints to the array property fragment was to encode every connective
 with universal axioms.
@@ -336,3 +336,18 @@ __Claim__: The following extension will do the trick:
 Whenever $x \in setop([l..u],..)$ occurs, and x is not a range local term, then add range local terms $x - 1, x + 1$. 
 
 
+# Pub/Champaigne Quiz {data-transition:none }
+
+A set expression is a value if:
+
+~ MathPre
+  isvalue(s \cup t, s \cap t, s \setminus t) := isvalue(s) \wedge isvalue(t)
+  isvalue(\{ v \})  := isvalue(v)
+  isvalue(\emptyset) := \true
+  isvalue([l..u]) := isvalue(l) \wedge isvalue(u)
+~
+
+Assume isvalue can be evaluated over the base sort $s$ of $FiniteSet(s)$.
+
+__Task__: Given two sets $s, t$ that satisfy _isvalue_, develop a good algorithm and implementation to check if 
+they are equal.

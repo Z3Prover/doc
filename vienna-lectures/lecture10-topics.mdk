@@ -388,7 +388,7 @@ T-solvers share and propagate equalities
 ## R - VeriT [@FontaineMMNT06;@BoutonODF09;@Barbosa20]
 
 
-*# Pre-processing
+## Pre-processing
 
 * A general _contextual_ rewrite functor
   * plug in transforms for __let__, __var__, __bind__, __app__
@@ -448,6 +448,7 @@ T-solvers share and propagate equalities
   * trim(T)
   * integrate with profiling tools (AxiomProfiler based on proof logs)
   * bridges to external formats and checkers (L$\exists\forall$N?)
+
   
 # Proof Formats
 

@@ -1,0 +1,111 @@
+[INCLUDE=presentation]
+Title         : Reductions to LIA*
+Sub Title     : TU Wien Guest Lectures October 2025
+Author        : Nikolaj Bj&oslash;rner
+Affiliation   : Microsoft Research
+Email         : nbjorner\@microsoft.com
+Reveal Theme  : solarized
+Beamer Theme  : singapore
+Bibliography  : refs.bib
+Cite Style    : natural
+muZ           : $\mu{Z}$
+Package       : [curve]xypic
+Package       : tikz
+Package       : algorithm2e
+Embed         : 1024
+Tex Header    : \usetikzlibrary{shapes,snakes}
+Css Header:
+    .reveal p, .reveal li, .reveal .bibitem, .reveal dd, .reveal dt {
+      text-align: left !important;
+    }
+
+.Math-Inline,.Math-Display,~Math,~MathPre: 
+    replace=//<-/\leftarrow//->/\rightarrow//=>/\Rightarrow//!=/\mathop{\neq}//g 
+    replace=//AA/\forall//EE/\exists//g
+
+
+~ MathDefs
+\newcommand{\dbar}{\,|\!|\,}
+\newcommand{\searchstate}[2]{#1 \dbar #2}
+\newcommand{\conflstate}[3]{#1 \dbar #2 \dbar #3}
+\newcommand{\twodpstate}[2]{#1  \dbar #2}
+\newcommand{\compl}[1]{\overline{#1}}
+\newcommand{\Model}{\mathcal{M}}
+\newcommand{\nodefinition}{}
+\newcommand{\Mbp}{Mbp}
+\newcommand{\Queue}{\mathcal{Q}}
+\newcommand{\Init}{\mathit{Init}}
+\newcommand{\Safe}{\mathit{Safe}}
+\newcommand{\true}{\textsf{true}}
+\newcommand{\false}{\textsf{false}}
+\newcommand{\cF}{{\mathcal{F}}}
+\newcommand{\phidown}{\varphi_{\downarrow}}
+\newcommand{\psidown}{\psi_{\downarrow}}
+\newcommand{\phiup}{\varphi^{\uparrow}}
+\newcommand{\router}[1]{R_{#1}}
+\newcommand{\mustsummary}[3]{
+\langle #1 \stackrel{\mathtt{must}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\notmaysummary}[3]{
+\langle #1 \stackrel{\neg\mathtt{may}}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\querysummary}[3]{
+\langle #1 \stackrel{?}{\Longrightarrow}_{#2} #3 \rangle}
+\newcommand{\dst}{\mathit{dst}}
+\newcommand{\src}{\mathit{src}}
+\newcommand{\unk}[1]{{\color{blue}{#1}}}
+~
+
+[TITLE]
+
+# Example formula {data-transition:none }
+
+~ MathPre
+  s \subseteq t \wedge |s| = 1 \wedge |t \setminus s| \neq |t| - 1
+~
+
+See [@PiskacK08]
+
+# Step 1 - rewrite with summations
+
+~ MathPre
+  s \subseteq t \wedge |s| = 1 \wedge |t \setminus s| \neq |t| - 1
+~
+
+To 
+
+~ MathPre
+         &  (\sum (e \in s \wedge e \not \in t)) = 0
+\wedge &  (\sum e \in s) = 1       
+\wedge &  (\sum (e \in t \wedge e \not \in s)) \neq (\sum e \in t) - 1
+~
+
+# Step 2 - Introduce auxiliary variables
+
+~ MathPre
+  s \subseteq t \wedge |s| = 1 \wedge |t \setminus s| \neq |t| - 1
+~
+
+~ MathPre
+         
+       &  (\sum (e \in s \wedge e \not \in t)) = 0 
+\wedge &  (\sum e \in s) = 1       
+ \wedge &  (\sum (e \in u) \neq (\sum e \in t) - 1
+ \wedge &  (\sum e \in u \not\leftrightarrow e \in t \wedge e \not \in s) = 0
+~
+
+
+# Step 3 - Combine summations
+
+~ MathPre
+        & k_s = 1 
+ \wedge & k_u \neq k_t - 1 
+ \wedge & (k_s, k_t, k_u) \in \sum (e \in s, e \in t, e \in u) & \mid (e \not \in s \vee e \in t) 
+        &                                                      & \wedge   (e \in u \leftrightarrow e\in t \wedge e \not\in s)
+~
+
+* Cardinality constraints added to LIA formula
+* Set constraints are under summations
+
+
+# Bibliography
+
+[BIB]
