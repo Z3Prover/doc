@@ -110,14 +110,22 @@ To
 ~ MathPre
         & k_s = 1 
  \wedge & k_u \neq k_t - 1 
- \wedge & \displaystyle (k_s, k_t, k_u) \in \sum_{(a, b, c) \in Bool^3} & \mid (\neg a \vee b) 
-        &                                                      & \wedge   (c \leftrightarrow b \wedge \neg a)
+ \wedge & \displaystyle (k_s, k_t, k_u) \in \sum_{(b_s, b_t, b_u) \in Bool^3} & \mid (\neg b_s \vee b_t) 
+        &                                                      & \wedge   (b_u \leftrightarrow b_t \wedge \neg b_s)
+~
+
+# Boolean Reduction - General form
+
+~ MathPre
+            & F_1(\vec{k}) \land \vec{k} \in \sum_{\vec{b}} F_2(\vec{b})
+        F_1: & k_s = 1  \wedge k_u \neq k_t - 1 
+        F_2: &  (\neg b_s \vee b_t) \wedge   (b_u \leftrightarrow b_t \wedge \neg b_s)
 ~
 
 # Solving B*
 
-__Claim__: for set cardinalities we are creating sets based on semi-linear combinations of Boolean vectors.
-The Boolean vectors range over all satisfying implicants of the formula $F$ under $\sum$.
+__Claim__: for set cardinalities we are creating sets based on semi-linear combinations of vectors based on Boolean assignments.
+Thus, the vectors are based on satisfying implicants of the formula $F$ under $\sum$.
 
 __General form__:
 
@@ -131,9 +139,8 @@ Define
   F_2^*(\vec{k}) & := & \vec{k} \in \sum_{\vec{b}} F_2(\vec{b})
 ~
 
-# Solving B* with CHC
+# Solving B* with Constrained Horn Clauses (CHC)
 
-* CHC - Constrained Horn Clauses
 
 ~ MathPre
   & \widehat{F}_2^*(\vec{0})
@@ -141,23 +148,59 @@ Define
   & \widehat{F}_2^*(\vec{k})                     & \implies & \neg F_1(\vec{k})
 ~ 
 
-If this is satisfiable, then $F_1(\vec{k}) \wedge F_2^*(\vec{k})$ is UNSAT.
+If this is satisfiable with solution $F_2^*$, then $F_1(\vec{k}) \wedge F_2^*(\vec{k})$ is UNSAT.
 
-Justification: if $\widehat{F}_2^*(\vec{k})$ is a solution to CHC, then ${F}_2^*(\vec{k}) \implies \widehat{F}_2^*(\vec{k})$.
 
-# B* is a _linear_ _memory-less_ Boolean program
+Justification: 
+
+* if $\widehat{F}_2^*(\vec{k})$ is a solution to CHC, then ${F}_2^*(\vec{k}) \implies \widehat{F}_2^*(\vec{k})$.
+
+# Solving B* with CHC
+
+
+~ MathPre
+  & \widehat{F}_2^*(\vec{0})
+  & \widehat{F}_2^*(\vec{k}) \wedge F_2(\vec{b}) & \implies & \widehat{F}_2^*(\vec{k} + \vec{b})
+  & \widehat{F}_2^*(\vec{k})                     & \implies & \neg F_1(\vec{k})
+~ 
+
+Conversely, if there is some set of assignments $F_2(\vec{b}_1) \wedge \ldots \wedge F_2(\vec{b}_k)$, 
+such that $F_1(\sum \vec{b}_i)$, then it shows that $F_1(\vec{k}) \wedge \vec{k} \in \sum_{\vec{b}} F_2(\vec{b})$.
+
+# State reachability - example
+
+~ MathPre
+        F_1: & k_s = 1  \wedge k_u \neq k_t - 1 
+        F_2: &  (\neg b_s \vee b_t) \wedge   (b_u \leftrightarrow b_t \wedge \neg b_s)
+~
+
+Solutions to $F_2$ are $\{ (0, 0, 0), (1, 1, 0), (0, 1, 1) \}$.
+
+Set $U^* := (k_s, k_t, k_u) = n_1(1,1,0) + n_2(0,1,1) \wedge n_1 \geq 0 \wedge n_2 \geq 0$.
+
+~ MathPre
+  k_s = 1 = n_1 \geq 0 \wedge k_t = n_1 + n_2 \wedge k_u = n_2 \wedge k_u \neq k_t - 1
+~ 
+
+it is unsat
+
+
+# B* represents a special case vector addition system
 
 * Pretend it as a state-machine where the initial state is $\vec{0}$.
 
-* $F_2(\vec{b})$ tells us the space of possible increments.
+* $F_2(\vec{b})$ tells us the space of possible increments. 
 
 * The increments are independent of the current state. 
 
-# State reachability of Boolean programs are decidable
+* Each vector fits within a cube (each coordinate is either 0 or 1).
 
-* A state-of-art method: IC3
+# State reachability is decidable
 
-* Z3 contains an engine for Horn clauses (PDR/SPACER), with IC3 a special case.
+* Z3 contains an engine for Horn clauses (PDR/SPACER).
+
+* Simple algorithm: Enumerate all solutions $\vec{b}^i$ to $F_2(\vec{b}^i)$. 
+* Check satisfiability of $F_1(\sum n^i \cdot \vec{b}^i) \wedge \bigwedge_k n^i \geq 0$. 
 
 # From PDR to conflicts
 
@@ -171,6 +214,57 @@ Justification: if $\widehat{F}_2^*(\vec{k})$ is a solution to CHC, then ${F}_2^*
     * we could look for a subset of set constraints that are sufficient using the unsat core from cardinality constraints.
 
 
+# State reachability refinements
+
+* Start with initial state $U := \emptyset, U^*(\vec{k}) := (\vec{k} = \sum_{b^i \in U} n^i \cdot b^i) \wedge \bigwedge_i n^i \geq 0$,  
+$O := \true$
+
+* While $F_1(\vec{k}) \land U^*$ is unsat and $O \wedge \neg F_1(\vec{k})$ is sat:
+  * Check sat of $U^*(\vec{k}) \wedge F_2(\vec{b}) \land \neg U^*(\vec{k}+\vec{b})$.
+    * Add new solution $U := U \cup \{ \vec{b}^i \}$.
+    * If there are no new solutions $U$ is completed.
+  * Dual process for strengthening $O$.
+
+# Over-approximations
+
+~ MathPre
+        F_1: & k_s = 1  \wedge k_u \neq k_t - 1 
+        F_2: &  (\neg b_s \vee b_t) \wedge   (b_u \leftrightarrow b_t \wedge \neg b_s)
+~
+
+~ MathPre
+  & k_s \geq 0
+\wedge & k_s = 0 \implies k_u = k_t
+\wedge & k_1 = 1 \implies k_u = k_t - 1
+~ 
+
+# Solving Over-approximations
+
+```
+(set-logic HORN)
+(declare-fun F2Star (Int Int Int) Bool)
+(define-fun F2 ((bs Int) (bt Int) (bu Int)) Bool 
+    (and (<= 0 bs) (<= bs 1)
+         (<= 0 bt) (<= bt 1)
+         (<= 0 bu) (<= bu 1)
+         (or (= bs 0) (= bt 1))
+         (= (= bu 1) (and (= bt 1) (= bs 0)))))
+(define-fun F1 ((ks Int) (kt Int) (ku Int)) Bool
+    (and (= ks 1) (not (= ku (- kt 1)))))
+
+(assert (F2Star 0 0 0))
+(assert (forall ((ks Int) (kt Int) (ku Int) (bs Int) (bt Int) (bu Int))
+             (=> (and (F2Star ks kt ku) (F2 bs bt bu)) (F2Star (+ ks bs) (+ kt bt) (+ ku bu)))))
+
+
+(assert (forall ((ks Int) (kt Int) (ku Int))
+(=> (F2Star ks kt ku) (not (F1 ks kt ku)))))
+
+(check-sat)
+(get-model)
+```
+
+
 # Theory combination
 
 Not all set constraints are _pure_. 
@@ -182,13 +276,14 @@ __Claim__: we can eliminate singleton sets and just consider set variables with 
 
 * Can anything reasonable be done with ranges, subsets, map?
 
-# Algorithm - Outline
+# Integration - Outline
 
 * Set of literals $\mathcal{L}$ over set constraints.
+* All sub-expressions with cardinality operators
 * Sub-terms over sets $s \equiv t \cup v, \ldots$.
 * Introduce fresh variables for sub-term definitions.
-* Define $F_2^*$ for set constraints producing solutions for each set-value sub-term.
-* Define $F_1$ for cardinality constraints.
+* Define $F_2^*$ for equality constraints. 
+* Define $F_1$ for cardinality operators, arithmetic constraints and set disequalities.
 * Check reachability. 
 
 # The extra mile

@@ -170,7 +170,7 @@ def matches(patterns, terms, \($\theta$\), cc):
  match(c, t, S)     &  =    & \emptyset\                 \mathsf{if} c \not\in cc(t)
  match(c, t, S)     &  =    & S                 \mathsf{if} c \in cc(t)
  match(f(ps), t, S) &  =    & \bigcup_{f(ts) \in cc(t)} match(ps_n, ts_n, \ldots, 
-                    &       &                                 match(ps_1, ts_n, S))
+                    &       &                                 match(ps_1, ts_1, S))
 ~
 
 ## E-matching - beyond the basic algorithm
@@ -375,17 +375,6 @@ Same complexity as DQBF.
 (assert (subtype real-type complex-type))
 (assert (not (subtype string-type real-type)))
 ```
-
-## EPR Example - online
-
-<div>
-<iframe 
-  allowtransparency="false" 
-  frameborder="0" 
-  style="width:1500px;height:800px" 
-  src="https://microsoft.github.io/z3guide/docs/logic/Quantifiers">
-</iframe>
-</div>
 
 
 ## EPR decidability
