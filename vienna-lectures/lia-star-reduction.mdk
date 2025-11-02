@@ -235,7 +235,7 @@ $O := \true$
 ~ MathPre
   & k_s \geq 0
 \wedge & k_s = 0 \implies k_u = k_t
-\wedge & k_1 = 1 \implies k_u = k_t - 1
+\wedge & k_s = 1 \implies k_u = k_t - 1
 ~ 
 
 # Solving Over-approximations
@@ -264,6 +264,46 @@ $O := \true$
 (get-model)
 ```
 
+# PDR/IC3 Saturation
+
+~ MathPre 
+  \mathcal{F}(\varphi(\vec{k})) & := & F_2(\vec{b}) \wedge \varphi(\vec{k} + \vec{b})
+~ 
+
+__Unfold__ $\vec{k} = \vec{0} \implies \neg (k_s = 1 \land k_u \neq k_t - 1)$
+
+  * $N \leftarrow 1$
+
+__Candidate__ $(k_s, k_t, k_u) = (1, 1, 1) \models \true \land k_s = 1 \land k_u \neq k_t - 1$
+
+  * add $\langle \Model = (1,1,1), N = 1 \rangle$ to $\mathcal{Q}$.
+  
+
+# PDR/IC3 Conflicts
+
+__Conflict__ 
+
+~ MathPre
+\mathcal{F}(k_s \geq 0) 
+      \implies k_s + b_s \geq 0
+\mathcal{F}(k_s = 0 \implies k_u = k_t) 
+      \implies (k_s + b_s = 0 \implies (k_u + b_u = k_t + b_t))
+%\mathcal{F}(k_s = 1 \implies k_u = k_t - 1) 
+%      \implies (k_s + b_s = 1 \implies k_u + b_u = k_t + b_t - 1)
+~
+
+Note that $\Model(k_s, k_t, k_u) = (1, 1, 1)$ and $\Model \models k_s \geq 0$ and 
+$k_s = 0 \implies k_u = k_t$.
+
+# PDR/IC3 method of finding inductive predicates
+
+* Model-Based projection
+
+   * Finds some $\pi(y) \implies \exists x \ . \ \varphi(x, y)$
+
+   * Conversely $ \varphi(x, y) \implies \neg \pi(y)$.
+
+* $\neg \pi(y)$ can be added to frames $R_i$ and sometimes inductive across all frames.
 
 # Theory combination
 

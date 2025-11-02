@@ -119,6 +119,15 @@ s, t, \varphi, x, y, z & \in &   \termsort      & ::= & f(\termsort^*) & & \mbox
 ~
 
 
+## Terms and Values Examples
+
+~ MathPre
+  x, y, x + y      & \in &   \termsort 
+  \mathcal{M}(v_1 + v_2)     &  =   &  v_1 + v_2
+  \Range(x)        &  =  &  \{ 0, 1 \}  & \mbox{if given the constraint } 0 \leq x \leq 1
+  \terms           &  :  & \{ x, y, x + y, 0, 1, 0 \leq x, x \leq 1, 0 \leq x + y \}                 
+~
+
 ## Interpretations
 
 
@@ -128,6 +137,14 @@ s, t, \varphi, x, y, z & \in &   \termsort      & ::= & f(\termsort^*) & & \mbox
   \evalone(f(\vec{t}))   & := & \Sem{f(\Value(\vec{t}))} & & \mbox{one step local evaluation}\\
   \evalstar{f(\vec{t})} & := & \Sem{f(\evalstar{\vec{t}})} & & \mbox{full evaluation}\\ 
 ~
+
+## Interpretations - Examples
+
+~ MathPre
+  \values & : & [x \mapsto 0, y \mapsto -1, x + y \mapsto 0 ]
+  \evalone(0 \leq x + y) & \equiv & 0 \leq 0 \equiv \true
+  \evalstar{0 \leq x + y} & \equiv & 0 \leq -1 \equiv \false
+~ 
 
 ## Coherence
 
@@ -169,21 +186,23 @@ Revert to Up
 
 ## Repair by gradients
 
-~ Definition
-   Given a valuation $\evalone(\varphi) = \bot$, select a sub-term $t$ and
-   collect a set of Boolean atoms $A$ containing $t$. Based on $A$, compute
-  an orbit $O$ of possible updates to $\Value(t)$ that toggle the truth values of one or more atoms in $A$.
-    Then use a cost function that allows selecting an optimal value in $O$ that improves evaluation of $\varphi$ maximally towards $\top$.
-~
+* Compute a scoring function based on $\evalone$: 
+  * Number of false clauses
+  * Distance $|\evalone(t)|$ for $t \geq 0$ but $\evalone(t) < 0$.
 
-I found that using gradients is not as brittle as local repear. 
+* Pick false literal $\ell$ in false clause.
+  * Compute moves for all variables in $\ell$ (moves for $x,y$ in literal $x + y \geq 0$).
+  * Prefer move with best global score
+
+
+I found that using gradients is not as brittle as local repair.
 Gradients can exploit derivatives. 
 But local repair is useful when there is not clear derivative for functions.
 
 
 ## Challenges and Opportunities
 
-* Combine Theory local search with Boolean local search
+* Combine Theory local search with Boolean local search [@HybridSMT]
   * Best current solution runs Boolean SLS (in z3 it is ddfw) in alternation with theory repair.
   * Theory local search solvers are clause-aware structures.
 
@@ -192,6 +211,16 @@ But local repair is useful when there is not clear derivative for functions.
   * Variable phases: 
     * For SAT: set the phase (and values of arithmetic variables) to the best model so far
     * For UNSAT: I haven't addressed this seriously yet
+
+## Project Topic
+
+* Add a local theory search solver for finite sets.
+* Z3 contains a plugin model for theory local search engines.
+* The engine can add or remove elements to sets. 
+  * Added eleements can come from a pre-existing finite set of candidates.
+  * Maybe grow the candidate set dynamically
+* Add a range at a time for large sets?
+* Initial metric for success: solve random benchmarks better than the complete solver.
 
 ~ End Vertical
 
@@ -205,6 +234,11 @@ But local repair is useful when there is not clear derivative for functions.
 * Egglog: 
   * E-saturation modulo ground equalities and E-matching rules.
   * Datalog-like bottom-up saturation.
+
+* Equality saturation in First-Order (Vampire):
+  * E-matching is $\forall\times$ ground equality
+  * Superposition works for $\forall\times\forall$.
+  * $x x^{-1} = 1, x (yz) = (xy)z$ then $x^{-1}1 = x^{-1}(xx^{-1}) = (x^{-1}x)x^{-1}$
 
 ## Congruence Closure Modulo Theories
 
@@ -229,7 +263,8 @@ We can infer that $D \cup E \simeq F \cup C$.
 
 * $x[10:3] = x[8:1] \Rightarrow x[10:9] = x[8:7] = x[6:5] = x[4:3] = x[2:1]$
 
-* "Cut, dice, and slice" extract, concat, and bit-wise: $x[hi:lo] \simeq y \& x$
+* "Cut, dice, and slice" extract, concat, and bit-wise: $x[hi:lo] \simeq y \& x$ [@BruttomessoS09]
+
 
 ## E-matching Modulo Theories
 
@@ -449,7 +484,7 @@ T-solvers share and propagate equalities
   * integrate with profiling tools (AxiomProfiler based on proof logs)
   * bridges to external formats and checkers (L$\exists\forall$N?)
 
-  
+
 # Proof Formats
 
 ## F - veriT proof format [@abs-2107-02354]
@@ -543,6 +578,18 @@ T-solvers share and propagate equalities
   \mathit{inst}    & ::= & (\mathbf{inst} \Literal^*\;(\mathbf{bind} t_1 \ldots t_n))
 ~
 
+
+## F - new Z3 proof format - Input
+
+```
+(set-option :sat.smt true)
+(set-option :solver.proof.log proof-log.smt2)
+(declare-fun f (Int) Int)
+(declare-const x Int)
+(assert (or (= (f (f (f x))) x) (= (f (f x)) x)))
+(assert (not (= (f (f (f (f (f (f x)))))) x)))
+(check-sat)
+```
 
 ## F - new Z3 proof format (II)
 

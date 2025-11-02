@@ -1449,6 +1449,7 @@ class BlockTracked(UserPropagateBase):
 To illustrate the functionality, we use an example with four Booleans, three of which are tracked.
 
 ~ Example
+
 ```python
 s = SimpleSolver()
 b = BlockTracked(s)
@@ -1462,6 +1463,7 @@ s.add(Or(x, Not(y)), Or(z, u), Or(Not(z), x))
 
 print(s.check())
 ```
+
 ~
 
 ## Maximizing Satisfying Assignments

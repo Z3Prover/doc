@@ -1217,12 +1217,73 @@ $m' \land m_0[\vec{x}_0] \ \rightarrow \ \cF(R_{i})[\vec{x}_0,\vec{x}] \land m$.
 * [@KindermannJN12;@CimattiG12] Partial quantifier elimination.
 * [@KomuravelliGC14] $(\exists\vec{x} \ . \ m \land \cF(R_{i})[\vec{x}_0,\vec{x}]) \ \equiv\ \bigvee_i \psi_i[\vec{x}_0]$ where $\psi_i$ are quantifier-free. Use model for $m \land \cF(R_{i})[\vec{x}_0,\vec{x}]$ to compute $\psi_i$ without expanding full disjunction.
 * [@CimattiGMT14;@ItzhakyBRST14] Keep vocabulary of literals fixed (= predicate abstraction). 
+* Hari Govind et al: SPACER - Global Guidance, Subsumption, Quantified invariants
+
+## Lemma generation beyond SAT
+
+Every time $\mathcal{F}(R_i) \wedge m$ is unsat, find an explanation in terms of successor of $R_i$.
+
+~ MathPre
+  \mathcal{F}(R_i) \implies I, I \implies \neg m 
+~ 
+
+__Example__
+
+~ MathPre
+
+  (k_s = 1,k_t = 1,k_u = 1) \models k_s = 1 \wedge k_t \neq k_u - 1
+
+  R_0 := (k_s = 0,k_t = 0,k_u = 0)
+
+  \mathcal{F}(R)(\vec{k}, \vec{k'}) := \vec{k}' = 0 \vee \exists \vec{b} \vec{k}' = \vec{k} + \vec{b} \wedge R(\vec{k}) \wedge F_2(\vec{b})
+
+  \mathcal{F}(R_0)(\vec{k},\vec{k}') := \vec{k}' = \vec{0} \wedge (\vec{k} \in \{ \vec{0}, (1,1,0), (0, 1, 1) \})
+
+~ 
+
+## Method based on Proofs [@HoderB12]
+
+From proof of unsat $\mathcal{F}(R_0)(\vec{k}) \wedge \vec{k} = (1,1,1)$ 
+synthesize weakest conditions on $\mathcal{F}(R_0)(\vec{k})$ that implies $\vec{k} \neq (1,1,1)$.
+
+The idea is that every arithmetmic lemma in such a proof uses cutting planes. 
+Add up the coefficients that come from $\mathcal{F}(R_0)(\vec{k})$.
+
+
+## Method based on Model-Based Projection [@KomuravelliGC14]
+
+Instead of proof of unsat compute model-based projection.
+Compute pre-decessor states (staring from unsafe) using models based projection.
+
+~ MathPre
+  \pi(\vec{k}) \implies \exists \vec{k}' . \vec{k}' = 0 \vee \exists \vec{b} \vec{k}' = \vec{k} + \vec{b} \wedge R(\vec{k}) \wedge F_2(\vec{b})
+~
+
+We have a model $\vec{k}' = (1,1,1)$ and $\vec{b} = (1,1, 0)$
+
+$\vec{k}' = \vec{b} + \vec{k} \wedge F_2(\vec{b}) \wedge k'_s = 1 \wedge k'_u \neq k'_t - 1$
+
+Possible projection:
+
+$k_s = 0 \wedge k_u \neq k_t$
+
+But negation is inductive
+
+$k_s = 0 \implies k_u = k_t$.
+
 
 ## Global Guidance Aim
 
 ![GlobalGuidance]
 
 [GlobalGuidance]: images/global-guidance-end-to-end.png "GlobalGuidanceConcept" { width:auto }
+
+## Global Guidance Method
+
+Compute a convex closure (not convex hull)
+
+
+
 
 ~ End Vertical
 
